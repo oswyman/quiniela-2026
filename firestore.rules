@@ -1,0 +1,118 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isPlatformAdmin() {
+      return signedIn() && userProfile().data.roleGlobal == "platform_admin";
+    }
+
+    function memberDoc(groupId) {
+      return get(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+    }
+
+    function isMember(groupId) {
+      return signedIn() && exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+    }
+
+    function isGroupAdmin(groupId) {
+      return isMember(groupId) && memberDoc(groupId).data.role == "group_admin";
+    }
+
+    function matchDoc(matchId) {
+      return get(/databases/$(database)/documents/matches/$(matchId));
+    }
+
+    function matchIsOpen(matchId) {
+      return exists(/databases/$(database)/documents/matches/$(matchId)) &&
+        request.time < matchDoc(matchId).data.kickoffAt;
+    }
+
+    match /users/{uid} {
+      allow create: if signedIn() && request.auth.uid == uid;
+      allow read: if signedIn() && (request.auth.uid == uid || isPlatformAdmin());
+      allow update: if signedIn() && request.auth.uid == uid &&
+        !("roleGlobal" in request.resource.data.diff(resource.data).changedKeys());
+      allow delete: if false;
+    }
+
+    match /groups/{groupId} {
+      allow create: if signedIn() &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.legalDisclaimerAccepted == true;
+      allow read: if isMember(groupId) || isPlatformAdmin();
+      allow update: if isGroupAdmin(groupId) || isPlatformAdmin();
+      allow delete: if isPlatformAdmin();
+
+      match /members/{uid} {
+        allow read: if isMember(groupId) || isPlatformAdmin();
+        allow create: if isGroupAdmin(groupId) || isPlatformAdmin() ||
+          (signedIn() && request.auth.uid == uid && request.resource.data.role == "participant");
+        allow update: if isGroupAdmin(groupId) || isPlatformAdmin();
+        allow delete: if isPlatformAdmin();
+      }
+
+      match /invites/{code} {
+        allow read: if isGroupAdmin(groupId) || isPlatformAdmin();
+        allow write: if false;
+      }
+
+      match /predictions/{predictionId} {
+        allow read: if isMember(groupId) || isPlatformAdmin();
+        allow create: if isMember(groupId) &&
+          request.resource.data.uid == request.auth.uid &&
+          request.resource.data.points == 0 &&
+          request.resource.data.isLate == false &&
+          matchIsOpen(request.resource.data.matchId);
+        allow update: if isMember(groupId) &&
+          resource.data.uid == request.auth.uid &&
+          request.resource.data.uid == resource.data.uid &&
+          request.resource.data.matchId == resource.data.matchId &&
+          request.resource.data.points == resource.data.points &&
+          request.resource.data.isLate == resource.data.isLate &&
+          request.resource.data.scoringReason == resource.data.scoringReason &&
+          matchIsOpen(resource.data.matchId);
+        allow delete: if false;
+      }
+
+      match /scores/{uid} {
+        allow read: if isMember(groupId) || isPlatformAdmin();
+        allow write: if false;
+      }
+
+      match /prizes/{uid} {
+        allow read: if isMember(groupId) || isPlatformAdmin();
+        allow write: if false;
+      }
+    }
+
+    match /groupMembers/{id} {
+      allow read: if signedIn() && resource.data.uid == request.auth.uid || isPlatformAdmin();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    match /matches/{matchId} {
+      allow read: if signedIn();
+      allow write: if isPlatformAdmin();
+    }
+
+    match /auditLogs/{id} {
+      allow read: if isPlatformAdmin();
+      allow write: if false;
+    }
+
+    match /apiSyncLogs/{id} {
+      allow read: if isPlatformAdmin();
+      allow write: if false;
+    }
+  }
+}

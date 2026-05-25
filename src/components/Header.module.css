@@ -1,0 +1,38 @@
+.header {
+  align-items: center;
+  background: #0b1715;
+  color: #fff;
+  display: flex;
+  justify-content: space-between;
+  min-height: 68px;
+  padding: 0 24px;
+}
+
+.brand,
+.nav {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.brand {
+  font-weight: 800;
+}
+
+.nav {
+  color: #e7ece8;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.iconButton {
+  align-items: center;
+  background: transparent;
+  border: 1px solid #5f6e69;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  min-height: 36px;
+  padding: 8px;
+}
