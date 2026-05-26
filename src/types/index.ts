@@ -1,6 +1,6 @@
-export type GlobalRole = "platform_admin" | "user";
+export type GlobalRole = "platform_admin" | "group_admin" | "user";
 export type GroupRole = "group_admin" | "participant";
-export type GroupStatus = "draft" | "active" | "closed";
+export type GroupStatus = "draft" | "active" | "closed" | "cancelled";
 export type PaymentStatus = "pending" | "paid" | "not_applicable";
 export type MemberStatus = "active" | "inactive";
 export type ValidResultMode = "NINETY" | "EXTRA_TIME" | "FINAL_WITH_PENALTIES";
@@ -33,6 +33,11 @@ export type Group = {
   minParticipants: number;
   prizeRuleMode: PrizeRuleMode;
   legalDisclaimerAccepted: boolean;
+  firstTournamentKickoffAt?: unknown;
+  registrationDeadlineAt?: unknown;
+  deletedAt?: unknown;
+  cancelledAt?: unknown;
+  lockedAt?: unknown;
 };
 
 export type Member = {
@@ -54,11 +59,16 @@ export type Invite = {
   maxUses: number;
   usedCount: number;
   status: "active" | "expired" | "disabled";
+  inviteeEmail?: string;
+  role?: GroupRole;
+  usedAt?: unknown;
+  usedByUid?: string;
+  type?: "group_admin" | "participant";
 };
 
 export type Match = {
   id: string;
-  provider?: "mock" | "sportmonks";
+  provider?: "manual" | "mock" | "sportmonks" | "api-football";
   providerMatchId?: string;
   matchNumber?: number | null;
   phase: string;
@@ -134,10 +144,16 @@ export type AuditLog = {
 };
 
 export type ProviderStatus = {
-  provider: "mock" | "sportmonks" | "disabled";
+  provider: "manual" | "mock" | "sportmonks" | "api-football" | "disabled";
   status: "healthy" | "degraded" | "error" | "idle" | "syncing";
   lastFixturesSyncAt?: unknown;
   lastLiveSyncAt?: unknown;
   message?: string;
   updatedAt?: unknown;
+};
+
+export type TournamentConfig = {
+  firstKickoffAt?: unknown;
+  registrationCutoffMinutes: number;
+  resultsMode: "manual" | "api-football" | "mock" | "sportmonks";
 };

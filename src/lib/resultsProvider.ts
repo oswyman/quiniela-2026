@@ -6,15 +6,26 @@ export type ResultsProvider = {
 };
 
 export function createResultsProvider(): ResultsProvider {
-  const provider = process.env.RESULTS_API_PROVIDER ?? "mock";
+  const provider = process.env.RESULTS_API_PROVIDER ?? "manual";
+
+  if (provider === "manual") {
+    return {
+      async getFixtures() {
+        return [];
+      },
+      async getResults() {
+        return [];
+      }
+    };
+  }
 
   if (provider !== "mock") {
     return {
       async getFixtures() {
-        throw new Error("Proveedor real no configurado. Usa RESULTS_API_PROVIDER=mock o implementa el adaptador.");
+        throw new Error("El proveedor real corre solo en Cloud Functions. Usa RESULTS_API_PROVIDER=manual para operación oficial o configura Functions.");
       },
       async getResults() {
-        throw new Error("Proveedor real no configurado. Usa RESULTS_API_PROVIDER=mock o implementa el adaptador.");
+        throw new Error("El proveedor real corre solo en Cloud Functions. Usa RESULTS_API_PROVIDER=manual para operación oficial o configura Functions.");
       }
     };
   }

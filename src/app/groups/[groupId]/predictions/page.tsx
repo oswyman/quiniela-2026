@@ -99,7 +99,7 @@ function PredictionsContent() {
       {message ? <StatusMessage type="success">{message}</StatusMessage> : null}
       {error ? <StatusMessage type="error">{error}</StatusMessage> : null}
       {matches.length === 0 ? (
-        <EmptyState title="No hay partidos cargados" body="Un administrador de plataforma debe sincronizar fixtures desde Sportmonks o mock data." href={`/groups/${params.groupId}/admin`} action="Ir a administración" />
+        <EmptyState title="No hay partidos cargados" body="Un superadmin debe cargar fixtures manuales o sincronizar un proveedor opcional." href={`/groups/${params.groupId}/admin`} action="Ir a administración" />
       ) : null}
       <div className="grid">
         {matches.map((match) => {

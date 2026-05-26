@@ -60,7 +60,7 @@ function DashboardContent() {
       </div>
       {loading ? <div className="panel">Cargando tus grupos...</div> : null}
       {!loading && groups.length === 0 ? (
-        <EmptyState title="Todavía no hay grupos" body="Crea tu primera quiniela privada o únete con una invitación." href="/groups/new" action="Crear grupo" />
+        <EmptyState title="Todavía no hay grupos" body="Si eres administrador invitado, crea tu primer grupo. Si eres participante, abre tu liga de invitación." href="/groups/new" action="Crear grupo" />
       ) : null}
       <div className="grid">
         {groups.map((group) => (

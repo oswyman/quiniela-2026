@@ -14,7 +14,7 @@ import {
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "./client";
-import type { Group, Invite, Match, Member, Prediction, ProviderStatus, Score, UserProfile } from "@/types";
+import type { Group, Invite, Match, Member, Prediction, ProviderStatus, Score, TournamentConfig, UserProfile } from "@/types";
 
 export async function getUserProfile(uid: string) {
   const snap = await getDoc(doc(db, "users", uid));
@@ -51,6 +51,16 @@ export async function createGroup(input: Omit<Group, "id" | "createdAt" | "creat
   return result.data.groupId;
 }
 
+export async function updateGroup(groupId: string, input: Partial<Group>) {
+  const callable = httpsCallable<Partial<Group> & { groupId: string }, { ok: boolean }>(functions, "updateGroup");
+  return callable({ ...input, groupId });
+}
+
+export async function deleteGroup(groupId: string) {
+  const callable = httpsCallable<{ groupId: string }, { ok: boolean }>(functions, "deleteGroup");
+  return callable({ groupId });
+}
+
 export async function getGroup(groupId: string) {
   const snap = await getDoc(doc(db, "groups", groupId));
   return snap.exists() ? ({ id: snap.id, ...snap.data() } as Group) : null;
@@ -69,6 +79,16 @@ export async function listMembers(groupId: string) {
 export async function listMatches() {
   const snap = await getDocs(query(collection(db, "matches"), orderBy("kickoffAt", "asc"), limit(80)));
   return snap.docs.map((item) => ({ id: item.id, ...item.data() }) as Match);
+}
+
+export async function listAllGroups() {
+  const snap = await getDocs(query(collection(db, "groups"), limit(100)));
+  return snap.docs.map((item) => ({ id: item.id, ...item.data() }) as Group);
+}
+
+export async function listAllUsers() {
+  const snap = await getDocs(query(collection(db, "users"), limit(100)));
+  return snap.docs.map((item) => item.data() as UserProfile);
 }
 
 export async function listPredictions(groupId: string) {
@@ -96,13 +116,27 @@ export async function updatePaymentStatus(groupId: string, uid: string, paymentS
   await updateDoc(doc(db, "groupMembers", `${groupId}_${uid}`), { paymentStatus });
 }
 
-export async function createInvite(groupId: string) {
-  const callable = httpsCallable<{ groupId: string }, Invite>(functions, "createInvite");
-  return callable({ groupId });
+export async function createParticipantInvite(groupId: string, inviteeEmail: string, displayName?: string) {
+  const callable = httpsCallable<{ groupId: string; inviteeEmail: string; displayName?: string }, Invite>(functions, "createParticipantInvite");
+  return callable({ groupId, inviteeEmail, displayName });
+}
+
+export async function createInvite(groupId: string, inviteeEmail: string, displayName?: string) {
+  return createParticipantInvite(groupId, inviteeEmail, displayName);
+}
+
+export async function createAdminInvite(inviteeEmail: string, displayName?: string) {
+  const callable = httpsCallable<{ inviteeEmail: string; displayName?: string }, Invite>(functions, "createAdminInvite");
+  return callable({ inviteeEmail, displayName });
+}
+
+export async function previewInvite(inviteCode: string) {
+  const callable = httpsCallable<{ inviteCode: string }, Invite>(functions, "previewInvite");
+  return callable({ inviteCode });
 }
 
 export async function acceptInvite(inviteCode: string) {
-  const callable = httpsCallable<{ inviteCode: string }, { groupId: string }>(functions, "acceptInvite");
+  const callable = httpsCallable<{ inviteCode: string }, { groupId: string | null; roleGlobal: string }>(functions, "acceptInvite");
   return callable({ inviteCode });
 }
 
@@ -121,7 +155,31 @@ export async function syncLiveResultsFromProvider() {
   return callable({});
 }
 
+export async function upsertManualMatch(input: Record<string, unknown> & { kickoffAt: string }) {
+  const callable = httpsCallable<typeof input, { matchId: string }>(functions, "upsertManualMatch");
+  return callable(input);
+}
+
+export async function upsertManualResult(input: Partial<Match> & { matchId: string }) {
+  const callable = httpsCallable<typeof input, { ok: boolean }>(functions, "upsertManualResult");
+  return callable(input);
+}
+
 export async function getProviderStatus() {
   const snap = await getDoc(doc(db, "systemConfig", "providerStatus"));
   return snap.exists() ? (snap.data() as ProviderStatus) : null;
+}
+
+export async function getTournamentConfig() {
+  const snap = await getDoc(doc(db, "systemConfig", "tournament"));
+  return snap.exists() ? (snap.data() as TournamentConfig) : null;
+}
+
+export async function updateTournamentConfig(input: {
+  firstKickoffAt: string;
+  registrationCutoffMinutes?: number;
+  resultsMode?: TournamentConfig["resultsMode"] | "disabled";
+}) {
+  const callable = httpsCallable<typeof input, { ok: boolean }>(functions, "updateTournamentConfig");
+  return callable(input);
 }

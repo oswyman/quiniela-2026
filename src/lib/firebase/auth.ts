@@ -47,3 +47,7 @@ export async function ensureUserProfile(uid: string, displayName: string, email:
     } satisfies Omit<UserProfile, "createdAt"> & { createdAt: unknown });
   }
 }
+
+export async function registerWithInvite(email: string, password: string, displayName: string) {
+  return registerWithEmail(email, password, displayName);
+}

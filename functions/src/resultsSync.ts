@@ -1,18 +1,28 @@
 import { getFirestore, FieldValue, Timestamp } from "firebase-admin/firestore";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { normalizeApiFootballFixture, ApiFootballFixture } from "./apiFootballMapper";
 import { normalizeSportmonksFixture, SportmonksFixture } from "./sportmonksMapper";
 
 const SPORTMONKS_BASE_URL = process.env.SPORTMONKS_BASE_URL || "https://api.sportmonks.com/v3/football";
 const WORLD_CUP_SEASON_ID = process.env.SPORTMONKS_WORLD_CUP_SEASON_ID || "26618";
+const API_FOOTBALL_BASE_URL = process.env.API_FOOTBALL_BASE_URL || "https://v3.football.api-sports.io";
+const API_FOOTBALL_LEAGUE = process.env.API_FOOTBALL_LEAGUE || "1";
+const API_FOOTBALL_SEASON = process.env.API_FOOTBALL_SEASON || "2026";
 
 export async function syncFixturesFromProvider() {
-  const provider = process.env.RESULTS_API_PROVIDER || "mock";
-  return provider === "sportmonks" ? syncSportmonksFixtures() : syncMockFixtures();
+  const provider = process.env.RESULTS_API_PROVIDER || "manual";
+  if (provider === "api-football") return syncApiFootballFixtures();
+  if (provider === "sportmonks") return syncSportmonksFixtures();
+  if (provider === "mock") return syncMockFixtures();
+  return writeProviderStatus("manual", "idle", "Modo manual activo; no se sincronizaron fixtures.");
 }
 
 export async function syncLiveResultsFromProvider() {
-  const provider = process.env.RESULTS_API_PROVIDER || "mock";
-  return provider === "sportmonks" ? syncSportmonksLiveResults() : syncMockResults();
+  const provider = process.env.RESULTS_API_PROVIDER || "manual";
+  if (provider === "api-football") return syncApiFootballResults();
+  if (provider === "sportmonks") return syncSportmonksLiveResults();
+  if (provider === "mock") return syncMockResults();
+  return writeProviderStatus("manual", "idle", "Modo manual activo; captura resultados desde superadmin.");
 }
 
 export async function mapSportmonksFixture(fixture: SportmonksFixture) {
@@ -29,6 +39,18 @@ export async function mapSportmonksFixture(fixture: SportmonksFixture) {
 async function syncSportmonksFixtures() {
   const fixtures = await fetchSportmonksFixtures("fixtures");
   return writeMatches("sportmonks", fixtures, "fixtures");
+}
+
+async function syncApiFootballFixtures() {
+  const fixtures = await fetchApiFootballFixtures({ league: API_FOOTBALL_LEAGUE, season: API_FOOTBALL_SEASON });
+  const mapped = fixtures.map(mapApiFootballFixture);
+  return writeRawMatches("api-football", mapped.map((match) => ({ id: String(match.providerMatchId), ...match })), "fixtures");
+}
+
+async function syncApiFootballResults() {
+  const fixtures = await fetchApiFootballFixtures({ league: API_FOOTBALL_LEAGUE, season: API_FOOTBALL_SEASON });
+  const mapped = fixtures.map(mapApiFootballFixture);
+  return writeRawMatches("api-football", mapped.map((match) => ({ id: String(match.providerMatchId), ...match })), "live");
 }
 
 async function syncSportmonksLiveResults() {
@@ -49,6 +71,29 @@ async function fetchSportmonksFixtures(endpoint: string): Promise<SportmonksFixt
   if (!response.ok) throw new Error(`Sportmonks ${endpoint} fallo con HTTP ${response.status}.`);
   const payload = (await response.json()) as { data?: SportmonksFixture[] };
   return payload.data ?? [];
+}
+
+async function fetchApiFootballFixtures(params: Record<string, string>): Promise<ApiFootballFixture[]> {
+  const key = process.env.API_FOOTBALL_KEY || process.env.RESULTS_API_KEY;
+  if (!key) throw new Error("API_FOOTBALL_KEY no configurado.");
+  const url = new URL(`${API_FOOTBALL_BASE_URL}/fixtures`);
+  for (const [name, value] of Object.entries(params)) url.searchParams.set(name, value);
+
+  const response = await fetch(url, { headers: { "x-apisports-key": key } });
+  if (!response.ok) throw new Error(`API-Football fallo con HTTP ${response.status}.`);
+  const payload = (await response.json()) as { response?: ApiFootballFixture[]; errors?: unknown };
+  return payload.response ?? [];
+}
+
+function mapApiFootballFixture(fixture: ApiFootballFixture) {
+  const normalized = normalizeApiFootballFixture(fixture);
+  return {
+    ...normalized,
+    kickoffAt: normalized.kickoffAtIso ? Timestamp.fromDate(new Date(normalized.kickoffAtIso)) : null,
+    kickoffAtIso: FieldValue.delete(),
+    lastSyncedAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp()
+  };
 }
 
 async function syncMockFixtures() {
@@ -89,6 +134,17 @@ async function syncMockFixtures() {
     }
   ];
   return writeRawMatches("mock", fixtures, "fixtures");
+}
+
+async function writeProviderStatus(provider: string, status: string, message: string) {
+  const db = getFirestore();
+  await db.doc("systemConfig/providerStatus").set({
+    provider,
+    status,
+    message,
+    updatedAt: FieldValue.serverTimestamp()
+  }, { merge: true });
+  return { updated: 0 };
 }
 
 async function syncMockResults() {
@@ -150,7 +206,7 @@ async function writeRawMatches(provider: string, matches: Array<Record<string, u
 export const scheduledFixturesSync = onSchedule(
   { schedule: "every 6 hours", timeZone: "America/Mexico_City" },
   async () => {
-    if ((process.env.RESULTS_API_PROVIDER ?? "mock") === "disabled") return;
+    if ((process.env.RESULTS_API_PROVIDER ?? "manual") === "disabled") return;
     await syncFixturesFromProvider();
   }
 );
@@ -158,7 +214,7 @@ export const scheduledFixturesSync = onSchedule(
 export const scheduledLiveResultsSync = onSchedule(
   { schedule: "every 5 minutes", timeZone: "America/Mexico_City" },
   async () => {
-    if ((process.env.RESULTS_API_PROVIDER ?? "mock") === "disabled") return;
+    if ((process.env.RESULTS_API_PROVIDER ?? "manual") === "disabled") return;
     await syncLiveResultsFromProvider();
   }
 );

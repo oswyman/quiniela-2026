@@ -1,14 +1,16 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
+import { EmptyState } from "@/components/EmptyState";
 import { LEGAL_DISCLAIMER, LegalNotice } from "@/components/LegalNotice";
 import { PageTitle } from "@/components/PageTitle";
 import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
-import { createGroup } from "@/lib/firebase/firestore";
-import type { PredictionVisibility, ValidResultMode } from "@/types";
+import { createGroup, getUserProfile } from "@/lib/firebase/firestore";
+import { canCreateGroup } from "@/lib/permissions";
+import type { PredictionVisibility, UserProfile, ValidResultMode } from "@/types";
 
 export default function NewGroupPage() {
   return (
@@ -21,6 +23,8 @@ export default function NewGroupPage() {
 function NewGroupForm() {
   const router = useRouter();
   const { user } = useAuthUser();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [name, setName] = useState("");
   const [currency, setCurrency] = useState("MXN");
   const [contributionAmount, setContributionAmount] = useState("0");
@@ -32,6 +36,13 @@ function NewGroupForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  useEffect(() => {
+    if (!user) return;
+    getUserProfile(user.uid)
+      .then(setProfile)
+      .finally(() => setProfileLoading(false));
+  }, [user]);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -64,6 +75,11 @@ function NewGroupForm() {
   return (
     <main className="container shell stack-lg">
       <PageTitle title="Crear grupo" subtitle="Configura una quiniela privada con reglas claras, responsable administrativo y pronósticos protegidos." />
+      {profileLoading ? <div className="panel">Validando permisos...</div> : null}
+      {!profileLoading && !canCreateGroup(profile) ? (
+        <EmptyState title="Necesitas invitación de administrador" body="Solo un superadmin puede invitar administradores de grupo. Si recibiste una liga, abre /join/CODIGO con el correo invitado." href="/dashboard" action="Volver al dashboard" />
+      ) : null}
+      {!profileLoading && canCreateGroup(profile) ? (
       <form className="panel stack" onSubmit={onSubmit}>
         <LegalNotice />
         <div className="formGrid">
@@ -114,6 +130,7 @@ function NewGroupForm() {
         {error ? <StatusMessage type="error">{error}</StatusMessage> : null}
         <button className="button" disabled={loading} type="submit">{loading ? "Creando grupo y membresía..." : "Crear grupo"}</button>
       </form>
+      ) : null}
       <section className="grid">
         <article className="panel">
           <h2>Checklist de beta</h2>

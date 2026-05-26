@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
 import { GroupNav } from "@/components/GroupNav";
@@ -8,8 +8,8 @@ import { MetricCard } from "@/components/MetricCard";
 import { PageTitle } from "@/components/PageTitle";
 import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
-import { createInvite, getGroup, getMyMember, getProviderStatus, listMembers, recalculateGroupScores, syncFixturesFromProvider, syncLiveResultsFromProvider, updatePaymentStatus } from "@/lib/firebase/firestore";
-import { formatMoney } from "@/lib/format";
+import { createInvite, deleteGroup, getGroup, getMyMember, getProviderStatus, listMembers, recalculateGroupScores, syncFixturesFromProvider, syncLiveResultsFromProvider, updateGroup, updatePaymentStatus } from "@/lib/firebase/firestore";
+import { formatDate, formatMoney } from "@/lib/format";
 import type { Group, Member, ProviderStatus } from "@/types";
 
 export default function GroupAdminPage() {
@@ -30,6 +30,8 @@ function GroupAdminContent() {
   const [error, setError] = useState("");
   const [providerStatus, setProviderStatus] = useState<ProviderStatus | null>(null);
   const [busyAction, setBusyAction] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [savingConfig, setSavingConfig] = useState(false);
   const [loading, setLoading] = useState(true);
 
   async function reload() {
@@ -49,14 +51,55 @@ function GroupAdminContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.groupId, user?.uid]);
 
-  async function onCreateInvite() {
+  async function onCreateInvite(event: FormEvent) {
+    event.preventDefault();
     setError("");
     setMessage("");
     try {
-      const result = await createInvite(params.groupId);
-      setMessage(`Invitación creada: ${window.location.origin}/join/${result.data.code}`);
+      const result = await createInvite(params.groupId, inviteEmail);
+      setInviteEmail("");
+      setMessage(`Invitación creada para ${result.data.inviteeEmail}: ${window.location.origin}/join/${result.data.code}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo crear la invitación.");
+    }
+  }
+
+  async function onUpdateGroup(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!group) return;
+    const form = new FormData(event.currentTarget);
+    setSavingConfig(true);
+    setError("");
+    setMessage("");
+    try {
+      await updateGroup(params.groupId, {
+        name: String(form.get("name") ?? group.name),
+        currency: String(form.get("currency") ?? group.currency),
+        contributionAmount: Number(form.get("contributionAmount") ?? group.contributionAmount),
+        moneyResponsibleName: String(form.get("moneyResponsibleName") ?? group.moneyResponsibleName),
+        moneyResponsibleEmail: String(form.get("moneyResponsibleEmail") ?? group.moneyResponsibleEmail),
+        predictionVisibility: form.get("predictionVisibility") as Group["predictionVisibility"],
+        validResultMode: form.get("validResultMode") as Group["validResultMode"]
+      });
+      setMessage("Configuración actualizada.");
+      await reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo actualizar el grupo.");
+    } finally {
+      setSavingConfig(false);
+    }
+  }
+
+  async function onDeleteGroup() {
+    if (!window.confirm("¿Cancelar este grupo? Solo es posible antes del primer partido del Mundial.")) return;
+    setError("");
+    setMessage("");
+    try {
+      await deleteGroup(params.groupId);
+      setMessage("Grupo cancelado correctamente.");
+      await reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo cancelar el grupo.");
     }
   }
 
@@ -111,14 +154,25 @@ function GroupAdminContent() {
         <MetricCard label="Participantes" value={members.length} detail="Miembros registrados en el grupo" />
         <MetricCard label="Pagos manuales" value={`${paidMembers}/${members.length}`} detail="Sin procesar pagos en la plataforma" />
         <MetricCard label="Bolsa estimada" value={formatMoney(pool, group.currency)} detail="Solo registro administrativo" />
-        <MetricCard label="Proveedor" value={providerStatus?.provider ?? "mock"} detail={providerStatus?.message ?? "Sin sync registrada"} />
+        <MetricCard label="Cierre registro" value={formatDate(group.registrationDeadlineAt)} detail="90 min antes del primer partido" />
+        <MetricCard label="Proveedor" value={providerStatus?.provider ?? "manual"} detail={providerStatus?.message ?? "Sin sync registrada"} />
       </div>
       <div className="toolbar panel">
-        <button className="button" onClick={onCreateInvite} type="button">Crear invitación</button>
         <button className="button secondary" onClick={onRecalculate} type="button">Recalcular puntos</button>
         <button className="button secondary" disabled={busyAction === "fixtures"} onClick={() => runSync("fixtures")} type="button">{busyAction === "fixtures" ? "Sincronizando..." : "Sync fixtures"}</button>
         <button className="button secondary" disabled={busyAction === "live"} onClick={() => runSync("live")} type="button">{busyAction === "live" ? "Sincronizando..." : "Sync resultados"}</button>
       </div>
+      <section className="panel stack">
+        <h2>Invitar participante</h2>
+        <p className="muted">Solo se puede registrar con invitación por correo antes del cierre del grupo.</p>
+        <form className="cluster" onSubmit={onCreateInvite}>
+          <div className="field growField">
+            <label htmlFor="inviteEmail">Email del participante</label>
+            <input id="inviteEmail" type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} required />
+          </div>
+          <button className="button" type="submit">Crear invitación</button>
+        </form>
+      </section>
       <section className="panel tableWrap">
         <h2>Participantes</h2>
         <table>
@@ -150,12 +204,34 @@ function GroupAdminContent() {
           </tbody>
         </table>
       </section>
-      <section className="panel">
+      <section className="panel stack">
         <h2>Configuración</h2>
-        <p>Moneda: {group.currency}</p>
-        <p>Aportación: {group.contributionAmount}</p>
-        <p>Responsable: {group.moneyResponsibleName} ({group.moneyResponsibleEmail})</p>
-        <p>La edición avanzada debe pasar por Cloud Functions para mantener auditoría.</p>
+        <form className="formGrid" onSubmit={onUpdateGroup}>
+          <div className="field"><label htmlFor="groupName">Nombre</label><input id="groupName" name="name" defaultValue={group.name} required /></div>
+          <div className="field"><label htmlFor="currency">Moneda</label><input id="currency" name="currency" defaultValue={group.currency} maxLength={3} required /></div>
+          <div className="field"><label htmlFor="contributionAmount">Aportación</label><input id="contributionAmount" name="contributionAmount" type="number" min="0" step="0.01" defaultValue={group.contributionAmount} required /></div>
+          <div className="field"><label htmlFor="moneyResponsibleName">Responsable</label><input id="moneyResponsibleName" name="moneyResponsibleName" defaultValue={group.moneyResponsibleName} required /></div>
+          <div className="field"><label htmlFor="moneyResponsibleEmail">Email responsable</label><input id="moneyResponsibleEmail" name="moneyResponsibleEmail" type="email" defaultValue={group.moneyResponsibleEmail} required /></div>
+          <div className="field">
+            <label htmlFor="validResultMode">Resultado válido</label>
+            <select id="validResultMode" name="validResultMode" defaultValue={group.validResultMode}>
+              <option value="NINETY">90 minutos</option>
+              <option value="EXTRA_TIME">Tiempos extra</option>
+              <option value="FINAL_WITH_PENALTIES">Final con penales</option>
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="predictionVisibility">Visibilidad</label>
+            <select id="predictionVisibility" name="predictionVisibility" defaultValue={group.predictionVisibility}>
+              <option value="AFTER_CLOSE">Después del cierre</option>
+              <option value="BEFORE_CLOSE">Antes del cierre</option>
+            </select>
+          </div>
+          <div className="cluster">
+            <button className="button" disabled={savingConfig} type="submit">{savingConfig ? "Guardando..." : "Guardar cambios"}</button>
+            <button className="button danger" onClick={onDeleteGroup} type="button">Cancelar grupo</button>
+          </div>
+        </form>
       </section>
     </main>
   );

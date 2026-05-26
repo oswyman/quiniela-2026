@@ -2,14 +2,13 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { loginWithEmail, registerWithEmail } from "@/lib/firebase/auth";
+import Link from "next/link";
+import { loginWithEmail } from "@/lib/firebase/auth";
 import { PageTitle } from "@/components/PageTitle";
 import { StatusMessage } from "@/components/StatusMessage";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<"login" | "register">("login");
-  const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -21,12 +20,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      if (mode === "register") {
-        if (!displayName.trim()) throw new Error("Ingresa tu nombre.");
-        await registerWithEmail(email, password, displayName);
-      } else {
-        await loginWithEmail(email, password);
-      }
+      await loginWithEmail(email, password);
       router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo iniciar sesión.");
@@ -38,35 +32,28 @@ export default function LoginPage() {
   return (
     <main className="container shell twoCol">
       <section>
-        <PageTitle title={mode === "login" ? "Entrar a tu quiniela" : "Crear cuenta"} subtitle="Accede a tus grupos privados, pronósticos y rankings en un solo lugar." />
+        <PageTitle title="Entrar a La Cancha" subtitle="El acceso es privado: necesitas una invitación por correo para crear cuenta o unirte a un grupo." />
         <form className="panel stack" onSubmit={onSubmit}>
-          {mode === "register" ? (
-            <div className="field">
-              <label htmlFor="displayName">Nombre</label>
-              <input id="displayName" value={displayName} onChange={(event) => setDisplayName(event.target.value)} required />
-            </div>
-          ) : null}
           <div className="field">
             <label htmlFor="email">Email</label>
             <input id="email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
           </div>
           <div className="field">
             <label htmlFor="password">Contraseña</label>
-            <input id="password" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} required />
+            <input id="password" type="password" autoComplete="current-password" minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} required />
           </div>
           {error ? <StatusMessage type="error">{error}</StatusMessage> : null}
           <button className="button" disabled={loading} type="submit">
-            {loading ? "Validando acceso..." : mode === "login" ? "Entrar" : "Crear cuenta"}
+            {loading ? "Validando acceso..." : "Entrar"}
           </button>
-          <button className="button secondary" type="button" onClick={() => setMode(mode === "login" ? "register" : "login")}>
-            {mode === "login" ? "Crear cuenta nueva" : "Ya tengo cuenta"}
-          </button>
+          <p className="fineprint">¿Tienes invitación? Abre el enlace que te mandó el administrador o pega el código en la ruta <code>/join/CODIGO</code>.</p>
         </form>
       </section>
       <aside className="panel stack">
         <span className="pill">Club privado</span>
         <h2>Una quiniela que se siente seria desde el primer clic</h2>
         <p className="muted">Tu cuenta conecta Firebase Auth con tus grupos, invitaciones, pronósticos y rankings. Sin pagos, sin wallets, sin custodia.</p>
+        <Link className="button secondary" href="/">Ver cómo funciona</Link>
         <div className="grid">
           <div className="card"><strong>Reglas claras</strong><p className="fineprint">Visibilidad, resultado válido y premios sugeridos por grupo.</p></div>
           <div className="card"><strong>Operación limpia</strong><p className="fineprint">Estados de pago manual y auditoría básica para admins.</p></div>

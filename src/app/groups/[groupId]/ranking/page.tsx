@@ -50,6 +50,16 @@ function RankingContent() {
         <PageTitle title="Ranking" subtitle="Desempates: puntos, marcadores exactos, diferencias, ganadores, empates." />
         <GroupNav groupId={params.groupId} />
       </div>
+      <section className="grid">
+        <article className="panel stack">
+          <h2>Cómo se leen los puntos</h2>
+          <p className="muted">Marcador exacto: 3 pts. Diferencia correcta: 2 pts. Ganador o empate correcto: 1 pt. Pronóstico tardío: 0 pts.</p>
+        </article>
+        <article className="panel stack">
+          <h2>Premios estimados</h2>
+          <p className="muted">La Cancha no paga ni custodia dinero. El premio mostrado es una guía administrativa según participantes activos y empates.</p>
+        </article>
+      </section>
       <div className="tableWrap panel">
         <table>
           <thead>
@@ -76,7 +86,7 @@ function RankingContent() {
                   <td>{score.correctGoalDifferences}</td>
                   <td>{score.correctWinners}</td>
                   <td>{score.correctDraws}</td>
-                  <td>{formatMoney(prize?.estimatedPrize ?? 0, group?.currency ?? "MXN")}</td>
+                  <td>{prize ? formatMoney(prize.estimatedPrize, group?.currency ?? "MXN") : "Resultado pendiente"}</td>
                 </tr>
               );
             })}
@@ -87,9 +97,9 @@ function RankingContent() {
       {prizes.length > 0 ? (
         <section className="panel stack">
           <h2>Explicación de premios</h2>
-          {prizes.map((prize) => <p key={prize.uid}>{prize.ruleApplied}</p>)}
+          {prizes.map((prize) => <p key={prize.uid}>{prize.ruleApplied} {prize.tieApplied ? "Se aplicó empate en zona de premio." : ""}</p>)}
         </section>
-      ) : null}
+      ) : <section className="panel"><h2>Ranking pendiente</h2><p className="muted">Aún no hay resultados suficientes para calcular premios estimados.</p></section>}
     </main>
   );
 }

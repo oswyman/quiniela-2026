@@ -5,8 +5,9 @@ import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { writeAuditLog } from "./audit";
 import { calculatePrizeAllocations, ScoreRow } from "./prizes";
 import { calculatePredictionScore, resolveMatchResult } from "./scoring";
-import { acceptInvite, createInvite } from "./invites";
-import { createGroup } from "./groups";
+import { acceptInvite, createAdminInvite, createInvite, createParticipantInvite, previewInvite } from "./invites";
+import { createGroup, deleteGroup, updateGroup, updateTournamentConfig } from "./groups";
+import { upsertManualMatch, upsertManualResult } from "./manualResults";
 import { submitPrediction } from "./predictions";
 import {
   scheduledFixturesSync,
@@ -17,7 +18,22 @@ import {
 
 initializeApp();
 
-export { acceptInvite, createGroup, createInvite, scheduledFixturesSync, scheduledLiveResultsSync, submitPrediction };
+export {
+  acceptInvite,
+  createAdminInvite,
+  createGroup,
+  createInvite,
+  createParticipantInvite,
+  deleteGroup,
+  previewInvite,
+  scheduledFixturesSync,
+  scheduledLiveResultsSync,
+  submitPrediction,
+  updateGroup,
+  updateTournamentConfig,
+  upsertManualMatch,
+  upsertManualResult
+};
 
 async function isPlatformAdmin(uid: string) {
   const snap = await getFirestore().doc(`users/${uid}`).get();
@@ -89,6 +105,9 @@ export const syncLiveResultsFromProvider = onCall(async (request) => {
   if (!request.auth || !(await isPlatformAdmin(request.auth.uid))) throw new HttpsError("permission-denied", "Solo platform_admin.");
   return runLiveSync();
 });
+
+export const syncApiFootballFixtures = syncFixturesFromProvider;
+export const syncApiFootballResults = syncLiveResultsFromProvider;
 
 async function updateGroupRankingInternal(groupId: string, actorUid: string) {
   const db = getFirestore();

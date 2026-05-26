@@ -1,6 +1,6 @@
 # La Cancha · Quinielas privadas Mundial 2026
 
-Webapp MVP premium para organizar quinielas privadas del Mundial FIFA 2026 con Next.js, Firebase Auth, Cloud Firestore, Firebase Security Rules, Cloud Functions y despliegue de frontend en Vercel.
+Webapp beta vendible para organizar quinielas privadas del Mundial FIFA 2026 con Next.js, Firebase Auth, Cloud Firestore, Firebase Security Rules, Cloud Functions y despliegue del frontend en Vercel.
 
 > **Advertencia legal para Mexico:** Esta plataforma es una herramienta administrativa para organizar quinielas privadas. No constituye asesoria legal. Si un grupo usa aportaciones economicas o premios, debe consultar a un abogado y revisar la regulacion aplicable en Mexico antes de operar.
 
@@ -9,11 +9,11 @@ La plataforma no procesa pagos, no custodia dinero, no implementa wallet y no in
 ## Stack tecnico
 
 - Next.js App Router, React y TypeScript.
-- CSS Modules y CSS global simple. Se eligio CSS Modules/CSS nativo para reducir dependencias y facilitar despliegue MVP sin Tailwind.
-- Firebase Auth para registro e inicio de sesion email/password.
+- CSS Modules y CSS global simple. Se eligio CSS nativo para reducir dependencias, controlar identidad visual y mantener el despliegue MVP ligero.
+- Firebase Auth para acceso email/password.
 - Cloud Firestore para grupos, miembros, invitaciones, partidos, pronosticos, scores, premios y auditoria.
 - Firebase Security Rules para permisos del cliente.
-- Firebase Cloud Functions con Admin SDK para invitaciones, auditoria, recalculo, ranking, premios y sync mock de partidos.
+- Firebase Cloud Functions con Admin SDK para invitaciones, grupos, pronosticos, resultados manuales, auditoria, recalculo, ranking, premios y sync opcional.
 - Vercel para desplegar el frontend.
 
 ## Instalacion local
@@ -23,7 +23,7 @@ npm install
 npm run dev
 ```
 
-Abre `http://localhost:3000`.
+Abre `http://localhost:3000` o el puerto que indique Next.js.
 
 Para verificar:
 
@@ -31,11 +31,12 @@ Para verificar:
 npm run lint
 npm test
 npm run build
+cd functions && npm install && npm run build
 ```
 
 ## Variables de entorno
 
-Copia `.env.example` a `.env.local` y completa los valores publicos del proyecto Firebase:
+Copia `.env.example` a `.env.local` y completa los valores publicos de Firebase:
 
 ```bash
 NEXT_PUBLIC_FIREBASE_API_KEY=
@@ -47,15 +48,21 @@ NEXT_PUBLIC_FIREBASE_APP_ID=
 NEXT_PUBLIC_FIREBASE_APPCHECK_SITE_KEY=
 NEXT_PUBLIC_APP_URL=
 
-RESULTS_API_PROVIDER=mock
+RESULTS_API_PROVIDER=manual
 RESULTS_API_KEY=
 RESULTS_API_BASE_URL=
+
+API_FOOTBALL_KEY=
+API_FOOTBALL_BASE_URL=https://v3.football.api-sports.io
+API_FOOTBALL_LEAGUE=1
+API_FOOTBALL_SEASON=2026
+
 SPORTMONKS_API_TOKEN=
 SPORTMONKS_BASE_URL=https://api.sportmonks.com/v3/football
 SPORTMONKS_WORLD_CUP_SEASON_ID=26618
 ```
 
-No guardes secretos reales en el repo. El Admin SDK solo vive en `functions/`.
+No guardes secretos reales en el repo. `API_FOOTBALL_KEY`, Sportmonks y cualquier secreto solo deben vivir en Firebase Functions o entornos seguros. El Admin SDK nunca se usa en el frontend.
 
 ## Configuracion de Firebase
 
@@ -72,6 +79,8 @@ No guardes secretos reales en el repo. El Admin SDK solo vive en `functions/`.
 firebase deploy --only firestore
 ```
 
+Para crear el primer superadmin, crea el usuario en Auth, crea/actualiza `users/{uid}` en Firestore y asigna `roleGlobal: "platform_admin"`. Desde `/admin`, ese superadmin puede generar invitaciones para administradores de grupo.
+
 ## Deploy de Cloud Functions
 
 ```bash
@@ -81,90 +90,122 @@ npm run build
 firebase deploy --only functions
 ```
 
-Funciones incluidas:
+Funciones principales:
 
-- `onPredictionWrite`: valida retrasos, registra auditoria y deja rastros de cambios.
-- `recalculateGroupScores`: callable protegido para `group_admin` o `platform_admin`.
-- `updateGroupRanking`: callable protegido para recalcular ranking y premios.
-- `syncMatchesFromProviderCallable`: sync mock protegido para `platform_admin`.
-- `syncFixturesFromProvider`: sync de fixtures protegido para `platform_admin`.
-- `syncLiveResultsFromProvider`: sync de resultados/live protegido para `platform_admin`.
-- `scheduledFixturesSync`: programada cada 6 horas; usa mock o Sportmonks.
-- `scheduledLiveResultsSync`: programada cada 5 minutos; usa mock o Sportmonks.
-- `createInvite`: crea codigos de invitacion.
-- `acceptInvite`: valida invitacion y agrega participante.
-- `createGroup`: crea grupo + membresia admin de forma consistente.
-- `submitPrediction`: valida cierre con hora de servidor y guarda pronostico.
+- `createAdminInvite`: `platform_admin` crea invitaciones email-bound para administradores de grupo.
+- `createParticipantInvite` / `createInvite`: `group_admin` invita participantes por correo.
+- `acceptInvite`: valida codigo, email autenticado, expiracion y deadline de registro.
+- `createGroup`: crea grupo + miembro admin de forma consistente.
+- `updateGroup`: edita reglas del grupo antes del inicio del Mundial.
+- `deleteGroup`: cancela grupo antes del inicio del Mundial.
+- `submitPrediction`: valida kickoff con hora de servidor y guarda pronostico.
+- `upsertManualMatch`: `platform_admin` carga o edita fixtures manuales.
+- `upsertManualResult`: `platform_admin` captura resultados manuales.
+- `recalculateGroupScores` / `updateGroupRanking`: recalcula puntos, ranking y premios.
+- `syncFixturesFromProvider` / `syncLiveResultsFromProvider`: sync opcional de proveedor.
+- `scheduledFixturesSync` / `scheduledLiveResultsSync`: programadas, utiles solo si el proveedor no es `manual` ni `disabled`.
 
 ## Configuracion de Vercel
 
 1. Importa el repositorio en Vercel.
-2. Configura las variables `NEXT_PUBLIC_FIREBASE_*`.
+2. Configura variables `NEXT_PUBLIC_FIREBASE_*` y `NEXT_PUBLIC_APP_URL`.
 3. Usa los defaults de Next.js:
    - Build command: `npm run build`
    - Output: gestionado por Next.js
-4. Despliega.
+4. En Firebase Authentication > Settings > Authorized domains, agrega el dominio de Vercel.
+5. Despliega.
 
-Las variables `RESULTS_API_*` son para la capa futura de resultados y no deben exponerse al cliente si contienen secretos.
+Las variables de proveedor de resultados con secretos no deben exponerse al cliente.
+
+## Como funciona para usuarios
+
+1. Un superadmin crea una invitacion para un administrador de grupo desde `/admin`.
+2. El administrador acepta la invitacion en `/join/[inviteCode]` y crea su cuenta con ese correo.
+3. El administrador crea su grupo y configura moneda, aportacion, responsable del dinero, resultado valido y visibilidad de pronosticos.
+4. El administrador invita participantes por correo desde `/groups/[groupId]/admin`.
+5. Los participantes aceptan la invitacion y solo pueden entrar si el email autenticado coincide.
+6. El registro del grupo cierra 90 minutos antes del primer partido del Mundial.
+7. Cada pronostico cierra por partido cuando `now >= match.kickoffAt`.
+8. El ranking muestra puntos, desempates y premios estimados.
 
 ## Como crear un grupo
 
-1. Registra o inicia sesion en `/login`.
-2. Ve a `/groups/new`.
-3. Captura nombre, moneda, aportacion, responsable del dinero, resultado valido y visibilidad.
-4. Acepta la advertencia legal.
-5. El creador queda como `group_admin`.
+El registro publico esta cerrado. Solo un usuario con `roleGlobal: "group_admin"` o `platform_admin`, creado por invitacion, puede usar `/groups/new`.
+
+Campos configurables:
+
+- Nombre del grupo.
+- Moneda.
+- Aportacion administrativa.
+- Responsable del dinero.
+- Resultado valido: 90 minutos, tiempos extra o final con penales.
+- Visibilidad de pronosticos: por defecto despues del cierre.
+- Aceptacion de advertencia legal.
 
 ## Como invitar participantes
 
 1. Entra a `/groups/[groupId]/admin`.
-2. Usa `Crear invitacion`.
-3. Comparte la liga `/join/[inviteCode]`.
-4. El participante debe iniciar sesion y aceptar la invitacion.
+2. Captura el correo del participante.
+3. Crea la invitacion.
+4. Comparte la liga `/join/[inviteCode]` por correo o canal externo.
+5. El participante crea cuenta o inicia sesion con exactamente ese correo.
+
+No se aceptan registros libres al grupo. Despues del deadline de registro, Functions rechaza crear o aceptar invitaciones y registra auditoria.
 
 ## Como capturar pronosticos
 
 1. Entra a `/groups/[groupId]/predictions`.
 2. Captura marcador local y visitante antes del kickoff.
-3. El cliente bloquea el formulario cuando `now >= kickoffAt`.
-4. Las reglas tambien validan que no se creen o editen pronosticos cerrados.
-5. Si un pronostico entra tarde por error, Functions lo marca como `isLate=true` y 0 puntos.
+3. El frontend bloquea el formulario cuando el partido cerro.
+4. `submitPrediction` vuelve a validar en backend con hora de servidor.
+5. Si un pronostico entra tarde por error operativo, se marca `isLate=true` y vale 0 puntos.
 
 ## Como calcular ranking
 
 1. Asegura que existan resultados en `matches`.
-2. En `/groups/[groupId]/admin`, usa `Recalcular puntos`.
+2. En `/groups/[groupId]/admin` o `/admin`, usa `Recalcular`.
 3. Cloud Functions calcula puntos, actualiza `scores`, calcula `prizes` y registra auditoria.
+
+El ranking explica puntos totales, marcadores exactos, diferencias, ganadores/empates, premios estimados y empates en zona de premio.
 
 ## Como registrar resultados manualmente
 
-En el MVP, un `platform_admin` puede escribir partidos/resultados en `matches` desde consola Firebase, script administrativo o una Function futura. Campos relevantes:
+El modo oficial recomendado para beta es `RESULTS_API_PROVIDER=manual`.
 
-- `homeGoals90`, `awayGoals90`
-- `homeGoalsExtraTime`, `awayGoalsExtraTime`
-- `homePenaltyGoals`, `awayPenaltyGoals`
-- `finalHomeGoals`, `finalAwayGoals`
-- `winnerTeam`
-- `status`
+En `/admin`, un `platform_admin` puede:
+
+- Crear o editar partidos.
+- Capturar marcador a 90 minutos.
+- Capturar marcador final.
+- Capturar ganador.
+- Recalcular rankings por grupo.
 
 Despues de actualizar resultados, ejecuta `recalculateGroupScores`.
 
-## API de resultados futura
+## API-Football / API-SPORTS
 
-La integracion queda preparada en:
+Se reviso la guia de API-Football para Mundial 2026: usa `league=1` y `season=2026` para fixtures, standings y live fixtures. Tambien se reviso pricing: el plan gratuito publica 100 requests/dia y el Free plan puede tener temporadas limitadas.
 
-- `src/lib/resultsProvider.ts`
-- `functions/src/resultsSync.ts`
+Decision de producto para beta:
 
-Soporta proveedor `mock` y `sportmonks`, fixtures, resultados, actualizacion de partidos y recalculo posterior. Para conectar Sportmonks:
+- `manual` sera la fuente oficial inicial.
+- `api-football` queda como integracion opcional para precargar o sincronizar si se contrata plan/token suficiente.
+- La API corre solo en Cloud Functions, nunca en frontend.
 
-1. Contrata/revisa el plan World Cup 2026 y sus limites.
-2. Configura `RESULTS_API_PROVIDER=sportmonks`.
-3. Configura `SPORTMONKS_API_TOKEN` solo en Firebase Functions/Vercel server envs si aplica.
-4. Configura `SPORTMONKS_WORLD_CUP_SEASON_ID` si Sportmonks cambia el season id.
-5. Ejecuta `syncFixturesFromProvider` para cargar fixtures.
-6. Ejecuta `syncLiveResultsFromProvider` durante pruebas o usa las scheduled functions.
-7. Despues de resultados, ejecuta `recalculateGroupScores`.
+Configura:
+
+```bash
+RESULTS_API_PROVIDER=api-football
+API_FOOTBALL_KEY=tu_token
+API_FOOTBALL_BASE_URL=https://v3.football.api-sports.io
+API_FOOTBALL_LEAGUE=1
+API_FOOTBALL_SEASON=2026
+```
+
+Endpoints preparados:
+
+- Fixtures: `/fixtures?league=1&season=2026`.
+- Live/latest: `/fixtures?live=all`.
 
 No uses scraping ni API keys reales en el repositorio.
 
@@ -175,27 +216,21 @@ No uses scraping ni API keys reales en el repositorio.
 - Usuarios autenticados.
 - Cada usuario puede leer su perfil.
 - Miembros solo leen grupos donde participan.
-- Participantes envian pronosticos mediante Cloud Functions; el cliente no escribe predicciones directamente.
-- El cliente no puede modificar puntos, ranking, premios, auditoria ni sync logs.
-- `group_admin` administra miembros/configuracion del grupo.
-- Escrituras sensibles ocurren desde Cloud Functions.
+- `platform_admin` lee grupos, usuarios y auditoria.
+- El cliente no crea grupos ni modifica configuracion competitiva directamente.
+- El cliente no escribe `scores`, `prizes`, `auditLogs`, `apiSyncLogs` ni `matches`.
+- Invitaciones, grupos, resultados y pronosticos sensibles pasan por Cloud Functions.
 
 ## App Check y dominios
 
 Antes de abrir trafico publico:
 
-1. En Firebase Console, configura App Check para la Web App con reCAPTCHA Enterprise.
+1. Configura App Check para la Web App con reCAPTCHA Enterprise.
 2. Agrega el site key en `NEXT_PUBLIC_FIREBASE_APPCHECK_SITE_KEY`.
 3. Monitorea metricas antes de activar enforcement.
-4. En Authentication > Settings > Authorized domains agrega tu dominio Vercel.
-
-## Vercel Analytics, Speed Insights y CI
-
-El workflow `.github/workflows/ci.yml` ejecuta lint, tests y builds de frontend/functions en cada PR/push a `main`. Para la beta publica, activa Vercel Analytics y Speed Insights desde Vercel o agrega los paquetes oficiales cuando decidas medir trafico real.
+4. Agrega el dominio Vercel en Firebase Auth.
 
 ## Reglas de puntuacion
-
-Defaults:
 
 - Marcador exacto: 3 puntos.
 - Diferencia de goles correcta: 2 puntos.
@@ -217,23 +252,23 @@ Tests: `tests/prizes.test.ts`.
 
 ## Limitaciones del MVP
 
-- No hay panel completo para editar resultados manuales; se documenta el flujo administrativo.
-- No hay Google provider; el MVP usa email/password.
-- No hay UI avanzada para configuracion global.
-- `platform_admin` debe asignarse manualmente en Firestore.
-- El sync de resultados usa mock.
-- La auditoria es basica y debe ampliarse para produccion.
-- Las reglas de Firestore no pueden cubrir toda la logica sensible; Functions es la fuente confiable.
+- No envia correos automaticamente; genera links de invitacion para compartir por fuera.
+- Firebase Email/Password permite crear Auth users; la entrada al producto y grupos se controla por invitacion email-bound en Functions.
+- `platform_admin` inicial se asigna manualmente en Firestore.
+- API-Football no debe ser fuente critica en plan gratuito.
+- Falta test suite completa de Firestore Emulator.
+- Falta App Check enforcement y monitoreo formal de Functions.
+- Falta revision legal formal antes de operar con aportaciones economicas o premios.
 
 ## Roadmap recomendado
 
-1. Panel de resultados para `platform_admin`.
-2. Integracion real con proveedor deportivo licenciado.
-3. App Check y emuladores en CI.
-4. Tests de reglas Firestore.
-5. Mejor auditoria de diffs y alertas.
-6. Notificaciones por email.
-7. Exportacion CSV por grupo.
-8. Branding por grupo.
-9. Observabilidad de Functions.
-10. Revision legal formal antes de operar con aportaciones economicas o premios.
+1. Email transaccional para enviar invitaciones.
+2. Tests de reglas Firestore con Emulator.
+3. App Check enforcement.
+4. Observabilidad de Functions y alertas de sync.
+5. Panel de auditoria con diffs legibles.
+6. Importacion CSV de fixtures manuales.
+7. Validacion de cuotas del proveedor antes de activar API live.
+8. Exportacion CSV por grupo.
+9. Branding por grupo.
+10. Revision legal y fiscal formal por mercado.

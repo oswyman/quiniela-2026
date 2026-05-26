@@ -67,6 +67,7 @@ p { line-height: 1.58; }
 .stack-lg { display: grid; gap: 24px; }
 .cluster { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; }
 .checkRow { align-items: flex-start; display: flex; gap: 10px; }
+.growField { flex: 1 1 280px; }
 .toolbar { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; }
 
 .grid {

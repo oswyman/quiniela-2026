@@ -52,8 +52,7 @@ service cloud.firestore {
     match /groups/{groupId} {
       allow create: if false;
       allow read: if isMember(groupId) || isPlatformAdmin();
-      allow update: if isGroupAdmin(groupId) || isPlatformAdmin();
-      allow delete: if isPlatformAdmin();
+      allow update, delete: if false;
 
       match /members/{uid} {
         allow read: if isMember(groupId) || isPlatformAdmin();
@@ -92,7 +91,7 @@ service cloud.firestore {
 
     match /matches/{matchId} {
       allow read: if signedIn();
-      allow write: if isPlatformAdmin();
+      allow write: if false;
     }
 
     match /auditLogs/{id} {
