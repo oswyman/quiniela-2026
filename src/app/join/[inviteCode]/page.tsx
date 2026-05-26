@@ -34,10 +34,10 @@ function JoinContent() {
   }
 
   return (
-    <main className="container stack">
+    <main className="container shell stack-lg">
       <PageTitle title="Unirse a grupo" subtitle={`Código de invitación: ${params.inviteCode}`} />
       {error ? <div className="error">{error}</div> : null}
-      <div className="card stack">
+      <div className="panel stack">
         <p>Al unirte aceptas las reglas privadas del grupo. La plataforma no procesa pagos ni custodia dinero.</p>
         <button className="button" disabled={loading} onClick={join} type="button">{loading ? "Uniendo..." : "Aceptar invitación"}</button>
         <Link href="/dashboard">Volver al dashboard</Link>

@@ -7,17 +7,19 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuthUser();
 
   if (loading) {
-    return <div className="container card">Cargando sesión...</div>;
+    return <main className="container shell"><div className="panel">Cargando sesión...</div></main>;
   }
 
   if (!user) {
     return (
-      <div className="container card">
+      <main className="container shell">
+      <div className="panel stack">
         <p>Necesitas iniciar sesión para continuar.</p>
         <Link className="button" href="/login">
           Iniciar sesión
         </Link>
       </div>
+      </main>
     );
   }
 

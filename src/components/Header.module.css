@@ -1,11 +1,12 @@
 .header {
   align-items: center;
-  background: rgba(7, 27, 22, 0.98);
-  border-bottom: 1px solid rgba(216, 165, 58, 0.24);
+  backdrop-filter: blur(18px);
+  background: rgba(6, 23, 17, 0.94);
+  border-bottom: 1px solid rgba(212, 166, 66, 0.26);
   color: #fff;
   display: flex;
   justify-content: space-between;
-  min-height: 72px;
+  min-height: 74px;
   padding: 0 24px;
   position: sticky;
   top: 0;
@@ -21,7 +22,34 @@
 
 .brand {
   color: #fff;
-  font-weight: 800;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.mark {
+  align-items: center;
+  background: linear-gradient(135deg, #d4a642, #f6df9c);
+  border-radius: 999px;
+  color: #061711;
+  display: inline-flex;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+
+.brandText {
+  display: grid;
+  gap: 2px;
+}
+
+.brandText strong {
+  font-size: 1rem;
+}
+
+.brandText span {
+  color: rgba(255, 253, 247, 0.68);
+  font-size: 0.73rem;
+  font-weight: 700;
 }
 
 .nav {
@@ -31,9 +59,9 @@
 }
 
 .nav a {
-  border-radius: 6px;
+  border-radius: 999px;
   font-weight: 700;
-  padding: 8px 10px;
+  padding: 9px 12px;
 }
 
 .nav a:hover {
@@ -43,8 +71,8 @@
 .iconButton {
   align-items: center;
   background: transparent;
-  border: 1px solid #5f6e69;
-  border-radius: 6px;
+  border: 1px solid rgba(255, 253, 247, 0.28);
+  border-radius: 999px;
   color: #fff;
   cursor: pointer;
   display: inline-flex;
@@ -63,5 +91,9 @@
   .nav {
     justify-content: flex-start;
     width: 100%;
+  }
+
+  .brandText span {
+    display: none;
   }
 }

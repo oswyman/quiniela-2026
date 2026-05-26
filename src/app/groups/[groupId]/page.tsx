@@ -59,16 +59,18 @@ function GroupContent() {
   const paidMembers = members.filter((member) => member.paymentStatus === "paid");
   const nextMatch = useMemo(() => matches.find((match) => match.status === "scheduled") ?? matches[0], [matches]);
 
-  if (loading) return <main className="container"><div className="card">Cargando panel del grupo...</div></main>;
+  if (loading) return <main className="container shell"><div className="panel">Cargando panel del grupo...</div></main>;
   if (error) return <main className="container"><StatusMessage type="error">{error}</StatusMessage></main>;
   if (!group) return <main className="container"><EmptyState title="Grupo no encontrado" body="Verifica la invitación o vuelve al dashboard." href="/dashboard" action="Dashboard" /></main>;
 
   const pool = activeMembers.length * Number(group.contributionAmount || 0);
 
   return (
-    <main className="container stack-lg">
-      <PageTitle title={group.name} subtitle={`${formatMoney(group.contributionAmount, group.currency)} por participante · Responsable: ${group.moneyResponsibleName}`} />
-      <GroupNav groupId={group.id} />
+    <main className="container shell stack-lg">
+      <div className="toolbar">
+        <PageTitle title={group.name} subtitle={`${formatMoney(group.contributionAmount, group.currency)} por participante · Responsable: ${group.moneyResponsibleName}`} />
+        <GroupNav groupId={group.id} />
+      </div>
       <div className="grid">
         <MetricCard label="Participantes activos" value={`${activeMembers.length}/${group.minParticipants}+`} detail="Mínimo para operar el grupo" />
         <MetricCard label="Pagos marcados" value={`${paidMembers.length}/${activeMembers.length}`} detail="Control manual, sin procesar pagos" />
@@ -77,7 +79,7 @@ function GroupContent() {
       </div>
       <section className="twoCol">
         <RulesPanel group={group} />
-        <aside className="card stack">
+        <aside className="panel stack">
           <h2>Operación del grupo</h2>
           <p><strong>Resultado válido:</strong> {group.validResultMode}</p>
           <p><strong>Pronósticos:</strong> {group.predictionVisibility === "AFTER_CLOSE" ? "Visibles después del cierre" : "Visibles antes del cierre"}</p>
@@ -85,15 +87,15 @@ function GroupContent() {
         </aside>
       </section>
       <div className="grid">
-        <section className="card stack">
+        <section className="panel stack">
           <h2>Próximos partidos</h2>
           {matches.length === 0 ? <p className="muted">Aún no hay fixtures cargados.</p> : matches.slice(0, 5).map((match) => <p key={match.id}>{match.homeTeam} vs {match.awayTeam}<br /><span className="muted">{formatDate(match.kickoffAt)} · {match.venue ?? "Sede por confirmar"}</span></p>)}
         </section>
-        <section className="card stack">
+        <section className="panel stack">
           <h2>Top ranking</h2>
           {scores.length === 0 ? <p className="muted">Sin puntuación calculada todavía.</p> : scores.slice(0, 5).map((score, index) => <p key={score.uid}>{index + 1}. {score.displayName ?? score.uid}: <strong>{score.totalPoints} pts</strong></p>)}
         </section>
-        <section className="card stack">
+        <section className="panel stack">
           <h2>Premios estimados</h2>
           {prizes.length === 0 ? <p className="muted">Recalcula ranking cuando haya resultados.</p> : prizes.map((prize) => <p key={prize.uid}>{prize.uid}: {formatMoney(prize.estimatedPrize, group.currency)}</p>)}
         </section>

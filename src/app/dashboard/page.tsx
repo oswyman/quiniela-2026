@@ -44,11 +44,13 @@ function DashboardContent() {
   const totalPool = groups.reduce((sum, group) => sum + Number(group.contributionAmount || 0), 0);
 
   return (
-    <main className="container stack-lg">
-      <PageTitle title="Dashboard" subtitle="Tus grupos privados, roles y estado operativo de cada quiniela." />
-      <div className="cluster">
-        <Link className="button" href="/groups/new">Crear grupo</Link>
-        <Link className="button secondary" href="/admin">Admin plataforma</Link>
+    <main className="container shell stack-lg">
+      <div className="toolbar">
+        <PageTitle title="Dashboard" subtitle="Tus grupos privados, roles y estado operativo de cada quiniela." />
+        <div className="cluster">
+          <Link className="button gold" href="/groups/new">Crear grupo</Link>
+          <Link className="button secondary" href="/admin">Admin plataforma</Link>
+        </div>
       </div>
       {error ? <StatusMessage type="error">{error}</StatusMessage> : null}
       <div className="grid">
@@ -56,13 +58,13 @@ function DashboardContent() {
         <MetricCard label="Aportaciones base" value={formatMoney(totalPool || 0, "MXN")} detail="Suma administrativa visible para ti" />
         <MetricCard label="Modo recomendado" value="Después del cierre" detail="Reduce copia estratégica de pronósticos" />
       </div>
-      {loading ? <div className="card">Cargando tus grupos...</div> : null}
+      {loading ? <div className="panel">Cargando tus grupos...</div> : null}
       {!loading && groups.length === 0 ? (
         <EmptyState title="Todavía no hay grupos" body="Crea tu primera quiniela privada o únete con una invitación." href="/groups/new" action="Crear grupo" />
       ) : null}
       <div className="grid">
         {groups.map((group) => (
-          <Link className="card stack" href={`/groups/${group.id}`} key={group.id}>
+          <Link className="panel stack cardInteractive" href={`/groups/${group.id}`} key={group.id}>
             <span className="pill">{group.memberRole === "group_admin" ? "Admin" : "Participante"}</span>
             <h2>{group.name}</h2>
             <p className="muted">Estado: {group.status} · Visibilidad: {group.predictionVisibility === "AFTER_CLOSE" ? "Después del cierre" : "Antes del cierre"}</p>

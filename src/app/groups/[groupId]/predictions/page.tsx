@@ -84,13 +84,15 @@ function PredictionsContent() {
     }
   }
 
-  if (loading) return <main className="container"><div className="card">Cargando partidos y pronósticos...</div></main>;
-  if (!group) return <main className="container"><EmptyState title="Grupo no encontrado" body="Vuelve al dashboard para seleccionar un grupo activo." href="/dashboard" action="Dashboard" /></main>;
+  if (loading) return <main className="container shell"><div className="panel">Cargando partidos y pronósticos...</div></main>;
+  if (!group) return <main className="container shell"><EmptyState title="Grupo no encontrado" body="Vuelve al dashboard para seleccionar un grupo activo." href="/dashboard" action="Dashboard" /></main>;
 
   return (
-    <main className="container stack-lg">
-      <PageTitle title="Pronósticos" subtitle="Captura tus marcadores antes del kickoff. El backend valida el cierre con hora confiable." />
-      <GroupNav groupId={params.groupId} />
+    <main className="container shell stack-lg">
+      <div className="toolbar">
+        <PageTitle title="Pronósticos" subtitle="Captura tus marcadores antes del kickoff. El backend valida el cierre con hora confiable." />
+        <GroupNav groupId={params.groupId} />
+      </div>
       {group.predictionVisibility === "BEFORE_CLOSE" ? (
         <StatusMessage>Este modo puede generar ventaja estratégica porque otros participantes podrían copiar pronósticos.</StatusMessage>
       ) : null}
@@ -104,7 +106,7 @@ function PredictionsContent() {
           const prediction = byMatch.get(match.id);
           const closed = isMatchClosed(toDate(match.kickoffAt));
           return (
-            <form className="card stack" key={match.id} onSubmit={(event) => submitPrediction(event, match)}>
+            <form className="panel stack matchCard" key={match.id} onSubmit={(event) => submitPrediction(event, match)}>
               <div className="cluster">
                 <span className="pill">{match.phase}</span>
                 <span className="pill">{closed ? "Cerrado" : `Cierra en ${shortCountdown(match.kickoffAt)}`}</span>
@@ -113,7 +115,7 @@ function PredictionsContent() {
                 <h2>{match.homeTeam} vs {match.awayTeam}</h2>
                 <p className="muted">{formatDate(match.kickoffAt)} · {match.venue ?? "Sede por confirmar"}</p>
               </div>
-              <div className="grid">
+              <div className="scoreInputs">
                 <div className="field">
                   <label htmlFor={`${match.id}-home`}>{match.homeTeam}</label>
                   <input id={`${match.id}-home`} name="homeGoals" type="number" min="0" defaultValue={prediction?.homeGoals ?? ""} disabled={closed || savingMatchId === match.id} required />

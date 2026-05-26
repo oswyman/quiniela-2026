@@ -1,6 +1,6 @@
-# Quiniela Mundial FIFA 2026
+# La Cancha · Quinielas privadas Mundial 2026
 
-Webapp MVP para organizar quinielas privadas del Mundial FIFA 2026 con Next.js, Firebase Auth, Cloud Firestore, Firebase Security Rules, Cloud Functions y despliegue de frontend en Vercel.
+Webapp MVP premium para organizar quinielas privadas del Mundial FIFA 2026 con Next.js, Firebase Auth, Cloud Firestore, Firebase Security Rules, Cloud Functions y despliegue de frontend en Vercel.
 
 > **Advertencia legal para Mexico:** Esta plataforma es una herramienta administrativa para organizar quinielas privadas. No constituye asesoria legal. Si un grupo usa aportaciones economicas o premios, debe consultar a un abogado y revisar la regulacion aplicable en Mexico antes de operar.
 

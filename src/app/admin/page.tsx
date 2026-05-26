@@ -45,22 +45,22 @@ function PlatformAdminContent() {
     load();
   }, [user]);
 
-  if (loading) return <main className="container"><p>Cargando admin...</p></main>;
-  if (profile?.roleGlobal !== "platform_admin") return <main className="container"><div className="error">Solo platform_admin puede ver esta pantalla.</div></main>;
+  if (loading) return <main className="container shell"><div className="panel">Cargando admin...</div></main>;
+  if (profile?.roleGlobal !== "platform_admin") return <main className="container shell"><div className="error">Solo platform_admin puede ver esta pantalla.</div></main>;
 
   return (
-    <main className="container stack">
+    <main className="container shell stack-lg">
       <PageTitle title="Admin plataforma" subtitle="Vista básica de grupos, usuarios y auditoría." />
       <div className="grid">
-        <section className="card">
+        <section className="panel">
           <h2>Grupos</h2>
           {groups.map((group) => <p key={group.id}>{group.name} · {group.status}</p>)}
         </section>
-        <section className="card">
+        <section className="panel">
           <h2>Usuarios</h2>
           {users.map((item) => <p key={item.uid}>{item.email} · {item.roleGlobal}</p>)}
         </section>
-        <section className="card">
+        <section className="panel">
           <h2>Auditoría</h2>
           {logs.map((log) => <p key={log.id}>{log.action} · {log.entityType}</p>)}
         </section>

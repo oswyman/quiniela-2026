@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, Trophy } from "lucide-react";
+import { LogOut, ShieldCheck } from "lucide-react";
 import { useAuthUser } from "./useAuthUser";
 import { logout } from "@/lib/firebase/auth";
 import styles from "./Header.module.css";
@@ -12,8 +12,11 @@ export function Header() {
   return (
     <header className={styles.header}>
       <Link href="/" className={styles.brand}>
-        <Trophy size={22} aria-hidden />
-        Quiniela 2026
+        <span className={styles.mark}><ShieldCheck size={20} aria-hidden /></span>
+        <span className={styles.brandText}>
+          <strong>La Cancha</strong>
+          <span>Quinielas privadas Mundial 2026</span>
+        </span>
       </Link>
       <nav className={styles.nav}>
         <Link href="/dashboard">Dashboard</Link>

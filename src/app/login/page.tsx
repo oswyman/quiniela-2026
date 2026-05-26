@@ -36,10 +36,10 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="container twoCol" style={{ paddingBottom: 48 }}>
+    <main className="container shell twoCol">
       <section>
         <PageTitle title={mode === "login" ? "Entrar a tu quiniela" : "Crear cuenta"} subtitle="Accede a tus grupos privados, pronósticos y rankings en un solo lugar." />
-        <form className="card stack" onSubmit={onSubmit}>
+        <form className="panel stack" onSubmit={onSubmit}>
           {mode === "register" ? (
             <div className="field">
               <label htmlFor="displayName">Nombre</label>
@@ -63,10 +63,14 @@ export default function LoginPage() {
           </button>
         </form>
       </section>
-      <aside className="card stack" style={{ alignSelf: "start", marginTop: 140 }}>
-        <span className="pill">Beta vendible</span>
-        <h2>Lista para grupos privados</h2>
-        <p className="muted">El registro crea tu perfil en Firebase Auth y Firestore. Después podrás crear grupos, invitar jugadores y administrar premios sugeridos.</p>
+      <aside className="panel stack">
+        <span className="pill">Club privado</span>
+        <h2>Una quiniela que se siente seria desde el primer clic</h2>
+        <p className="muted">Tu cuenta conecta Firebase Auth con tus grupos, invitaciones, pronósticos y rankings. Sin pagos, sin wallets, sin custodia.</p>
+        <div className="grid">
+          <div className="card"><strong>Reglas claras</strong><p className="fineprint">Visibilidad, resultado válido y premios sugeridos por grupo.</p></div>
+          <div className="card"><strong>Operación limpia</strong><p className="fineprint">Estados de pago manual y auditoría básica para admins.</p></div>
+        </div>
       </aside>
     </main>
   );

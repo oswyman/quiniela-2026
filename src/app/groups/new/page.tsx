@@ -62,11 +62,11 @@ function NewGroupForm() {
   }
 
   return (
-    <main className="container stack-lg" style={{ paddingBottom: 48 }}>
+    <main className="container shell stack-lg">
       <PageTitle title="Crear grupo" subtitle="Configura una quiniela privada con reglas claras, responsable administrativo y pronósticos protegidos." />
-      <form className="card stack" onSubmit={onSubmit}>
+      <form className="panel stack" onSubmit={onSubmit}>
         <LegalNotice />
-        <div className="grid">
+        <div className="formGrid">
           <div className="field">
             <label htmlFor="name">Nombre del grupo</label>
             <input id="name" value={name} onChange={(event) => setName(event.target.value)} required />
@@ -106,7 +106,7 @@ function NewGroupForm() {
         {predictionVisibility === "BEFORE_CLOSE" ? (
           <div className="notice">Este modo puede generar ventaja estratégica porque otros participantes podrían copiar pronósticos.</div>
         ) : null}
-        <label style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+        <label className="checkRow">
           <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} required />
           <span>{LEGAL_DISCLAIMER}</span>
         </label>
@@ -115,11 +115,11 @@ function NewGroupForm() {
         <button className="button" disabled={loading} type="submit">{loading ? "Creando grupo y membresía..." : "Crear grupo"}</button>
       </form>
       <section className="grid">
-        <article className="card">
+        <article className="panel">
           <h2>Checklist de beta</h2>
           <p className="muted">Después de crear el grupo, invita participantes, sincroniza partidos y valida que todos entiendan las reglas.</p>
         </article>
-        <article className="card">
+        <article className="panel">
           <h2>Sin custodia</h2>
           <p className="muted">La app solo registra información administrativa. El responsable del dinero se define por grupo.</p>
         </article>

@@ -92,17 +92,19 @@ function GroupAdminContent() {
     await reload();
   }
 
-  if (loading) return <main className="container"><div className="card">Cargando administración...</div></main>;
-  if (!group) return <main className="container"><div className="card">Grupo no encontrado.</div></main>;
-  if (myMember?.role !== "group_admin") return <main className="container"><StatusMessage type="error">Solo el administrador del grupo puede entrar aquí.</StatusMessage></main>;
+  if (loading) return <main className="container shell"><div className="panel">Cargando administración...</div></main>;
+  if (!group) return <main className="container shell"><div className="panel">Grupo no encontrado.</div></main>;
+  if (myMember?.role !== "group_admin") return <main className="container shell"><StatusMessage type="error">Solo el administrador del grupo puede entrar aquí.</StatusMessage></main>;
 
   const paidMembers = members.filter((member) => member.paymentStatus === "paid").length;
   const pool = members.filter((member) => member.status === "active").length * Number(group.contributionAmount || 0);
 
   return (
-    <main className="container stack-lg">
-      <PageTitle title={`Administrar ${group.name}`} subtitle="Gestiona participantes, pagos manuales, invitaciones y recalculo." />
-      <GroupNav groupId={params.groupId} />
+    <main className="container shell stack-lg">
+      <div className="toolbar">
+        <PageTitle title={`Administrar ${group.name}`} subtitle="Gestiona participantes, pagos manuales, invitaciones y recalculo." />
+        <GroupNav groupId={params.groupId} />
+      </div>
       {message ? <StatusMessage type="success">{message}</StatusMessage> : null}
       {error ? <StatusMessage type="error">{error}</StatusMessage> : null}
       <div className="grid">
@@ -111,13 +113,13 @@ function GroupAdminContent() {
         <MetricCard label="Bolsa estimada" value={formatMoney(pool, group.currency)} detail="Solo registro administrativo" />
         <MetricCard label="Proveedor" value={providerStatus?.provider ?? "mock"} detail={providerStatus?.message ?? "Sin sync registrada"} />
       </div>
-      <div className="cluster">
+      <div className="toolbar panel">
         <button className="button" onClick={onCreateInvite} type="button">Crear invitación</button>
         <button className="button secondary" onClick={onRecalculate} type="button">Recalcular puntos</button>
         <button className="button secondary" disabled={busyAction === "fixtures"} onClick={() => runSync("fixtures")} type="button">{busyAction === "fixtures" ? "Sincronizando..." : "Sync fixtures"}</button>
         <button className="button secondary" disabled={busyAction === "live"} onClick={() => runSync("live")} type="button">{busyAction === "live" ? "Sincronizando..." : "Sync resultados"}</button>
       </div>
-      <section className="card tableWrap">
+      <section className="panel tableWrap">
         <h2>Participantes</h2>
         <table>
           <thead>
@@ -148,7 +150,7 @@ function GroupAdminContent() {
           </tbody>
         </table>
       </section>
-      <section className="card">
+      <section className="panel">
         <h2>Configuración</h2>
         <p>Moneda: {group.currency}</p>
         <p>Aportación: {group.contributionAmount}</p>

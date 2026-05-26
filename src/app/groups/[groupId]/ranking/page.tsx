@@ -41,14 +41,16 @@ function RankingContent() {
     load();
   }, [params.groupId]);
 
-  if (loading) return <main className="container"><div className="card">Cargando ranking...</div></main>;
+  if (loading) return <main className="container shell"><div className="panel">Cargando ranking...</div></main>;
   const ranked = rankScores(scores);
 
   return (
-    <main className="container stack-lg">
-      <PageTitle title="Ranking" subtitle="Desempates: puntos, marcadores exactos, diferencias, ganadores, empates." />
-      <GroupNav groupId={params.groupId} />
-      <div className="tableWrap card">
+    <main className="container shell stack-lg">
+      <div className="toolbar">
+        <PageTitle title="Ranking" subtitle="Desempates: puntos, marcadores exactos, diferencias, ganadores, empates." />
+        <GroupNav groupId={params.groupId} />
+      </div>
+      <div className="tableWrap panel">
         <table>
           <thead>
             <tr>
@@ -66,7 +68,7 @@ function RankingContent() {
             {ranked.map((score) => {
               const prize = prizes.find((item) => item.uid === score.uid);
               return (
-                <tr key={score.uid}>
+                <tr className="rankingRow" key={score.uid}>
                   <td>{score.position}</td>
                   <td>{score.displayName ?? score.uid}</td>
                   <td>{score.totalPoints}</td>
@@ -83,7 +85,7 @@ function RankingContent() {
         {ranked.length === 0 ? <EmptyState title="Todavía no hay ranking" body="Cuando existan resultados, el administrador puede recalcular puntos y premios." /> : null}
       </div>
       {prizes.length > 0 ? (
-        <section className="card stack">
+        <section className="panel stack">
           <h2>Explicación de premios</h2>
           {prizes.map((prize) => <p key={prize.uid}>{prize.ruleApplied}</p>)}
         </section>
