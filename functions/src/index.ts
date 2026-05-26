@@ -6,7 +6,7 @@ import { calculatePrizeAllocations, ScoreRow } from "./prizes";
 import { calculatePredictionScore, resolveMatchResult } from "./scoring";
 import { acceptInvite, createAdminInvite, createInvite, createParticipantInvite, previewInvite } from "./invites";
 import { createGroup, deleteGroup, updateGroup, updateTournamentConfig } from "./groups";
-import { upsertManualMatch, upsertManualResult } from "./manualResults";
+import { bulkUpsertManualMatches, upsertManualMatch, upsertManualResult } from "./manualResults";
 import { submitPrediction } from "./predictions";
 import {
   scheduledFixturesSync,
@@ -19,6 +19,7 @@ initializeApp();
 
 export {
   acceptInvite,
+  bulkUpsertManualMatches,
   createAdminInvite,
   createGroup,
   createInvite,

@@ -9,8 +9,10 @@ import { MetricCard } from "@/components/MetricCard";
 import { PageTitle } from "@/components/PageTitle";
 import { RulesPanel } from "@/components/RulesPanel";
 import { StatusMessage } from "@/components/StatusMessage";
-import { formatDate, formatMoney, shortCountdown } from "@/lib/format";
+import { formatMoney, shortCountdown } from "@/lib/format";
 import { getGroup, listMatches, listMembers, listPrizes, listScores } from "@/lib/firebase/firestore";
+import { formatMatchTime, matchTimeLabel, type MatchTimeMode } from "@/lib/matchTime";
+import { getUserTimeZone } from "@/lib/timezone";
 import type { Group, Match, Member, Score } from "@/types";
 
 export default function GroupPage() {
@@ -30,6 +32,12 @@ function GroupContent() {
   const [prizes, setPrizes] = useState<Array<{ uid: string; estimatedPrize: number; ruleApplied: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [timeMode, setTimeMode] = useState<MatchTimeMode>("cdmx");
+  const [userTimeZone, setUserTimeZone] = useState("America/Mexico_City");
+
+  useEffect(() => {
+    setUserTimeZone(getUserTimeZone());
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -89,7 +97,14 @@ function GroupContent() {
       <div className="grid">
         <section className="panel stack">
           <h2>Próximos partidos</h2>
-          {matches.length === 0 ? <p className="muted">Aún no hay fixtures cargados.</p> : matches.slice(0, 5).map((match) => <p key={match.id}>{match.homeTeam} vs {match.awayTeam}<br /><span className="muted">{formatDate(match.kickoffAt)} · {match.venue ?? "Sede por confirmar"}</span></p>)}
+          <div className="tabs" aria-label="Preferencia de horario de partidos">
+            {(["cdmx", "local", "venue"] as MatchTimeMode[]).map((mode) => (
+              <button className={timeMode === mode ? "tabButton active" : "tabButton"} key={mode} onClick={() => setTimeMode(mode)} type="button">
+                {matchTimeLabel(mode)}
+              </button>
+            ))}
+          </div>
+          {matches.length === 0 ? <p className="muted">Aún no hay fixtures cargados.</p> : matches.slice(0, 5).map((match) => <p key={match.id}>{match.homeTeam} vs {match.awayTeam}<br /><span className="muted">{formatMatchTime(match, timeMode, userTimeZone)} · {match.venue ?? "Sede por confirmar"}</span></p>)}
         </section>
         <section className="panel stack">
           <h2>Top ranking</h2>

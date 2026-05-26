@@ -9,9 +9,11 @@ import { GroupNav } from "@/components/GroupNav";
 import { PageTitle } from "@/components/PageTitle";
 import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
-import { formatDate, shortCountdown, toDate } from "@/lib/format";
+import { shortCountdown, toDate } from "@/lib/format";
 import { getGroup, listMatches, listPredictions, savePrediction } from "@/lib/firebase/firestore";
+import { formatMatchTime, matchTimeLabel, type MatchTimeMode } from "@/lib/matchTime";
 import { isMatchClosed } from "@/lib/scoring";
+import { getUserTimeZone } from "@/lib/timezone";
 import type { Group, Match, Prediction } from "@/types";
 
 export default function PredictionsPage() {
@@ -32,6 +34,12 @@ function PredictionsContent() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [timeMode, setTimeMode] = useState<MatchTimeMode>("cdmx");
+  const [userTimeZone, setUserTimeZone] = useState("America/Mexico_City");
+
+  useEffect(() => {
+    setUserTimeZone(getUserTimeZone());
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -98,6 +106,13 @@ function PredictionsContent() {
       ) : null}
       {message ? <StatusMessage type="success">{message}</StatusMessage> : null}
       {error ? <StatusMessage type="error">{error}</StatusMessage> : null}
+      <div className="tabs" aria-label="Preferencia de horario">
+        {(["cdmx", "local", "venue"] as MatchTimeMode[]).map((mode) => (
+          <button className={timeMode === mode ? "tabButton active" : "tabButton"} key={mode} onClick={() => setTimeMode(mode)} type="button">
+            {matchTimeLabel(mode)}
+          </button>
+        ))}
+      </div>
       {matches.length === 0 ? (
         <EmptyState title="No hay partidos cargados" body="Un superadmin debe cargar fixtures manuales o sincronizar un proveedor opcional." href={`/groups/${params.groupId}/admin`} action="Ir a administración" />
       ) : null}
@@ -113,7 +128,8 @@ function PredictionsContent() {
               </div>
               <div>
                 <h2>{match.homeTeam} vs {match.awayTeam}</h2>
-                <p className="muted">{formatDate(match.kickoffAt)} · {match.venue ?? "Sede por confirmar"}</p>
+                <p className="muted">{formatMatchTime(match, timeMode, userTimeZone)} · {match.venue ?? "Sede por confirmar"}</p>
+                <p className="fineprint">CDMX: {formatMatchTime(match, "cdmx", userTimeZone)} · Tu hora: {formatMatchTime(match, "local", userTimeZone)}</p>
               </div>
               <div className="scoreInputs">
                 <div className="field">

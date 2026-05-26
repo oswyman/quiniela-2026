@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { collection, getDocs, limit, query } from "firebase/firestore";
 import { AuthGate } from "@/components/AuthGate";
 import { MetricCard } from "@/components/MetricCard";
@@ -8,8 +8,10 @@ import { PageTitle } from "@/components/PageTitle";
 import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
 import { db } from "@/lib/firebase/client";
-import { createAdminInvite, getProviderStatus, getTournamentConfig, getUserProfile, listAllGroups, listAllUsers, listMatches, recalculateGroupScores, syncFixturesFromProvider, syncLiveResultsFromProvider, updateTournamentConfig, upsertManualMatch, upsertManualResult } from "@/lib/firebase/firestore";
+import { bulkUpsertManualMatches, createAdminInvite, getProviderStatus, getTournamentConfig, getUserProfile, listAllGroups, listAllUsers, listMatches, recalculateGroupScores, syncFixturesFromProvider, syncLiveResultsFromProvider, updateTournamentConfig, upsertManualMatch, upsertManualResult } from "@/lib/firebase/firestore";
+import { parseFixtureCsv, type FixtureCsvRow } from "@/lib/fixtureCsv";
 import { formatDate } from "@/lib/format";
+import { formatInTimeZone, getUserTimeZone, CDMX_TIMEZONE } from "@/lib/timezone";
 import type { AuditLog, Group, Match, ProviderStatus, TournamentConfig, UserProfile } from "@/types";
 
 export default function PlatformAdminPage() {
@@ -33,6 +35,14 @@ function PlatformAdminContent() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
   const [loading, setLoading] = useState(true);
+  const [csvText, setCsvText] = useState("");
+  const [csvRows, setCsvRows] = useState<FixtureCsvRow[]>([]);
+  const [csvErrors, setCsvErrors] = useState<string[]>([]);
+  const [userTimeZone, setUserTimeZone] = useState(CDMX_TIMEZONE);
+
+  useEffect(() => {
+    setUserTimeZone(getUserTimeZone());
+  }, []);
 
   async function load() {
     if (!user) return;
@@ -94,6 +104,9 @@ function PlatformAdminContent() {
         homeTeam: String(form.get("homeTeam") || ""),
         awayTeam: String(form.get("awayTeam") || ""),
         kickoffAt: String(form.get("kickoffAt") || ""),
+        localDate: String(form.get("kickoffAt") || "").slice(0, 10),
+        localTime: String(form.get("kickoffAt") || "").slice(11, 16),
+        timezone: String(form.get("timezone") || CDMX_TIMEZONE),
         venue: String(form.get("venue") || ""),
         status: "scheduled"
       });
@@ -129,6 +142,62 @@ function PlatformAdminContent() {
     } finally {
       setBusy("");
     }
+  }
+
+  function onPreviewCsv(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setMessage("");
+    const parsed = parseFixtureCsv(csvText);
+    setCsvRows(parsed.rows);
+    setCsvErrors(parsed.errors);
+    if (parsed.errors.length) setError("Corrige los errores del CSV antes de importar.");
+    if (parsed.rows.length) setMessage(`${parsed.rows.length} partidos listos para importar.`);
+  }
+
+  async function onImportCsv() {
+    if (!csvRows.length) return;
+    const confirmed = window.confirm(`Vas a importar o actualizar ${csvRows.length} partidos. ¿Continuar?`);
+    if (!confirmed) return;
+    setBusy("bulkMatches");
+    setError("");
+    setMessage("");
+    try {
+      const result = await bulkUpsertManualMatches({
+        sourceName: "FIFA schedule manual",
+        sourceUrl: "https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/match-schedule-fixtures-results-teams-stadiums",
+        matches: csvRows.map((row) => ({
+          matchNumber: row.matchNumber,
+          phase: row.phase,
+          fifaGroup: row.fifaGroup,
+          homeTeam: row.homeTeam,
+          awayTeam: row.awayTeam,
+          localDate: row.localDate,
+          localTime: row.localTime,
+          timezone: row.timezone,
+          venue: row.venue,
+          city: row.city,
+          country: row.country,
+          status: "scheduled"
+        }))
+      });
+      setMessage(`${result.data.imported} partidos importados.`);
+      setCsvRows([]);
+      setCsvErrors([]);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo importar el CSV.");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function onCsvFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setCsvText(await file.text());
+    setCsvRows([]);
+    setCsvErrors([]);
   }
 
   async function runProviderSync(type: "fixtures" | "live") {
@@ -231,6 +300,48 @@ function PlatformAdminContent() {
       <section className="panel stack">
         <h2>Resultados manuales</h2>
         <p className="muted">Modo oficial recomendado para beta. API-Football puede usarse solo como apoyo si hay cuota/token suficiente.</p>
+        <form className="stack" onSubmit={onPreviewCsv}>
+          <div className="field">
+            <label htmlFor="fixturesFile">Subir CSV de partidos</label>
+            <input id="fixturesFile" accept=".csv,text/csv" type="file" onChange={onCsvFile} />
+          </div>
+          <div className="field">
+            <label htmlFor="fixturesCsv">O pegar CSV</label>
+            <textarea id="fixturesCsv" value={csvText} onChange={(event) => setCsvText(event.target.value)} rows={7} placeholder="matchNumber,phase,fifaGroup,homeTeam,awayTeam,localDate,localTime,timezone,venue,city,country" />
+          </div>
+          <div className="cluster">
+            <button className="button secondary" type="submit">Previsualizar CSV</button>
+            <button className="button" disabled={!csvRows.length || busy === "bulkMatches"} onClick={onImportCsv} type="button">
+              {busy === "bulkMatches" ? "Importando..." : "Confirmar importación"}
+            </button>
+          </div>
+        </form>
+        {csvErrors.length ? (
+          <div className="error">
+            {csvErrors.slice(0, 8).map((item) => <p key={item}>{item}</p>)}
+            {csvErrors.length > 8 ? <p>Y {csvErrors.length - 8} errores más.</p> : null}
+          </div>
+        ) : null}
+        {csvRows.length ? (
+          <div className="tableWrap">
+            <table>
+              <thead><tr><th>#</th><th>Partido</th><th>Sede</th><th>Hora sede</th><th>Hora CDMX</th><th>Tu hora</th></tr></thead>
+              <tbody>
+                {csvRows.slice(0, 12).map((row) => (
+                  <tr key={row.matchNumber}>
+                    <td>{row.matchNumber}</td>
+                    <td>{row.homeTeam} vs {row.awayTeam}</td>
+                    <td>{row.venue}</td>
+                    <td>{formatInTimeZone(row.kickoffAtIso, row.timezone)}</td>
+                    <td>{formatInTimeZone(row.kickoffAtIso, CDMX_TIMEZONE)}</td>
+                    <td>{formatInTimeZone(row.kickoffAtIso, userTimeZone)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {csvRows.length > 12 ? <p className="muted">Mostrando 12 de {csvRows.length} partidos.</p> : null}
+          </div>
+        ) : null}
         <form className="formGrid" onSubmit={onUpsertMatch}>
           <div className="field"><label htmlFor="matchId">ID opcional</label><input id="matchId" name="matchId" /></div>
           <div className="field"><label htmlFor="matchNumber">Número</label><input id="matchNumber" name="matchNumber" type="number" /></div>
@@ -239,6 +350,7 @@ function PlatformAdminContent() {
           <div className="field"><label htmlFor="homeTeam">Local</label><input id="homeTeam" name="homeTeam" required /></div>
           <div className="field"><label htmlFor="awayTeam">Visitante</label><input id="awayTeam" name="awayTeam" required /></div>
           <div className="field"><label htmlFor="kickoffAt">Kickoff</label><input id="kickoffAt" name="kickoffAt" type="datetime-local" required /></div>
+          <div className="field"><label htmlFor="timezone">Zona horaria</label><input id="timezone" name="timezone" defaultValue={CDMX_TIMEZONE} required /></div>
           <div className="field"><label htmlFor="venue">Sede</label><input id="venue" name="venue" /></div>
           <button className="button" disabled={busy === "match"} type="submit">Guardar partido</button>
         </form>

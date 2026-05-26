@@ -77,7 +77,7 @@ export async function listMembers(groupId: string) {
 }
 
 export async function listMatches() {
-  const snap = await getDocs(query(collection(db, "matches"), orderBy("kickoffAt", "asc"), limit(80)));
+  const snap = await getDocs(query(collection(db, "matches"), orderBy("kickoffAt", "asc"), limit(120)));
   return snap.docs.map((item) => ({ id: item.id, ...item.data() }) as Match);
 }
 
@@ -157,6 +157,15 @@ export async function syncLiveResultsFromProvider() {
 
 export async function upsertManualMatch(input: Record<string, unknown> & { kickoffAt: string }) {
   const callable = httpsCallable<typeof input, { matchId: string }>(functions, "upsertManualMatch");
+  return callable(input);
+}
+
+export async function bulkUpsertManualMatches(input: {
+  matches: Array<Record<string, unknown>>;
+  sourceName?: string;
+  sourceUrl?: string;
+}) {
+  const callable = httpsCallable<typeof input, { imported: number; errors: Array<{ row: number; message: string }> }>(functions, "bulkUpsertManualMatches");
   return callable(input);
 }
 

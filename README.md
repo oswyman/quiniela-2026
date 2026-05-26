@@ -174,11 +174,28 @@ El modo oficial recomendado para beta es `RESULTS_API_PROVIDER=manual`.
 
 En `/admin`, un `platform_admin` puede:
 
+- Importar fixtures por CSV desde la fuente oficial/manual.
 - Crear o editar partidos.
 - Capturar marcador a 90 minutos.
 - Capturar marcador final.
 - Capturar ganador.
 - Recalcular rankings por grupo.
+
+Plantilla CSV:
+
+```csv
+matchNumber,phase,fifaGroup,homeTeam,awayTeam,localDate,localTime,timezone,venue,city,country
+1,Fase de grupos,A,Mexico,South Africa,2026-06-11,13:00,America/Mexico_City,Estadio Azteca,Ciudad de Mexico,Mexico
+```
+
+Tambien existe una plantilla en `docs/world-cup-2026-fixtures-template.csv`.
+
+Reglas de horarios:
+
+- `localDate`, `localTime` y `timezone` son obligatorios.
+- La app convierte esa hora local a `kickoffAt` UTC en Cloud Functions.
+- La UI muestra hora CDMX, hora local del usuario y hora sede cuando existe `sourceTimezone`.
+- La fuente recomendada es el calendario oficial FIFA: https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/match-schedule-fixtures-results-teams-stadiums
 
 Despues de actualizar resultados, ejecuta `recalculateGroupScores`.
 
