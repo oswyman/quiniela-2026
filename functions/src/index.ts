@@ -1,6 +1,5 @@
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
-import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { writeAuditLog } from "./audit";
 import { calculatePrizeAllocations, ScoreRow } from "./prizes";
@@ -44,39 +43,6 @@ async function isGroupAdmin(groupId: string, uid: string) {
   const snap = await getFirestore().doc(`groups/${groupId}/members/${uid}`).get();
   return snap.data()?.role === "group_admin" || (await isPlatformAdmin(uid));
 }
-
-export const onPredictionWrite = onDocumentWritten("groups/{groupId}/predictions/{predictionId}", async (event) => {
-  const groupId = event.params.groupId;
-  const predictionId = event.params.predictionId;
-  const after = event.data?.after.data();
-  const before = event.data?.before.data();
-  if (!after) return;
-
-  const db = getFirestore();
-  const matchSnap = await db.doc(`matches/${after.matchId}`).get();
-  const match = matchSnap.data();
-  if (!match) return;
-
-  const isLate = match.kickoffAt?.toMillis ? Date.now() >= match.kickoffAt.toMillis() : false;
-  if (isLate && !after.isLate) {
-    await event.data?.after.ref.update({
-      isLate: true,
-      status: "late",
-      points: 0,
-      scoringReason: "Pronostico tardio detectado por backend"
-    });
-  }
-
-  await writeAuditLog({
-    actorUid: after.uid,
-    groupId,
-    action: before ? "updatePrediction" : "createPrediction",
-    entityType: "prediction",
-    entityId: predictionId,
-    before,
-    after
-  });
-});
 
 export const recalculateGroupScores = onCall(async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Inicia sesión.");

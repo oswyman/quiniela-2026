@@ -98,7 +98,7 @@ Funciones principales:
 - `createGroup`: crea grupo + miembro admin de forma consistente.
 - `updateGroup`: edita reglas del grupo antes del inicio del Mundial.
 - `deleteGroup`: cancela grupo antes del inicio del Mundial.
-- `submitPrediction`: valida kickoff con hora de servidor y guarda pronostico.
+- `submitPrediction`: valida kickoff con hora de servidor, guarda pronostico y registra auditoria.
 - `upsertManualMatch`: `platform_admin` carga o edita fixtures manuales.
 - `upsertManualResult`: `platform_admin` captura resultados manuales.
 - `recalculateGroupScores` / `updateGroupRanking`: recalcula puntos, ranking y premios.
@@ -256,6 +256,7 @@ Tests: `tests/prizes.test.ts`.
 - Firebase Email/Password permite crear Auth users; la entrada al producto y grupos se controla por invitacion email-bound en Functions.
 - `platform_admin` inicial se asigna manualmente en Firestore.
 - API-Football no debe ser fuente critica en plan gratuito.
+- No se usa trigger Firestore para pronosticos porque algunas ubicaciones de Firestore no soportan Cloud Functions en la misma region; `submitPrediction` concentra la validacion sensible.
 - Falta test suite completa de Firestore Emulator.
 - Falta App Check enforcement y monitoreo formal de Functions.
 - Falta revision legal formal antes de operar con aportaciones economicas o premios.
