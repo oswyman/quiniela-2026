@@ -50,9 +50,7 @@ service cloud.firestore {
     }
 
     match /groups/{groupId} {
-      allow create: if signedIn() &&
-        request.resource.data.createdBy == request.auth.uid &&
-        request.resource.data.legalDisclaimerAccepted == true;
+      allow create: if false;
       allow read: if isMember(groupId) || isPlatformAdmin();
       allow update: if isGroupAdmin(groupId) || isPlatformAdmin();
       allow delete: if isPlatformAdmin();
@@ -73,20 +71,7 @@ service cloud.firestore {
 
       match /predictions/{predictionId} {
         allow read: if isMember(groupId) || isPlatformAdmin();
-        allow create: if isMember(groupId) &&
-          request.resource.data.uid == request.auth.uid &&
-          request.resource.data.points == 0 &&
-          request.resource.data.isLate == false &&
-          matchIsOpen(request.resource.data.matchId);
-        allow update: if isMember(groupId) &&
-          resource.data.uid == request.auth.uid &&
-          request.resource.data.uid == resource.data.uid &&
-          request.resource.data.matchId == resource.data.matchId &&
-          request.resource.data.points == resource.data.points &&
-          request.resource.data.isLate == resource.data.isLate &&
-          request.resource.data.scoringReason == resource.data.scoringReason &&
-          matchIsOpen(resource.data.matchId);
-        allow delete: if false;
+        allow create, update, delete: if false;
       }
 
       match /scores/{uid} {
@@ -102,9 +87,7 @@ service cloud.firestore {
 
     match /groupMembers/{id} {
       allow read: if signedIn() && resource.data.uid == request.auth.uid || isPlatformAdmin();
-      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
-      allow update: if false;
-      allow delete: if false;
+      allow write: if false;
     }
 
     match /matches/{matchId} {
@@ -119,6 +102,11 @@ service cloud.firestore {
 
     match /apiSyncLogs/{id} {
       allow read: if isPlatformAdmin();
+      allow write: if false;
+    }
+
+    match /systemConfig/{id} {
+      allow read: if signedIn();
       allow write: if false;
     }
   }

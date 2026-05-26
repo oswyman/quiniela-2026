@@ -4,7 +4,7 @@
   "private": true,
   "main": "lib/index.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node build.mjs",
     "lint": "eslint --ext .ts src",
     "test": "echo \"Functions tests are covered by root unit tests\"",
     "serve": "npm run build && firebase emulators:start --only functions,firestore",
@@ -16,7 +16,8 @@
   },
   "devDependencies": {
     "@types/node": "^20.17.10",
-    "typescript": "^5.7.2",
-    "eslint": "^8.57.1"
+    "esbuild": "^0.28.0",
+    "eslint": "^8.57.1",
+    "typescript": "^5.7.2"
   }
 }

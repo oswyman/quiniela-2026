@@ -1,11 +1,15 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
+import { EmptyState } from "@/components/EmptyState";
+import { GroupNav } from "@/components/GroupNav";
+import { MetricCard } from "@/components/MetricCard";
 import { PageTitle } from "@/components/PageTitle";
 import { RulesPanel } from "@/components/RulesPanel";
+import { StatusMessage } from "@/components/StatusMessage";
+import { formatDate, formatMoney, shortCountdown } from "@/lib/format";
 import { getGroup, listMatches, listMembers, listPrizes, listScores } from "@/lib/firebase/firestore";
 import type { Group, Match, Member, Score } from "@/types";
 
@@ -51,35 +55,47 @@ function GroupContent() {
     load();
   }, [params.groupId]);
 
-  if (loading) return <main className="container"><p>Cargando grupo...</p></main>;
-  if (error) return <main className="container"><div className="error">{error}</div></main>;
-  if (!group) return <main className="container"><div className="card">Grupo no encontrado.</div></main>;
+  const activeMembers = members.filter((member) => member.status === "active");
+  const paidMembers = members.filter((member) => member.paymentStatus === "paid");
+  const nextMatch = useMemo(() => matches.find((match) => match.status === "scheduled") ?? matches[0], [matches]);
+
+  if (loading) return <main className="container"><div className="card">Cargando panel del grupo...</div></main>;
+  if (error) return <main className="container"><StatusMessage type="error">{error}</StatusMessage></main>;
+  if (!group) return <main className="container"><EmptyState title="Grupo no encontrado" body="Verifica la invitación o vuelve al dashboard." href="/dashboard" action="Dashboard" /></main>;
+
+  const pool = activeMembers.length * Number(group.contributionAmount || 0);
 
   return (
-    <main className="container stack">
-      <PageTitle title={group.name} subtitle={`${group.currency} ${group.contributionAmount.toLocaleString("es-MX")} por participante · Responsable: ${group.moneyResponsibleName}`} />
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <Link className="button" href={`/groups/${group.id}/predictions`}>Pronosticar</Link>
-        <Link className="button secondary" href={`/groups/${group.id}/ranking`}>Ranking</Link>
-        <Link className="button secondary" href={`/groups/${group.id}/admin`}>Administrar</Link>
-      </div>
-      <RulesPanel group={group} />
+    <main className="container stack-lg">
+      <PageTitle title={group.name} subtitle={`${formatMoney(group.contributionAmount, group.currency)} por participante · Responsable: ${group.moneyResponsibleName}`} />
+      <GroupNav groupId={group.id} />
       <div className="grid">
-        <section className="card">
-          <h2>Participantes</h2>
-          {members.length === 0 ? <p className="muted">Sin participantes.</p> : members.map((member) => <p key={member.uid}>{member.displayName} · {member.paymentStatus}</p>)}
-        </section>
-        <section className="card">
+        <MetricCard label="Participantes activos" value={`${activeMembers.length}/${group.minParticipants}+`} detail="Mínimo para operar el grupo" />
+        <MetricCard label="Pagos marcados" value={`${paidMembers.length}/${activeMembers.length}`} detail="Control manual, sin procesar pagos" />
+        <MetricCard label="Bolsa estimada" value={formatMoney(pool, group.currency)} detail="La app no custodia dinero" />
+        <MetricCard label="Próximo cierre" value={nextMatch ? shortCountdown(nextMatch.kickoffAt) : "Sin partidos"} detail={nextMatch ? `${nextMatch.homeTeam} vs ${nextMatch.awayTeam}` : "Sin fixtures cargados"} />
+      </div>
+      <section className="twoCol">
+        <RulesPanel group={group} />
+        <aside className="card stack">
+          <h2>Operación del grupo</h2>
+          <p><strong>Resultado válido:</strong> {group.validResultMode}</p>
+          <p><strong>Pronósticos:</strong> {group.predictionVisibility === "AFTER_CLOSE" ? "Visibles después del cierre" : "Visibles antes del cierre"}</p>
+          <p><strong>Responsable:</strong> {group.moneyResponsibleEmail}</p>
+        </aside>
+      </section>
+      <div className="grid">
+        <section className="card stack">
           <h2>Próximos partidos</h2>
-          {matches.length === 0 ? <p className="muted">Aún no hay fixtures cargados.</p> : matches.slice(0, 5).map((match) => <p key={match.id}>{match.homeTeam} vs {match.awayTeam}</p>)}
+          {matches.length === 0 ? <p className="muted">Aún no hay fixtures cargados.</p> : matches.slice(0, 5).map((match) => <p key={match.id}>{match.homeTeam} vs {match.awayTeam}<br /><span className="muted">{formatDate(match.kickoffAt)} · {match.venue ?? "Sede por confirmar"}</span></p>)}
         </section>
-        <section className="card">
-          <h2>Ranking</h2>
-          {scores.length === 0 ? <p className="muted">Sin puntuación calculada.</p> : scores.slice(0, 5).map((score, index) => <p key={score.uid}>{index + 1}. {score.displayName ?? score.uid}: {score.totalPoints} pts</p>)}
+        <section className="card stack">
+          <h2>Top ranking</h2>
+          {scores.length === 0 ? <p className="muted">Sin puntuación calculada todavía.</p> : scores.slice(0, 5).map((score, index) => <p key={score.uid}>{index + 1}. {score.displayName ?? score.uid}: <strong>{score.totalPoints} pts</strong></p>)}
         </section>
-        <section className="card">
+        <section className="card stack">
           <h2>Premios estimados</h2>
-          {prizes.length === 0 ? <p className="muted">Recalcula ranking cuando haya resultados.</p> : prizes.map((prize) => <p key={prize.uid}>{prize.uid}: {group.currency} {prize.estimatedPrize}</p>)}
+          {prizes.length === 0 ? <p className="muted">Recalcula ranking cuando haya resultados.</p> : prizes.map((prize) => <p key={prize.uid}>{prize.uid}: {formatMoney(prize.estimatedPrize, group.currency)}</p>)}
         </section>
       </div>
     </main>

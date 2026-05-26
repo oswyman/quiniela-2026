@@ -58,8 +58,14 @@ export type Invite = {
 
 export type Match = {
   id: string;
+  provider?: "mock" | "sportmonks";
+  providerMatchId?: string;
+  matchNumber?: number | null;
   phase: string;
   fifaGroup?: string;
+  venue?: string | null;
+  homeTeamId?: string | number | null;
+  awayTeamId?: string | number | null;
   homeTeam: string;
   awayTeam: string;
   kickoffAt: unknown;
@@ -75,6 +81,8 @@ export type Match = {
   finalAwayGoals?: number | null;
   winnerTeam?: string | null;
   updatedAt?: unknown;
+  lastSyncedAt?: unknown;
+  rawProviderStatus?: string | null;
 };
 
 export type Prediction = {
@@ -123,4 +131,13 @@ export type AuditLog = {
   before?: unknown;
   after?: unknown;
   createdAt?: unknown;
+};
+
+export type ProviderStatus = {
+  provider: "mock" | "sportmonks" | "disabled";
+  status: "healthy" | "degraded" | "error" | "idle" | "syncing";
+  lastFixturesSyncAt?: unknown;
+  lastLiveSyncAt?: unknown;
+  message?: string;
+  updatedAt?: unknown;
 };

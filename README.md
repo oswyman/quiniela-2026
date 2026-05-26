@@ -44,10 +44,15 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
 NEXT_PUBLIC_FIREBASE_APP_ID=
+NEXT_PUBLIC_FIREBASE_APPCHECK_SITE_KEY=
+NEXT_PUBLIC_APP_URL=
 
 RESULTS_API_PROVIDER=mock
 RESULTS_API_KEY=
 RESULTS_API_BASE_URL=
+SPORTMONKS_API_TOKEN=
+SPORTMONKS_BASE_URL=https://api.sportmonks.com/v3/football
+SPORTMONKS_WORLD_CUP_SEASON_ID=26618
 ```
 
 No guardes secretos reales en el repo. El Admin SDK solo vive en `functions/`.
@@ -82,9 +87,14 @@ Funciones incluidas:
 - `recalculateGroupScores`: callable protegido para `group_admin` o `platform_admin`.
 - `updateGroupRanking`: callable protegido para recalcular ranking y premios.
 - `syncMatchesFromProviderCallable`: sync mock protegido para `platform_admin`.
-- `scheduledResultsSync`: programada cada 24 horas; usa mock o se puede desactivar con `RESULTS_API_PROVIDER=disabled`.
+- `syncFixturesFromProvider`: sync de fixtures protegido para `platform_admin`.
+- `syncLiveResultsFromProvider`: sync de resultados/live protegido para `platform_admin`.
+- `scheduledFixturesSync`: programada cada 6 horas; usa mock o Sportmonks.
+- `scheduledLiveResultsSync`: programada cada 5 minutos; usa mock o Sportmonks.
 - `createInvite`: crea codigos de invitacion.
 - `acceptInvite`: valida invitacion y agrega participante.
+- `createGroup`: crea grupo + membresia admin de forma consistente.
+- `submitPrediction`: valida cierre con hora de servidor y guarda pronostico.
 
 ## Configuracion de Vercel
 
@@ -146,13 +156,15 @@ La integracion queda preparada en:
 - `src/lib/resultsProvider.ts`
 - `functions/src/resultsSync.ts`
 
-Soporta proveedor `mock`, fixtures, resultados, actualizacion de partidos y recalculo posterior. Para conectar una API real:
+Soporta proveedor `mock` y `sportmonks`, fixtures, resultados, actualizacion de partidos y recalculo posterior. Para conectar Sportmonks:
 
-1. Revisa terminos, costos, limites y licencias del proveedor.
-2. Guarda secretos en variables de entorno de Firebase Functions, no en Next public env.
-3. Implementa un adaptador en `resultsSync.ts`.
-4. Mapea el formato externo a la coleccion `matches`.
-5. Ejecuta recalculo tras actualizar resultados.
+1. Contrata/revisa el plan World Cup 2026 y sus limites.
+2. Configura `RESULTS_API_PROVIDER=sportmonks`.
+3. Configura `SPORTMONKS_API_TOKEN` solo en Firebase Functions/Vercel server envs si aplica.
+4. Configura `SPORTMONKS_WORLD_CUP_SEASON_ID` si Sportmonks cambia el season id.
+5. Ejecuta `syncFixturesFromProvider` para cargar fixtures.
+6. Ejecuta `syncLiveResultsFromProvider` durante pruebas o usa las scheduled functions.
+7. Despues de resultados, ejecuta `recalculateGroupScores`.
 
 No uses scraping ni API keys reales en el repositorio.
 
@@ -163,10 +175,23 @@ No uses scraping ni API keys reales en el repositorio.
 - Usuarios autenticados.
 - Cada usuario puede leer su perfil.
 - Miembros solo leen grupos donde participan.
-- Participantes crean/editan su propio pronostico antes del cierre.
+- Participantes envian pronosticos mediante Cloud Functions; el cliente no escribe predicciones directamente.
 - El cliente no puede modificar puntos, ranking, premios, auditoria ni sync logs.
 - `group_admin` administra miembros/configuracion del grupo.
 - Escrituras sensibles ocurren desde Cloud Functions.
+
+## App Check y dominios
+
+Antes de abrir trafico publico:
+
+1. En Firebase Console, configura App Check para la Web App con reCAPTCHA Enterprise.
+2. Agrega el site key en `NEXT_PUBLIC_FIREBASE_APPCHECK_SITE_KEY`.
+3. Monitorea metricas antes de activar enforcement.
+4. En Authentication > Settings > Authorized domains agrega tu dominio Vercel.
+
+## Vercel Analytics, Speed Insights y CI
+
+El workflow `.github/workflows/ci.yml` ejecuta lint, tests y builds de frontend/functions en cada PR/push a `main`. Para la beta publica, activa Vercel Analytics y Speed Insights desde Vercel o agrega los paquetes oficiales cuando decidas medir trafico real.
 
 ## Reglas de puntuacion
 

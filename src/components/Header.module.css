@@ -1,11 +1,15 @@
 .header {
   align-items: center;
-  background: #0b1715;
+  background: rgba(7, 27, 22, 0.98);
+  border-bottom: 1px solid rgba(216, 165, 58, 0.24);
   color: #fff;
   display: flex;
   justify-content: space-between;
-  min-height: 68px;
+  min-height: 72px;
   padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
 .brand,
@@ -16,6 +20,7 @@
 }
 
 .brand {
+  color: #fff;
   font-weight: 800;
 }
 
@@ -23,6 +28,16 @@
   color: #e7ece8;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.nav a {
+  border-radius: 6px;
+  font-weight: 700;
+  padding: 8px 10px;
+}
+
+.nav a:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .iconButton {
@@ -35,4 +50,18 @@
   display: inline-flex;
   min-height: 36px;
   padding: 8px;
+}
+
+@media (max-width: 640px) {
+  .header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
+  }
+
+  .nav {
+    justify-content: flex-start;
+    width: 100%;
+  }
 }

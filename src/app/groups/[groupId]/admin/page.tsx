@@ -3,10 +3,14 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
+import { GroupNav } from "@/components/GroupNav";
+import { MetricCard } from "@/components/MetricCard";
 import { PageTitle } from "@/components/PageTitle";
+import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
-import { createInvite, getGroup, getMyMember, listMembers, recalculateGroupScores, updatePaymentStatus } from "@/lib/firebase/firestore";
-import type { Group, Member } from "@/types";
+import { createInvite, getGroup, getMyMember, getProviderStatus, listMembers, recalculateGroupScores, syncFixturesFromProvider, syncLiveResultsFromProvider, updatePaymentStatus } from "@/lib/firebase/firestore";
+import { formatMoney } from "@/lib/format";
+import type { Group, Member, ProviderStatus } from "@/types";
 
 export default function GroupAdminPage() {
   return (
@@ -24,6 +28,8 @@ function GroupAdminContent() {
   const [members, setMembers] = useState<Member[]>([]);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [providerStatus, setProviderStatus] = useState<ProviderStatus | null>(null);
+  const [busyAction, setBusyAction] = useState("");
   const [loading, setLoading] = useState(true);
 
   async function reload() {
@@ -35,6 +41,7 @@ function GroupAdminContent() {
     setGroup(nextGroup);
     setMyMember(nextMember);
     setMembers(nextMembers);
+    setProviderStatus(await getProviderStatus());
   }
 
   useEffect(() => {
@@ -65,23 +72,50 @@ function GroupAdminContent() {
     }
   }
 
+  async function runSync(type: "fixtures" | "live") {
+    setBusyAction(type);
+    setError("");
+    setMessage("");
+    try {
+      const result = type === "fixtures" ? await syncFixturesFromProvider() : await syncLiveResultsFromProvider();
+      setMessage(`Sincronización completada: ${result.data.updated} registros actualizados.`);
+      setProviderStatus(await getProviderStatus());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo sincronizar el proveedor.");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
   async function onPaymentChange(uid: string, paymentStatus: Member["paymentStatus"]) {
     await updatePaymentStatus(params.groupId, uid, paymentStatus);
     await reload();
   }
 
-  if (loading) return <main className="container"><p>Cargando administración...</p></main>;
+  if (loading) return <main className="container"><div className="card">Cargando administración...</div></main>;
   if (!group) return <main className="container"><div className="card">Grupo no encontrado.</div></main>;
-  if (myMember?.role !== "group_admin") return <main className="container"><div className="error">Solo el administrador del grupo puede entrar aquí.</div></main>;
+  if (myMember?.role !== "group_admin") return <main className="container"><StatusMessage type="error">Solo el administrador del grupo puede entrar aquí.</StatusMessage></main>;
+
+  const paidMembers = members.filter((member) => member.paymentStatus === "paid").length;
+  const pool = members.filter((member) => member.status === "active").length * Number(group.contributionAmount || 0);
 
   return (
-    <main className="container stack">
+    <main className="container stack-lg">
       <PageTitle title={`Administrar ${group.name}`} subtitle="Gestiona participantes, pagos manuales, invitaciones y recalculo." />
-      {message ? <div className="notice">{message}</div> : null}
-      {error ? <div className="error">{error}</div> : null}
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+      <GroupNav groupId={params.groupId} />
+      {message ? <StatusMessage type="success">{message}</StatusMessage> : null}
+      {error ? <StatusMessage type="error">{error}</StatusMessage> : null}
+      <div className="grid">
+        <MetricCard label="Participantes" value={members.length} detail="Miembros registrados en el grupo" />
+        <MetricCard label="Pagos manuales" value={`${paidMembers}/${members.length}`} detail="Sin procesar pagos en la plataforma" />
+        <MetricCard label="Bolsa estimada" value={formatMoney(pool, group.currency)} detail="Solo registro administrativo" />
+        <MetricCard label="Proveedor" value={providerStatus?.provider ?? "mock"} detail={providerStatus?.message ?? "Sin sync registrada"} />
+      </div>
+      <div className="cluster">
         <button className="button" onClick={onCreateInvite} type="button">Crear invitación</button>
         <button className="button secondary" onClick={onRecalculate} type="button">Recalcular puntos</button>
+        <button className="button secondary" disabled={busyAction === "fixtures"} onClick={() => runSync("fixtures")} type="button">{busyAction === "fixtures" ? "Sincronizando..." : "Sync fixtures"}</button>
+        <button className="button secondary" disabled={busyAction === "live"} onClick={() => runSync("live")} type="button">{busyAction === "live" ? "Sincronizando..." : "Sync resultados"}</button>
       </div>
       <section className="card tableWrap">
         <h2>Participantes</h2>

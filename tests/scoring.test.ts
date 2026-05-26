@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculatePredictionScore } from "@/lib/scoring";
+import { calculatePredictionScore, isMatchClosed, resolveMatchResult } from "@/lib/scoring";
 
 describe("calculatePredictionScore", () => {
   it("awards 3 points for exact score", () => {
@@ -35,5 +35,30 @@ describe("calculatePredictionScore", () => {
     const result = calculatePredictionScore({ homeGoals: 2, awayGoals: 1, isLate: true }, { homeGoals: 2, awayGoals: 1 });
     expect(result.points).toBe(0);
     expect(result.latePredictions).toBe(1);
+  });
+
+  it("resolves configured result mode", () => {
+    const match = {
+      id: "1",
+      phase: "Final",
+      homeTeam: "A",
+      awayTeam: "B",
+      kickoffAt: new Date(),
+      timezone: "UTC",
+      status: "finished" as const,
+      homeGoals90: 1,
+      awayGoals90: 1,
+      homeGoalsExtraTime: 2,
+      awayGoalsExtraTime: 1,
+      finalHomeGoals: 2,
+      finalAwayGoals: 1
+    };
+    expect(resolveMatchResult(match, "NINETY")).toEqual({ homeGoals: 1, awayGoals: 1 });
+    expect(resolveMatchResult(match, "EXTRA_TIME")).toEqual({ homeGoals: 2, awayGoals: 1 });
+  });
+
+  it("detects prediction lock at kickoff", () => {
+    expect(isMatchClosed(new Date("2026-06-11T10:00:00Z"), new Date("2026-06-11T10:00:00Z"))).toBe(true);
+    expect(isMatchClosed(new Date("2026-06-11T10:00:00Z"), new Date("2026-06-11T09:59:00Z"))).toBe(false);
   });
 });

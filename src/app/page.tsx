@@ -1,36 +1,56 @@
 import Link from "next/link";
-import { ShieldCheck, Users, WalletCards } from "lucide-react";
+import { BarChart3, Lock, ShieldCheck, Trophy, Users, WalletCards } from "lucide-react";
 import { LegalNotice } from "@/components/LegalNotice";
-import { PageTitle } from "@/components/PageTitle";
 
 export default function HomePage() {
   return (
     <main>
-      <section className="container">
-        <PageTitle
-          title="Quinielas privadas del Mundial 2026"
-          subtitle="Crea grupos, invita participantes, captura pronósticos, calcula rankings y documenta premios sugeridos sin procesar pagos ni custodiar dinero."
-        />
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 22 }}>
-          <Link className="button" href="/login">Iniciar sesión</Link>
-          <Link className="button secondary" href="/groups/new">Crear grupo</Link>
+      <section className="hero">
+        <div className="container stack-lg">
+          <p className="eyebrow">Beta privada · Mundial FIFA 2026</p>
+          <h1>Quinielas privadas con control, reglas y ranking automático.</h1>
+          <p>
+            Organiza grupos comerciales sin custodiar dinero: invitaciones privadas, pronósticos bloqueados por kickoff,
+            auditoría, premios sugeridos y resultados listos para sincronizar con Sportmonks.
+          </p>
+          <div className="cluster">
+            <Link className="button gold" href="/groups/new">Crear mi grupo</Link>
+            <Link className="button secondary" href="/login">Iniciar sesión</Link>
+          </div>
         </div>
+      </section>
+      <section className="container stack-lg" style={{ padding: "28px 0 48px" }}>
         <LegalNotice />
-        <div className="grid" style={{ marginTop: 20 }}>
-          <article className="card">
-            <Users size={26} aria-hidden />
+        <div className="grid">
+          <article className="card stack">
+            <Users size={28} aria-hidden />
             <h2>Grupos privados</h2>
-            <p className="muted">Cada grupo configura aportación, moneda, reglas, responsable del dinero y visibilidad de pronósticos.</p>
+            <p className="muted">Moneda, aportación, visibilidad, reglas de resultado y responsable del dinero por grupo.</p>
           </article>
-          <article className="card">
-            <ShieldCheck size={26} aria-hidden />
-            <h2>Reglas claras</h2>
-            <p className="muted">Los pronósticos cierran al kickoff, los puntos se calculan automáticamente y las acciones sensibles van a auditoría.</p>
+          <article className="card stack">
+            <Lock size={28} aria-hidden />
+            <h2>Bloqueo justo</h2>
+            <p className="muted">El backend valida el cierre por kickoff para evitar pronósticos editados tarde.</p>
           </article>
-          <article className="card">
-            <WalletCards size={26} aria-hidden />
+          <article className="card stack">
+            <BarChart3 size={28} aria-hidden />
+            <h2>Ranking claro</h2>
+            <p className="muted">Puntos, desempates, premios estimados y explicación de empates en zona de premio.</p>
+          </article>
+          <article className="card stack">
+            <ShieldCheck size={28} aria-hidden />
+            <h2>Auditable</h2>
+            <p className="muted">Acciones sensibles pasan por Cloud Functions y generan logs administrativos.</p>
+          </article>
+          <article className="card stack">
+            <Trophy size={28} aria-hidden />
+            <h2>Datos del Mundial</h2>
+            <p className="muted">Capa preparada para Sportmonks: fixtures, live scores y resultados normalizados.</p>
+          </article>
+          <article className="card stack">
+            <WalletCards size={28} aria-hidden />
             <h2>Sin pagos</h2>
-            <p className="muted">El MVP registra estados administrativos y premios estimados. No hay Stripe, wallet, custodia ni procesador de pagos.</p>
+            <p className="muted">No hay wallet, custodia ni procesadores. Solo administración privada.</p>
           </article>
         </div>
       </section>

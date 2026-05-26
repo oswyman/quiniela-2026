@@ -6,11 +6,18 @@ import { writeAuditLog } from "./audit";
 import { calculatePrizeAllocations, ScoreRow } from "./prizes";
 import { calculatePredictionScore, resolveMatchResult } from "./scoring";
 import { acceptInvite, createInvite } from "./invites";
-import { scheduledResultsSync, syncMatchesFromProvider as runMatchesSync } from "./resultsSync";
+import { createGroup } from "./groups";
+import { submitPrediction } from "./predictions";
+import {
+  scheduledFixturesSync,
+  scheduledLiveResultsSync,
+  syncFixturesFromProvider as runFixturesSync,
+  syncLiveResultsFromProvider as runLiveSync
+} from "./resultsSync";
 
 initializeApp();
 
-export { acceptInvite, createInvite, scheduledResultsSync };
+export { acceptInvite, createGroup, createInvite, scheduledFixturesSync, scheduledLiveResultsSync, submitPrediction };
 
 async function isPlatformAdmin(uid: string) {
   const snap = await getFirestore().doc(`users/${uid}`).get();
@@ -73,9 +80,14 @@ export const updateGroupRanking = onCall(async (request) => {
   return { ok: true };
 });
 
-export const syncMatchesFromProvider = onCall(async (request) => {
+export const syncFixturesFromProvider = onCall(async (request) => {
   if (!request.auth || !(await isPlatformAdmin(request.auth.uid))) throw new HttpsError("permission-denied", "Solo platform_admin.");
-  return runMatchesSync();
+  return runFixturesSync();
+});
+
+export const syncLiveResultsFromProvider = onCall(async (request) => {
+  if (!request.auth || !(await isPlatformAdmin(request.auth.uid))) throw new HttpsError("permission-denied", "Solo platform_admin.");
+  return runLiveSync();
 });
 
 async function updateGroupRankingInternal(groupId: string, actorUid: string) {

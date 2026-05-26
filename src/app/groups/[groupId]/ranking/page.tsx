@@ -3,8 +3,11 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
+import { EmptyState } from "@/components/EmptyState";
+import { GroupNav } from "@/components/GroupNav";
 import { PageTitle } from "@/components/PageTitle";
 import { getGroup, listPrizes, listScores } from "@/lib/firebase/firestore";
+import { formatMoney } from "@/lib/format";
 import { rankScores } from "@/lib/prizes";
 import type { Group, Score } from "@/types";
 
@@ -38,12 +41,13 @@ function RankingContent() {
     load();
   }, [params.groupId]);
 
-  if (loading) return <main className="container"><p>Cargando ranking...</p></main>;
+  if (loading) return <main className="container"><div className="card">Cargando ranking...</div></main>;
   const ranked = rankScores(scores);
 
   return (
-    <main className="container stack">
+    <main className="container stack-lg">
       <PageTitle title="Ranking" subtitle="Desempates: puntos, marcadores exactos, diferencias, ganadores, empates." />
+      <GroupNav groupId={params.groupId} />
       <div className="tableWrap card">
         <table>
           <thead>
@@ -70,17 +74,20 @@ function RankingContent() {
                   <td>{score.correctGoalDifferences}</td>
                   <td>{score.correctWinners}</td>
                   <td>{score.correctDraws}</td>
-                  <td>{group?.currency ?? "MXN"} {prize?.estimatedPrize ?? 0}</td>
+                  <td>{formatMoney(prize?.estimatedPrize ?? 0, group?.currency ?? "MXN")}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
-        {ranked.length === 0 ? <p className="muted">Todavía no hay puntuaciones calculadas.</p> : null}
+        {ranked.length === 0 ? <EmptyState title="Todavía no hay ranking" body="Cuando existan resultados, el administrador puede recalcular puntos y premios." /> : null}
       </div>
-      {prizes.map((prize) => (
-        <div className="notice" key={prize.uid}>{prize.ruleApplied}</div>
-      ))}
+      {prizes.length > 0 ? (
+        <section className="card stack">
+          <h2>Explicación de premios</h2>
+          {prizes.map((prize) => <p key={prize.uid}>{prize.ruleApplied}</p>)}
+        </section>
+      ) : null}
     </main>
   );
 }

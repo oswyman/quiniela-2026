@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  addDoc,
   collection,
   doc,
   getDoc,
@@ -10,14 +9,12 @@ import {
   onSnapshot,
   orderBy,
   query,
-  serverTimestamp,
-  setDoc,
   updateDoc,
   where
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "./client";
-import type { Group, Invite, Match, Member, Prediction, Score, UserProfile } from "@/types";
+import type { Group, Invite, Match, Member, Prediction, ProviderStatus, Score, UserProfile } from "@/types";
 
 export async function getUserProfile(uid: string) {
   const snap = await getDoc(doc(db, "users", uid));
@@ -28,6 +25,12 @@ export function listenMyMemberships(uid: string, callback: (items: Array<Member 
   return onSnapshot(query(collection(db, "groupMembers"), where("uid", "==", uid)), (snap) => {
     callback(snap.docs.map((item) => item.data() as Member & { groupId: string }));
   });
+}
+
+export function listenCollection<T>(path: string, callback: (items: T[]) => void, sortField?: string, direction: "asc" | "desc" = "asc") {
+  const ref = collection(db, path);
+  const q = sortField ? query(ref, orderBy(sortField, direction)) : query(ref);
+  return onSnapshot(q, (snap) => callback(snap.docs.map((item) => ({ id: item.id, ...item.data() }) as T)));
 }
 
 export async function listMyGroups(uid: string) {
@@ -42,38 +45,10 @@ export async function listMyGroups(uid: string) {
   return groups.filter(Boolean) as Array<Group & { memberRole: string }>;
 }
 
-export async function createGroup(input: Omit<Group, "id" | "createdAt" | "createdBy" | "slug" | "status" | "minParticipants" | "prizeRuleMode">, user: UserProfile) {
-  const slug = input.name
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-
-  const ref = await addDoc(collection(db, "groups"), {
-    ...input,
-    slug,
-    createdBy: user.uid,
-    createdAt: serverTimestamp(),
-    status: "active",
-    minParticipants: 2,
-    prizeRuleMode: "DEFAULT"
-  });
-
-  const member: Member & { groupId: string } = {
-    uid: user.uid,
-    displayName: user.displayName,
-    email: user.email,
-    role: "group_admin",
-    paymentStatus: "not_applicable",
-    joinedAt: serverTimestamp(),
-    status: "active",
-    groupId: ref.id
-  };
-
-  await setDoc(doc(db, "groups", ref.id, "members", user.uid), member);
-  await setDoc(doc(db, "groupMembers", `${ref.id}_${user.uid}`), member);
-  return ref.id;
+export async function createGroup(input: Omit<Group, "id" | "createdAt" | "createdBy" | "slug" | "status" | "minParticipants" | "prizeRuleMode">) {
+  const callable = httpsCallable<typeof input, { groupId: string }>(functions, "createGroup");
+  const result = await callable(input);
+  return result.data.groupId;
 }
 
 export async function getGroup(groupId: string) {
@@ -102,23 +77,8 @@ export async function listPredictions(groupId: string) {
 }
 
 export async function savePrediction(groupId: string, uid: string, matchId: string, homeGoals: number, awayGoals: number) {
-  const ref = doc(db, "groups", groupId, "predictions", `${uid}_${matchId}`);
-  await setDoc(
-    ref,
-    {
-      uid,
-      matchId,
-      homeGoals,
-      awayGoals,
-      submittedAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      status: "valid",
-      isLate: false,
-      points: 0,
-      scoringReason: "Pendiente de resultado"
-    },
-    { merge: true }
-  );
+  const callable = httpsCallable<{ groupId: string; matchId: string; homeGoals: number; awayGoals: number }, { predictionId: string }>(functions, "submitPrediction");
+  await callable({ groupId, matchId, homeGoals, awayGoals });
 }
 
 export async function listScores(groupId: string) {
@@ -149,4 +109,19 @@ export async function acceptInvite(inviteCode: string) {
 export async function recalculateGroupScores(groupId: string) {
   const callable = httpsCallable<{ groupId: string }, { ok: boolean }>(functions, "recalculateGroupScores");
   return callable({ groupId });
+}
+
+export async function syncFixturesFromProvider() {
+  const callable = httpsCallable<Record<string, never>, { updated: number }>(functions, "syncFixturesFromProvider");
+  return callable({});
+}
+
+export async function syncLiveResultsFromProvider() {
+  const callable = httpsCallable<Record<string, never>, { updated: number }>(functions, "syncLiveResultsFromProvider");
+  return callable({});
+}
+
+export async function getProviderStatus() {
+  const snap = await getDoc(doc(db, "systemConfig", "providerStatus"));
+  return snap.exists() ? (snap.data() as ProviderStatus) : null;
 }

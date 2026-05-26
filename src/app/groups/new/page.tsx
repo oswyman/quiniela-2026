@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
 import { LEGAL_DISCLAIMER, LegalNotice } from "@/components/LegalNotice";
 import { PageTitle } from "@/components/PageTitle";
+import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
-import { createGroup, getUserProfile } from "@/lib/firebase/firestore";
+import { createGroup } from "@/lib/firebase/firestore";
 import type { PredictionVisibility, ValidResultMode } from "@/types";
 
 export default function NewGroupPage() {
@@ -30,30 +31,28 @@ function NewGroupForm() {
   const [accepted, setAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (!user) return;
     setError("");
+    setSuccess("");
     setLoading(true);
 
     try {
       if (!accepted) throw new Error("Debes aceptar la advertencia legal para crear el grupo.");
-      const profile = await getUserProfile(user.uid);
-      if (!profile) throw new Error("No se encontró tu perfil de usuario.");
-      const groupId = await createGroup(
-        {
-          name,
-          currency,
-          contributionAmount: Number(contributionAmount),
-          moneyResponsibleName,
-          moneyResponsibleEmail,
-          validResultMode,
-          predictionVisibility,
-          legalDisclaimerAccepted: accepted
-        },
-        profile
-      );
+      const groupId = await createGroup({
+        name,
+        currency,
+        contributionAmount: Number(contributionAmount),
+        moneyResponsibleName,
+        moneyResponsibleEmail,
+        validResultMode,
+        predictionVisibility,
+        legalDisclaimerAccepted: accepted
+      });
+      setSuccess("Grupo creado. Te estamos llevando al panel del grupo...");
       router.push(`/groups/${groupId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo crear el grupo.");
@@ -63,8 +62,8 @@ function NewGroupForm() {
   }
 
   return (
-    <main className="container">
-      <PageTitle title="Crear grupo" subtitle="Configura las reglas principales antes de invitar participantes." />
+    <main className="container stack-lg" style={{ paddingBottom: 48 }}>
+      <PageTitle title="Crear grupo" subtitle="Configura una quiniela privada con reglas claras, responsable administrativo y pronósticos protegidos." />
       <form className="card stack" onSubmit={onSubmit}>
         <LegalNotice />
         <div className="grid">
@@ -111,9 +110,20 @@ function NewGroupForm() {
           <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} required />
           <span>{LEGAL_DISCLAIMER}</span>
         </label>
-        {error ? <div className="error">{error}</div> : null}
-        <button className="button" disabled={loading} type="submit">{loading ? "Creando..." : "Crear grupo"}</button>
+        {success ? <StatusMessage type="success">{success}</StatusMessage> : null}
+        {error ? <StatusMessage type="error">{error}</StatusMessage> : null}
+        <button className="button" disabled={loading} type="submit">{loading ? "Creando grupo y membresía..." : "Crear grupo"}</button>
       </form>
+      <section className="grid">
+        <article className="card">
+          <h2>Checklist de beta</h2>
+          <p className="muted">Después de crear el grupo, invita participantes, sincroniza partidos y valida que todos entiendan las reglas.</p>
+        </article>
+        <article className="card">
+          <h2>Sin custodia</h2>
+          <p className="muted">La app solo registra información administrativa. El responsable del dinero se define por grupo.</p>
+        </article>
+      </section>
     </main>
   );
 }

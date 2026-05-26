@@ -50,14 +50,14 @@ export function resolveMatchResult(match: Record<string, number | null | undefin
   }
   if (mode === "EXTRA_TIME") {
     return firstComplete([
-      [match.finalHomeGoals, match.finalAwayGoals],
       [match.homeGoalsExtraTime, match.awayGoalsExtraTime],
+      [match.finalHomeGoals, match.finalAwayGoals],
       [match.homeGoals90, match.awayGoals90]
     ]);
   }
   return firstComplete([
-    [match.finalHomeGoals, match.finalAwayGoals],
-    [match.homeGoals90, match.awayGoals90]
+    [match.homeGoals90, match.awayGoals90],
+    [match.finalHomeGoals, match.finalAwayGoals]
   ]);
 }
 
