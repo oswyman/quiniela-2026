@@ -1,6 +1,7 @@
 import { getFirestore, FieldValue, Timestamp } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { writeAuditLog } from "./audit";
+import { resolveKnockoutMatchesInFirestore } from "./knockout";
 import { zonedLocalToUtc } from "./timezone";
 
 async function isPlatformAdmin(uid: string) {
@@ -24,6 +25,14 @@ type ManualMatchInput = {
   venue?: string;
   sourceName?: string;
   sourceUrl?: string;
+  referenceUrl?: string;
+  notes?: string;
+  homeSeedLabel?: string;
+  awaySeedLabel?: string;
+  homeSourceMatchNumber?: number | null;
+  awaySourceMatchNumber?: number | null;
+  homeSourceOutcome?: "winner" | "loser" | null;
+  awaySourceOutcome?: "winner" | "loser" | null;
   status?: "scheduled" | "live" | "finished" | "cancelled";
 };
 
@@ -46,6 +55,19 @@ type ManualResultInput = {
   finalAwayGoals?: number | null;
   winnerTeam?: string | null;
 };
+
+export const resolveKnockoutMatches = onCall(async (request) => {
+  if (!request.auth || !(await isPlatformAdmin(request.auth.uid))) throw new HttpsError("permission-denied", "Solo platform_admin.");
+  const result = await resolveKnockoutMatchesInFirestore(getFirestore());
+  await writeAuditLog({
+    actorUid: request.auth.uid,
+    action: "resolveKnockoutMatches",
+    entityType: "match",
+    entityId: "knockout",
+    after: result
+  });
+  return result;
+});
 
 export const upsertManualMatch = onCall<ManualMatchInput>(async (request) => {
   if (!request.auth || !(await isPlatformAdmin(request.auth.uid))) throw new HttpsError("permission-denied", "Solo platform_admin.");
@@ -82,6 +104,17 @@ export const upsertManualMatch = onCall<ManualMatchInput>(async (request) => {
     country: input.country?.trim() || null,
     sourceName: input.sourceName?.trim() || "Carga manual",
     sourceUrl: input.sourceUrl?.trim() || null,
+    referenceUrl: input.referenceUrl?.trim() || null,
+    notes: input.notes?.trim() || null,
+    homeSeedLabel: input.homeSeedLabel?.trim() || null,
+    awaySeedLabel: input.awaySeedLabel?.trim() || null,
+    homeSourceMatchNumber: nullableNumber(input.homeSourceMatchNumber),
+    awaySourceMatchNumber: nullableNumber(input.awaySourceMatchNumber),
+    homeSourceOutcome: input.homeSourceOutcome ?? null,
+    awaySourceOutcome: input.awaySourceOutcome ?? null,
+    resolvedHomeTeam: input.homeSeedLabel ? null : input.homeTeam.trim(),
+    resolvedAwayTeam: input.awaySeedLabel ? null : input.awayTeam.trim(),
+    isResolved: !input.homeSeedLabel && !input.awaySeedLabel,
     status: input.status ?? "scheduled",
     rawProviderStatus: "manual",
     updatedAt: FieldValue.serverTimestamp(),
@@ -144,6 +177,17 @@ export const bulkUpsertManualMatches = onCall<BulkManualMatchInput>(async (reque
         country: item.country?.trim() || null,
         sourceName: input.sourceName?.trim() || item.sourceName?.trim() || "FIFA schedule manual",
         sourceUrl: input.sourceUrl?.trim() || item.sourceUrl?.trim() || null,
+        referenceUrl: item.referenceUrl?.trim() || null,
+        notes: item.notes?.trim() || null,
+        homeSeedLabel: item.homeSeedLabel?.trim() || null,
+        awaySeedLabel: item.awaySeedLabel?.trim() || null,
+        homeSourceMatchNumber: nullableNumber(item.homeSourceMatchNumber),
+        awaySourceMatchNumber: nullableNumber(item.awaySourceMatchNumber),
+        homeSourceOutcome: item.homeSourceOutcome ?? null,
+        awaySourceOutcome: item.awaySourceOutcome ?? null,
+        resolvedHomeTeam: item.homeSeedLabel ? null : item.homeTeam.trim(),
+        resolvedAwayTeam: item.awaySeedLabel ? null : item.awayTeam.trim(),
+        isResolved: !item.homeSeedLabel && !item.awaySeedLabel,
         status: item.status ?? "scheduled",
         rawProviderStatus: "manual bulk",
         updatedAt: FieldValue.serverTimestamp(),
@@ -203,7 +247,7 @@ export const upsertManualResult = onCall<ManualResultInput>(async (request) => {
     awayPenaltyGoals: nullableNumber(input.awayPenaltyGoals),
     finalHomeGoals: nullableNumber(input.finalHomeGoals ?? input.homeGoals90),
     finalAwayGoals: nullableNumber(input.finalAwayGoals ?? input.awayGoals90),
-    winnerTeam: input.winnerTeam ?? null,
+    winnerTeam: input.winnerTeam || inferWinnerTeam(before, input),
     provider: "manual",
     rawProviderStatus: "manual result",
     updatedAt: FieldValue.serverTimestamp(),
@@ -211,17 +255,27 @@ export const upsertManualResult = onCall<ManualResultInput>(async (request) => {
   };
 
   await ref.set(patch, { merge: true });
+  const resolved = await resolveKnockoutMatchesInFirestore(db);
   await writeAuditLog({
     actorUid: request.auth.uid,
     action: "upsertManualResult",
     entityType: "match",
     entityId: input.matchId,
     before,
-    after: patch
+    after: { ...patch, knockoutResolved: resolved.updated }
   });
-  return { ok: true };
+  return { ok: true, knockoutResolved: resolved.updated };
 });
 
 function nullableNumber(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function inferWinnerTeam(match: FirebaseFirestore.DocumentData, input: ManualResultInput) {
+  const homeGoals = nullableNumber(input.finalHomeGoals ?? input.homeGoals90);
+  const awayGoals = nullableNumber(input.finalAwayGoals ?? input.awayGoals90);
+  if (homeGoals === null || awayGoals === null || homeGoals === awayGoals) return null;
+  const home = match.resolvedHomeTeam || match.homeTeam;
+  const away = match.resolvedAwayTeam || match.awayTeam;
+  return homeGoals > awayGoals ? home : away;
 }

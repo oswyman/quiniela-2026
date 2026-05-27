@@ -11,6 +11,7 @@ import { RulesPanel } from "@/components/RulesPanel";
 import { StatusMessage } from "@/components/StatusMessage";
 import { formatMoney, shortCountdown } from "@/lib/format";
 import { getGroup, listMatches, listMembers, listPrizes, listScores } from "@/lib/firebase/firestore";
+import { getMatchTitle } from "@/lib/matchDisplay";
 import { formatMatchTime, matchTimeLabel, type MatchTimeMode } from "@/lib/matchTime";
 import { getUserTimeZone } from "@/lib/timezone";
 import type { Group, Match, Member, Score } from "@/types";
@@ -83,7 +84,7 @@ function GroupContent() {
         <MetricCard label="Participantes activos" value={`${activeMembers.length}/${group.minParticipants}+`} detail="Mínimo para operar el grupo" />
         <MetricCard label="Pagos marcados" value={`${paidMembers.length}/${activeMembers.length}`} detail="Control manual, sin procesar pagos" />
         <MetricCard label="Bolsa estimada" value={formatMoney(pool, group.currency)} detail="La app no custodia dinero" />
-        <MetricCard label="Próximo cierre" value={nextMatch ? shortCountdown(nextMatch.kickoffAt) : "Sin partidos"} detail={nextMatch ? `${nextMatch.homeTeam} vs ${nextMatch.awayTeam}` : "Sin fixtures cargados"} />
+        <MetricCard label="Próximo cierre" value={nextMatch ? shortCountdown(nextMatch.kickoffAt) : "Sin partidos"} detail={nextMatch ? getMatchTitle(nextMatch) : "Sin fixtures cargados"} />
       </div>
       <section className="twoCol">
         <RulesPanel group={group} />
@@ -104,7 +105,7 @@ function GroupContent() {
               </button>
             ))}
           </div>
-          {matches.length === 0 ? <p className="muted">Aún no hay fixtures cargados.</p> : matches.slice(0, 5).map((match) => <p key={match.id}>{match.homeTeam} vs {match.awayTeam}<br /><span className="muted">{formatMatchTime(match, timeMode, userTimeZone)} · {match.venue ?? "Sede por confirmar"}</span></p>)}
+          {matches.length === 0 ? <p className="muted">Aún no hay fixtures cargados.</p> : matches.slice(0, 5).map((match) => <p key={match.id}>{getMatchTitle(match)}<br /><span className="muted">{formatMatchTime(match, timeMode, userTimeZone)} · {match.venue ?? "Sede por confirmar"}</span></p>)}
         </section>
         <section className="panel stack">
           <h2>Top ranking</h2>

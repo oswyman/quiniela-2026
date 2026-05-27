@@ -15,15 +15,15 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:000000000000:web:demo"
 };
 
-const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+const app = typeof window === "undefined" ? null : getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 
-if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_SITE_KEY) {
+if (app && process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_SITE_KEY) {
   initializeAppCheck(app, {
     provider: new ReCaptchaEnterpriseProvider(process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_SITE_KEY),
     isTokenAutoRefreshEnabled: true
   });
 }
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const functions = getFunctions(app);
+export const auth = app ? getAuth(app) : null as unknown as ReturnType<typeof getAuth>;
+export const db = app ? getFirestore(app) : null as unknown as ReturnType<typeof getFirestore>;
+export const functions = app ? getFunctions(app) : null as unknown as ReturnType<typeof getFunctions>;

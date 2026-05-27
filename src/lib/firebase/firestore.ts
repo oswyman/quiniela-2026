@@ -174,6 +174,11 @@ export async function upsertManualResult(input: Partial<Match> & { matchId: stri
   return callable(input);
 }
 
+export async function resolveKnockoutMatches() {
+  const callable = httpsCallable<Record<string, never>, { updated: number }>(functions, "resolveKnockoutMatches");
+  return callable({});
+}
+
 export async function getProviderStatus() {
   const snap = await getDoc(doc(db, "systemConfig", "providerStatus"));
   return snap.exists() ? (snap.data() as ProviderStatus) : null;

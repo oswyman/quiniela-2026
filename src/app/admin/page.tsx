@@ -7,10 +7,12 @@ import { MetricCard } from "@/components/MetricCard";
 import { PageTitle } from "@/components/PageTitle";
 import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
+import { generateWorldCupIcs } from "@/lib/calendar";
 import { db } from "@/lib/firebase/client";
-import { bulkUpsertManualMatches, createAdminInvite, getProviderStatus, getTournamentConfig, getUserProfile, listAllGroups, listAllUsers, listMatches, recalculateGroupScores, syncFixturesFromProvider, syncLiveResultsFromProvider, updateTournamentConfig, upsertManualMatch, upsertManualResult } from "@/lib/firebase/firestore";
+import { bulkUpsertManualMatches, createAdminInvite, getProviderStatus, getTournamentConfig, getUserProfile, listAllGroups, listAllUsers, listMatches, recalculateGroupScores, resolveKnockoutMatches, syncFixturesFromProvider, syncLiveResultsFromProvider, updateTournamentConfig, upsertManualMatch, upsertManualResult } from "@/lib/firebase/firestore";
 import { parseFixtureCsv, type FixtureCsvRow } from "@/lib/fixtureCsv";
 import { formatDate } from "@/lib/format";
+import { getMatchTitle } from "@/lib/matchDisplay";
 import { formatInTimeZone, getUserTimeZone, CDMX_TIMEZONE } from "@/lib/timezone";
 import type { AuditLog, Group, Match, ProviderStatus, TournamentConfig, UserProfile } from "@/types";
 
@@ -167,6 +169,7 @@ function PlatformAdminContent() {
         sourceName: "FIFA schedule manual",
         sourceUrl: "https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/match-schedule-fixtures-results-teams-stadiums",
         matches: csvRows.map((row) => ({
+          matchId: row.matchId,
           matchNumber: row.matchNumber,
           phase: row.phase,
           fifaGroup: row.fifaGroup,
@@ -178,6 +181,15 @@ function PlatformAdminContent() {
           venue: row.venue,
           city: row.city,
           country: row.country,
+          sourceUrl: row.sourceUrl,
+          referenceUrl: row.referenceUrl,
+          notes: row.notes,
+          homeSeedLabel: row.homeSeedLabel,
+          awaySeedLabel: row.awaySeedLabel,
+          homeSourceMatchNumber: row.homeSourceMatchNumber,
+          awaySourceMatchNumber: row.awaySourceMatchNumber,
+          homeSourceOutcome: row.homeSourceOutcome,
+          awaySourceOutcome: row.awaySourceOutcome,
           status: "scheduled"
         }))
       });
@@ -198,6 +210,40 @@ function PlatformAdminContent() {
     setCsvText(await file.text());
     setCsvRows([]);
     setCsvErrors([]);
+  }
+
+  async function onResolveKnockout() {
+    const confirmed = window.confirm("Esto actualizará equipos de eliminación directa usando los resultados cargados. ¿Continuar?");
+    if (!confirmed) return;
+    setBusy("resolveKnockout");
+    setError("");
+    setMessage("");
+    try {
+      const result = await resolveKnockoutMatches();
+      setMessage(`Llaves actualizadas: ${result.data.updated} partidos.`);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudieron resolver las llaves.");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  function onDownloadCalendar() {
+    if (!matches.length) {
+      setError("Carga partidos antes de descargar el calendario.");
+      return;
+    }
+    const ics = generateWorldCupIcs(matches);
+    const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "mundial-2026-la-cancha.ics";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setMessage("Calendario .ics generado. Puedes importarlo en Google Calendar.");
   }
 
   async function runProviderSync(type: "fixtures" | "live") {
@@ -307,7 +353,7 @@ function PlatformAdminContent() {
           </div>
           <div className="field">
             <label htmlFor="fixturesCsv">O pegar CSV</label>
-            <textarea id="fixturesCsv" value={csvText} onChange={(event) => setCsvText(event.target.value)} rows={7} placeholder="matchNumber,phase,fifaGroup,homeTeam,awayTeam,localDate,localTime,timezone,venue,city,country" />
+            <textarea id="fixturesCsv" value={csvText} onChange={(event) => setCsvText(event.target.value)} rows={7} placeholder="numero_partido,fase,grupo,equipo_1,equipo_2,estadio,ciudad_sede,zona_horaria_sede,fecha_sede,hora_sede..." />
           </div>
           <div className="cluster">
             <button className="button secondary" type="submit">Previsualizar CSV</button>
@@ -359,7 +405,7 @@ function PlatformAdminContent() {
             <label htmlFor="resultMatch">Partido</label>
             <select id="resultMatch" name="matchId" required>
               <option value="">Selecciona partido</option>
-              {matches.map((match) => <option key={match.id} value={match.id}>{match.homeTeam} vs {match.awayTeam}</option>)}
+              {matches.map((match) => <option key={match.id} value={match.id}>{getMatchTitle(match)}</option>)}
             </select>
           </div>
           <div className="field"><label htmlFor="homeGoals90">Local 90</label><input id="homeGoals90" name="homeGoals90" type="number" min="0" required /></div>
@@ -370,6 +416,8 @@ function PlatformAdminContent() {
           <button className="button" disabled={busy === "result"} type="submit">Guardar resultado</button>
         </form>
         <div className="cluster">
+          <button className="button secondary" disabled={busy === "resolveKnockout"} onClick={onResolveKnockout} type="button">Resolver llaves eliminatorias</button>
+          <button className="button secondary" onClick={onDownloadCalendar} type="button">Descargar calendario .ics</button>
           <button className="button secondary" disabled={busy === "fixtures"} onClick={() => runProviderSync("fixtures")} type="button">Sync fixtures opcional</button>
           <button className="button secondary" disabled={busy === "live"} onClick={() => runProviderSync("live")} type="button">Sync resultados opcional</button>
         </div>

@@ -88,6 +88,17 @@ export type Match = {
   displayTimeMode?: "cdmx" | "local" | "venue";
   sourceName?: string | null;
   sourceUrl?: string | null;
+  referenceUrl?: string | null;
+  notes?: string | null;
+  homeSeedLabel?: string | null;
+  awaySeedLabel?: string | null;
+  homeSourceMatchNumber?: number | null;
+  awaySourceMatchNumber?: number | null;
+  homeSourceOutcome?: "winner" | "loser" | null;
+  awaySourceOutcome?: "winner" | "loser" | null;
+  resolvedHomeTeam?: string | null;
+  resolvedAwayTeam?: string | null;
+  isResolved?: boolean;
   status: MatchStatus;
   homeGoals90?: number | null;
   awayGoals90?: number | null;

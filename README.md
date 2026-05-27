@@ -179,6 +179,8 @@ En `/admin`, un `platform_admin` puede:
 - Capturar marcador a 90 minutos.
 - Capturar marcador final.
 - Capturar ganador.
+- Resolver llaves eliminatorias de octavos en adelante con los ganadores/perdedores de partidos previos.
+- Descargar un calendario `.ics` de los 104 partidos para importarlo en Google Calendar.
 - Recalcular rankings por grupo.
 
 Plantilla CSV:
@@ -190,11 +192,19 @@ matchNumber,phase,fifaGroup,homeTeam,awayTeam,localDate,localTime,timezone,venue
 
 Tambien existe una plantilla en `docs/world-cup-2026-fixtures-template.csv`.
 
+El importador tambien acepta el CSV extendido de FIFA usado para la carga operativa:
+
+```csv
+numero_partido,fase,grupo,equipo_1,equipo_2,partido,estadio,ciudad_sede,zona_horaria_sede,fecha_sede,hora_sede,fecha_hora_sede_iso,nota_horarios,fuente_oficial_fifa,fuente_tabla_referencia
+1,Fase de grupos,A,Mexico,South Africa,Mexico vs South Africa,Estadio Azteca,Mexico City,America/Mexico_City,2026-06-11,13:00,2026-06-11T13:00:00-06:00,Calendario sujeto a cambios,https://digitalhub.fifa.com/...,https://...
+```
+
 Reglas de horarios:
 
 - `localDate`, `localTime` y `timezone` son obligatorios.
 - La app convierte esa hora local a `kickoffAt` UTC en Cloud Functions.
 - La UI muestra hora CDMX, hora local del usuario y hora sede cuando existe `sourceTimezone`.
+- La eliminatoria directa guarda placeholders como `Match 101 Winner` hasta que el superadmin capture resultados y ejecute la resolucion de llaves.
 - La fuente recomendada es el calendario oficial FIFA: https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/match-schedule-fixtures-results-teams-stadiums
 
 Despues de actualizar resultados, ejecuta `recalculateGroupScores`.

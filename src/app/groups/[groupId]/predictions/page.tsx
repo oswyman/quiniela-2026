@@ -11,6 +11,7 @@ import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
 import { shortCountdown, toDate } from "@/lib/format";
 import { getGroup, listMatches, listPredictions, savePrediction } from "@/lib/firebase/firestore";
+import { getDisplayTeam, getMatchTitle } from "@/lib/matchDisplay";
 import { formatMatchTime, matchTimeLabel, type MatchTimeMode } from "@/lib/matchTime";
 import { isMatchClosed } from "@/lib/scoring";
 import { getUserTimeZone } from "@/lib/timezone";
@@ -83,7 +84,7 @@ function PredictionsContent() {
 
     try {
       await savePrediction(params.groupId, user.uid, match.id, homeGoals, awayGoals);
-      setMessage(`Pronóstico guardado para ${match.homeTeam} vs ${match.awayTeam}.`);
+      setMessage(`Pronóstico guardado para ${getMatchTitle(match)}.`);
       setPredictions(await listPredictions(params.groupId));
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar el pronóstico.");
@@ -120,6 +121,8 @@ function PredictionsContent() {
         {matches.map((match) => {
           const prediction = byMatch.get(match.id);
           const closed = isMatchClosed(toDate(match.kickoffAt));
+          const homeTeam = getDisplayTeam(match, "home");
+          const awayTeam = getDisplayTeam(match, "away");
           return (
             <form className="panel stack matchCard" key={match.id} onSubmit={(event) => submitPrediction(event, match)}>
               <div className="cluster">
@@ -127,17 +130,17 @@ function PredictionsContent() {
                 <span className="pill">{closed ? "Cerrado" : `Cierra en ${shortCountdown(match.kickoffAt)}`}</span>
               </div>
               <div>
-                <h2>{match.homeTeam} vs {match.awayTeam}</h2>
+                <h2>{homeTeam} vs {awayTeam}</h2>
                 <p className="muted">{formatMatchTime(match, timeMode, userTimeZone)} · {match.venue ?? "Sede por confirmar"}</p>
                 <p className="fineprint">CDMX: {formatMatchTime(match, "cdmx", userTimeZone)} · Tu hora: {formatMatchTime(match, "local", userTimeZone)}</p>
               </div>
               <div className="scoreInputs">
                 <div className="field">
-                  <label htmlFor={`${match.id}-home`}>{match.homeTeam}</label>
+                  <label htmlFor={`${match.id}-home`}>{homeTeam}</label>
                   <input id={`${match.id}-home`} name="homeGoals" type="number" min="0" defaultValue={prediction?.homeGoals ?? ""} disabled={closed || savingMatchId === match.id} required />
                 </div>
                 <div className="field">
-                  <label htmlFor={`${match.id}-away`}>{match.awayTeam}</label>
+                  <label htmlFor={`${match.id}-away`}>{awayTeam}</label>
                   <input id={`${match.id}-away`} name="awayGoals" type="number" min="0" defaultValue={prediction?.awayGoals ?? ""} disabled={closed || savingMatchId === match.id} required />
                 </div>
               </div>
