@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { collection, getDocs, limit, query } from "firebase/firestore";
 import { CalendarDays, FileWarning, KeyRound, ListChecks, Search, ShieldCheck, Users } from "lucide-react";
 import { AuthGate } from "@/components/AuthGate";
@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { MetricCard } from "@/components/MetricCard";
 import { PageTitle } from "@/components/PageTitle";
 import { StatusMessage } from "@/components/StatusMessage";
+import { Toast, createToastId, type ToastItem } from "@/components/Toast";
 import { useAuthUser } from "@/components/useAuthUser";
 import { generateWorldCupIcs } from "@/lib/calendar";
 import { db } from "@/lib/firebase/client";
@@ -41,6 +42,9 @@ function PlatformAdminContent() {
   const [activeTab, setActiveTab] = useState<AdminTab>("operation");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const dismissToast = useCallback((id: string) => setToasts((prev) => prev.filter((t) => t.id !== id)), []);
+  function pushToast(item: Omit<ToastItem, "id">) { setToasts((prev) => [...prev, { ...item, id: createToastId() }]); }
   const [busy, setBusy] = useState("");
   const [loading, setLoading] = useState(true);
   const [csvText, setCsvText] = useState("");
@@ -134,6 +138,7 @@ function PlatformAdminContent() {
         winnerTeam: String(form.get("winnerTeam") || "")
       });
       await Promise.all(groups.map((group) => recalculateGroupScores(group.id).catch(() => null)));
+      pushToast({ type: "success", title: "Resultado guardado", body: `${getMatchTitle(match)} — rankings recalculados.` });
       setMessage("Resultado guardado, llaves actualizadas y rankings recalculados.");
       await load();
     } catch (err) {
@@ -167,6 +172,7 @@ function PlatformAdminContent() {
         sourceUrl: "https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/match-schedule-fixtures-results-teams-stadiums",
         matches: csvRows.map((row) => ({ ...row, status: "scheduled" }))
       });
+      pushToast({ type: "success", title: `${result.data.imported} partidos importados`, body: "El calendario está listo para participantes." });
       setMessage(`${result.data.imported} partidos importados.`);
       setCsvRows([]);
       setCsvErrors([]);
@@ -210,6 +216,7 @@ function PlatformAdminContent() {
     setMessage("");
     try {
       const result = await confirmRoundOf32Resolution();
+      pushToast({ type: "success", title: "Ronda de 32 confirmada", body: `${result.data.updated} partidos actualizados.` });
       setMessage(`Ronda de 32 confirmada: ${result.data.updated} partidos actualizados.`);
       await load();
       await onPreviewBracket();
@@ -227,6 +234,7 @@ function PlatformAdminContent() {
     setMessage("");
     try {
       const result = await resolveKnockoutMatches();
+      pushToast({ type: "success", title: "Llaves actualizadas", body: `${result.data.updated} partidos resueltos.` });
       setMessage(`Llaves actualizadas: ${result.data.updated} partidos.`);
       await load();
     } catch (err) {
@@ -354,6 +362,7 @@ function PlatformAdminContent() {
 
   return (
     <main className="container shell stack-lg">
+      <Toast toasts={toasts} onDismiss={dismissToast} />
       <div className="toolbar">
         <PageTitle title="Centro de control" subtitle={`Hola ${profile.displayName || profile.email}. Operación del Mundial 2026, resultados, llaves y auditoría.`} />
         <span className="pill"><ShieldCheck size={15} aria-hidden /> Superadmin</span>

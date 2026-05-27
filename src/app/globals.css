@@ -404,7 +404,9 @@ p { line-height: 1.58; }
 }
 
 .choiceButton.active {
-  outline: 2px solid rgba(185, 131, 34, 0.28);
+  background: rgba(25, 115, 90, 0.09);
+  border-color: var(--grass-500);
+  outline: 2px solid rgba(34, 138, 109, 0.18);
 }
 
 .choiceButton:disabled {
@@ -412,6 +414,50 @@ p { line-height: 1.58; }
   opacity: 0.58;
   transform: none;
 }
+
+/* Elección guardada en partido cerrado — se mantiene visible */
+.matchCard--closed .choiceButton.active {
+  opacity: 1;
+  background: rgba(25, 115, 90, 0.09);
+  border-color: var(--grass-600);
+}
+
+/* Match card estado cerrado */
+.matchCard--closed {
+  opacity: 0.82;
+}
+
+.matchCard--closed::before {
+  background: var(--muted) !important;
+}
+
+.closedBadge {
+  align-items: center;
+  background: rgba(110, 119, 114, 0.1);
+  border: 1px solid rgba(110, 119, 114, 0.22);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 0.82rem;
+  font-weight: 850;
+  gap: 6px;
+  padding: 8px 12px;
+}
+
+.rulesPanel {
+  cursor: default;
+}
+
+.rulesSummary {
+  cursor: pointer;
+  font-weight: 850;
+  list-style: none;
+  user-select: none;
+}
+
+.rulesSummary::-webkit-details-marker { display: none; }
+
+details[open] .rulesSummary { margin-bottom: 8px; }
 
 .resultGrid {
   display: grid;
@@ -493,16 +539,140 @@ th { color: var(--muted); font-size: 0.78rem; letter-spacing: 0.05em; text-trans
   .shell { padding: 24px 0 40px; }
   .hero { min-height: auto; padding: 54px 0 34px; }
   .heroStats { grid-template-columns: 1fr; }
-  .twoCol, .formGrid, .scoreInputs, .choiceGrid, .filterBar, .resultGrid { grid-template-columns: 1fr; }
+  .twoCol, .formGrid, .scoreInputs, .filterBar, .resultGrid { grid-template-columns: 1fr; }
   .panel, .card { padding: 16px; }
   .toolbar { align-items: stretch; flex-direction: column; }
   .button { width: 100%; }
-  .tabs { border-radius: var(--radius-md); width: 100%; }
+  .tabs { border-radius: var(--radius-md); position: relative; width: 100%; }
+  .tabs::after {
+    background: linear-gradient(90deg, transparent, var(--ivory-100));
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    bottom: 0;
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 28px;
+  }
   .tabs a, .tabButton { flex: 0 0 auto; text-align: center; }
   .adminTabs { flex-wrap: nowrap; justify-content: flex-start; }
   th, td { padding: 12px 10px; }
   .stickyPredictButton { display: flex; }
   body { padding-bottom: 78px; }
-  .choiceButton { min-height: 72px; }
+  /* choiceGrid: mantener 3 columnas en móvil pero más compacto */
+  .choiceGrid { grid-template-columns: repeat(3, 1fr); }
+  .choiceButton { min-height: 64px; padding: 10px 8px; }
+  .choiceButton strong { font-size: 0.88rem; }
+  .choiceButton span { font-size: 0.72rem; }
   .teamsTitle { font-size: 1.25rem; }
+  .toastContainer { bottom: 80px; left: 12px; right: 12px; }
+  .toast { max-width: 100%; min-width: 0; }
+}
+
+/* ── Toast ──────────────────────────────────────── */
+@keyframes toastSlideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes toastProgress {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+
+.toastContainer {
+  bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+  position: fixed;
+  right: 24px;
+  z-index: 200;
+}
+
+.toast {
+  align-items: flex-start;
+  animation: toastSlideIn 220ms ease;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  gap: 10px;
+  max-width: 380px;
+  min-width: 300px;
+  overflow: hidden;
+  padding: 14px 14px 18px;
+  pointer-events: all;
+  position: relative;
+}
+
+.toast--success {
+  background: #ecfdf5;
+  border: 1.5px solid #9ee6c7;
+}
+
+.toast--error {
+  background: #fff1f0;
+  border: 1.5px solid #f5b5ae;
+}
+
+.toast--warning {
+  background: #fff8df;
+  border: 1.5px solid #edd384;
+}
+
+.toastIcon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.toast--success .toastIcon { color: var(--success); }
+.toast--error .toastIcon { color: var(--danger); }
+.toast--warning .toastIcon { color: var(--warn); }
+
+.toastContent {
+  display: grid;
+  flex: 1;
+  gap: 3px;
+}
+
+.toastTitle {
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 850;
+  line-height: 1.3;
+}
+
+.toastBody {
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.toastClose {
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 1;
+  min-height: auto;
+  padding: 2px;
+  width: auto;
+}
+
+.toastClose:hover { color: var(--ink); }
+
+.toastProgress {
+  animation: toastProgress 5000ms linear forwards;
+  background: currentColor;
+  bottom: 0;
+  height: 3px;
+  left: 0;
+  opacity: 0.25;
+  position: absolute;
+  right: 0;
+  transform-origin: left;
 }
