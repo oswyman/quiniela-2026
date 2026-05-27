@@ -62,7 +62,7 @@ function DashboardContent() {
       <div className="grid">
         <MetricCard label="Grupos activos" value={loading ? "..." : groups.length} detail="Donde participas o administras" />
         <MetricCard label="Aportaciones base" value={formatMoney(totalPool || 0, "MXN")} detail="Suma administrativa visible para ti" />
-        <MetricCard label="Modo recomendado" value="Después del cierre" detail="Reduce copia estratégica de pronósticos" />
+        <MetricCard label="Cierre por partido" value="90 min antes" detail="Así cierra cada pronóstico — no al kickoff" />
       </div>
       {loading ? <div className="panel">Cargando tus grupos...</div> : null}
       {!loading && groups.length === 0 ? (

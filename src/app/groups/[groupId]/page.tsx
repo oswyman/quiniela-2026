@@ -100,18 +100,19 @@ function GroupContent() {
         <MetricCard label="Participantes activos" value={`${activeMembers.length}/${group.minParticipants}+`} detail="Mínimo para operar el grupo" />
         <MetricCard label="Pagos marcados" value={`${paidMembers.length}/${activeMembers.length}`} detail="Control manual, sin procesar pagos" />
         <MetricCard label="Bolsa estimada" value={formatMoney(pool, group.currency)} detail="La app no custodia dinero" />
-        <MetricCard label="Próximo cierre" value={nextPredictionClose ? shortCountdownToDate(nextPredictionClose) : "Sin partidos"} detail={nextMatch ? `${getMatchTitle(nextMatch)} · 90 min antes` : "Sin fixtures cargados"} />
-        <MetricCard label="Mis pendientes" value={pendingPredictions} detail="Elecciones programadas sin capturar" />
+        <MetricCard label="Próximo cierre" value={nextPredictionClose ? shortCountdownToDate(nextPredictionClose) : "Sin partidos"} detail={nextMatch ? `${getMatchTitle(nextMatch)} — cierra 90 min antes del kickoff` : "Sin fixtures cargados"} />
+        <MetricCard label="Sin pronosticar" value={pendingPredictions} detail="Partidos programados donde aún no tienes elección" />
         <MetricCard label="Mis aciertos" value={myScore?.totalCorrect ?? myScore?.totalPoints ?? 0} detail="Actualizado al recalcular ranking" />
       </div>
       <section className="twoCol">
         <RulesPanel group={group} />
         <aside className="panel stack">
-          <h2>Operación del grupo</h2>
-          <p><strong>Formato:</strong> quiniela por aciertos</p>
-          <p className="muted">En grupos se elige local, empate o visitante. En eliminación directa se elige el equipo que avanza.</p>
-          <p><strong>Pronósticos:</strong> {group.predictionVisibility === "AFTER_CLOSE" ? "Visibles después del cierre" : "Visibles antes del cierre"}</p>
-          <p><strong>Responsable:</strong> {group.moneyResponsibleEmail}</p>
+          <h2>Cómo funciona este grupo</h2>
+          <p><strong>Formato:</strong> 1 acierto por partido atinado — sin marcadores.</p>
+          <p className="muted">Fase de grupos: local gana, empate o visitante gana (a 90 min). Eliminación directa: elige el equipo que avanza.</p>
+          <p><strong>Cierre de pronósticos:</strong> 90 minutos antes del kickoff de cada partido. Pasado ese límite, tu elección queda bloqueada.</p>
+          <p><strong>Visibilidad:</strong> {group.predictionVisibility === "AFTER_CLOSE" ? "los pronósticos de otros son visibles solo después de que el partido cierra." : "los pronósticos de todos son visibles antes del cierre — puede generar ventaja estratégica."}</p>
+          <p><strong>Responsable administrativo:</strong> {group.moneyResponsibleEmail}</p>
         </aside>
       </section>
       <div className="grid">

@@ -124,12 +124,12 @@ function NewGroupForm() {
       ) : null}
       <section className="grid">
         <article className="panel">
-          <h2>Checklist de beta</h2>
-          <p className="muted">Después de crear el grupo, invita participantes, sincroniza partidos y valida que todos entiendan las reglas.</p>
+          <h2>Siguientes pasos</h2>
+          <p className="muted">Después de crear el grupo, invita participantes por correo desde el panel de administración. El registro cierra automáticamente 90 minutos antes del primer partido del Mundial.</p>
         </article>
         <article className="panel">
-          <h2>Sin custodia</h2>
-          <p className="muted">La app solo registra información administrativa. El responsable del dinero se define por grupo.</p>
+          <h2>Sin pagos ni custodia</h2>
+          <p className="muted">La plataforma solo registra información administrativa: aportación acordada, responsable del dinero y estado de pago manual. No procesa ni guarda dinero.</p>
         </article>
       </section>
     </main>

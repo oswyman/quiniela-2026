@@ -52,12 +52,12 @@ function RankingContent() {
       </div>
       <section className="grid">
         <article className="panel stack">
-          <h2>Cómo se leen los aciertos</h2>
-          <p className="muted">Cada partido atinado vale 1 acierto. En grupos cuenta local gana, empate o visitante gana. En eliminación directa cuenta el equipo que avanza.</p>
+          <h2>Cómo se calculan los aciertos</h2>
+          <p className="muted">Cada partido atinado vale 1 acierto. Fase de grupos: cuenta local gana, empate o visitante gana (resultado a 90 min). Eliminación directa: cuenta el equipo que avanza. Los pronósticos fuera de tiempo valen 0.</p>
         </article>
         <article className="panel stack">
-          <h2>Premios estimados</h2>
-          <p className="muted">La Cancha no paga ni custodia dinero. El premio mostrado es una guía administrativa según participantes activos y empates.</p>
+          <h2>Distribución de premios estimados</h2>
+          <p className="muted">2 activos: 1.° 100 %. · 3 activos: 1.° 70 %, 2.° 30 %. · 4 o más: 1.° 60 %, 2.° 30 %, 3.° 10 %. Empates en zona de premio se dividen entre los empatados. La Cancha no procesa ni custodia dinero.</p>
         </article>
       </section>
       <div className="tableWrap panel">
@@ -94,10 +94,10 @@ function RankingContent() {
       </div>
       {prizes.length > 0 ? (
         <section className="panel stack">
-          <h2>Explicación de premios</h2>
-          {prizes.map((prize) => <p key={prize.uid}>{prize.ruleApplied} {prize.tieApplied ? "Se aplicó empate en zona de premio." : ""}</p>)}
+          <h2>Detalle de premios estimados</h2>
+          {prizes.map((prize) => <p key={prize.uid}>{prize.ruleApplied}{prize.tieApplied ? " · Empate en zona de premio: monto dividido entre empatados." : ""}</p>)}
         </section>
-      ) : <section className="panel"><h2>Ranking pendiente</h2><p className="muted">Aún no hay resultados suficientes para calcular premios estimados.</p></section>}
+      ) : <section className="panel"><h2>Premios pendientes</h2><p className="muted">Cuando haya resultados cargados, el administrador puede recalcular aciertos y se mostrarán los premios estimados aquí.</p></section>}
     </main>
   );
 }

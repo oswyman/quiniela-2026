@@ -10,16 +10,17 @@ export default function HomePage() {
           <p className="eyebrow">La Cancha · Beta privada Mundial FIFA 2026</p>
           <h1>La mesa seria para tu quiniela mundialista.</h1>
           <p>
-            Acceso por invitación, registro cerrado 90 minutos antes del primer partido, pronósticos antes del kickoff
-            y rankings entendibles para todos. Sin pagos en línea ni custodia de dinero.
+            Acceso por invitación, registro cerrado 90 minutos antes del primer partido del Mundial,
+            pronósticos que cierran 90 minutos antes de cada kickoff y rankings entendibles para todos.
+            Sin pagos en línea ni custodia de dinero.
           </p>
           <div className="cluster">
             <Link className="button gold" href="/login">Entrar con invitación</Link>
             <Link className="button secondary" href="/login">Iniciar sesión</Link>
           </div>
           <div className="heroStats">
-            <p><strong>90 min</strong> Cierre de registro</p>
-            <p><strong>1</strong> Acierto por partido</p>
+            <p><strong>90 min</strong> Antes del kickoff cierra cada pronóstico</p>
+            <p><strong>1</strong> Acierto por partido atinado</p>
             <p><strong>0</strong> Pagos o wallets</p>
           </div>
         </div>
@@ -40,12 +41,12 @@ export default function HomePage() {
           <article className="panel stack cardInteractive">
             <Lock size={28} aria-hidden />
             <h2>3. Pronóstico por partido</h2>
-            <p className="muted">En grupos eliges local, empate o visitante. Desde ronda de 32 eliges quién avanza. Siempre antes del kickoff.</p>
+            <p className="muted">En grupos eliges local, empate o visitante. Desde ronda de 32 eliges quién avanza. El corte es 90 minutos antes de cada kickoff.</p>
           </article>
           <article className="panel stack cardInteractive">
             <BarChart3 size={28} aria-hidden />
-            <h2>Ranking claro</h2>
-            <p className="muted">El ranking se ordena por aciertos totales. Los empates son reales y los premios sugeridos se dividen si aplica.</p>
+            <h2>Ranking por aciertos</h2>
+            <p className="muted">El ranking se ordena por aciertos totales. Los empates comparten posición y los premios estimados se dividen entre los empatados en zona de premio.</p>
           </article>
           <article className="panel stack cardInteractive">
             <ShieldCheck size={28} aria-hidden />
