@@ -80,7 +80,9 @@ p { line-height: 1.58; }
 }
 
 .stack { display: grid; gap: 16px; }
+.stack > * { min-width: 0; }
 .stack-lg { display: grid; gap: 24px; }
+.stack-lg > * { min-width: 0; }
 .cluster { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; }
 .checkRow { align-items: flex-start; display: flex; gap: 10px; }
 .growField { flex: 1 1 280px; }
@@ -410,9 +412,8 @@ p { line-height: 1.58; }
   color: var(--stadium-900);
   font-size: 1rem;
   line-height: 1.2;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .choiceButton:hover,
@@ -592,8 +593,8 @@ th { color: var(--muted); font-size: var(--text-xs); letter-spacing: 0.05em; tex
   /* choiceGrid: mantener 3 columnas en móvil pero más compacto */
   .choiceGrid { grid-template-columns: repeat(3, 1fr); }
   .choiceButton { min-height: 64px; padding: 10px 8px; }
-  .choiceButton strong { font-size: 0.82rem; }
-  .choiceButton span { font-size: 0.72rem; }
+  .choiceButton strong { font-size: 0.72rem; }
+  .choiceButton span { font-size: 0.66rem; }
   .teamsTitle { font-size: 1.25rem; }
   .toastContainer { bottom: 80px; left: 12px; right: 12px; }
   .toast { max-width: 100%; min-width: 0; }
@@ -787,11 +788,9 @@ details[open] .rulesSummary::after { transform: rotate(180deg); }
   white-space: nowrap;
 }
 
-/* ── Pills en match cards: el deadline puede truncarse */
+/* ── Pill de deadline: sin max-width, que haga wrap natural */
+/* en clusters estrechos pasa a segunda línea sin truncarse */
 .pill--deadline {
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -803,10 +802,16 @@ details[open] .rulesSummary::after { transform: rotate(180deg); }
 }
 
 /* ── metricsGrid: 3 cols en desktop, 1 en móvil ─── */
+/* IMPORTANTE: definición ANTES del @media para que
+   la regla responsive tenga precedencia por orden */
 .metricsGrid {
   display: grid;
   gap: 16px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+/* Override responsive — DESPUÉS de la definición para ganar en cascade */
+@media (max-width: 820px) {
+  .metricsGrid { grid-template-columns: 1fr; }
 }
 
 /* ── Password field con toggle ───────────────────── */
