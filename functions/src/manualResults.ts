@@ -2,6 +2,7 @@ import { getFirestore, FieldValue, Timestamp } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { writeAuditLog } from "./audit";
 import { resolveKnockoutMatchesInFirestore } from "./knockout";
+import { buildRoundOf32Assignments, calculateStandings } from "./standings";
 import { zonedLocalToUtc } from "./timezone";
 
 async function isPlatformAdmin(uid: string) {
@@ -55,6 +56,64 @@ type ManualResultInput = {
   finalAwayGoals?: number | null;
   winnerTeam?: string | null;
 };
+
+export const calculateGroupStandings = onCall(async (request) => {
+  if (!request.auth || !(await isPlatformAdmin(request.auth.uid))) throw new HttpsError("permission-denied", "Solo platform_admin.");
+  const db = getFirestore();
+  const snap = await db.collection("matches").get();
+  const matches = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as FirebaseFirestore.DocumentData & { id: string }));
+  return calculateStandings(matches as never);
+});
+
+export const previewRoundOf32Resolution = onCall(async (request) => {
+  if (!request.auth || !(await isPlatformAdmin(request.auth.uid))) throw new HttpsError("permission-denied", "Solo platform_admin.");
+  const db = getFirestore();
+  const snap = await db.collection("matches").get();
+  const matches = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as FirebaseFirestore.DocumentData & { id: string }));
+  const standings = calculateStandings(matches as never);
+  return {
+    standings,
+    assignments: buildRoundOf32Assignments(matches as never, standings)
+  };
+});
+
+export const confirmRoundOf32Resolution = onCall(async (request) => {
+  if (!request.auth || !(await isPlatformAdmin(request.auth.uid))) throw new HttpsError("permission-denied", "Solo platform_admin.");
+  const db = getFirestore();
+  const snap = await db.collection("matches").get();
+  const matches = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as FirebaseFirestore.DocumentData & { id: string }));
+  const standings = calculateStandings(matches as never);
+  const assignments = buildRoundOf32Assignments(matches as never, standings);
+  const unresolved = assignments.filter((item) => item.needsReview || !item.homeTeam || !item.awayTeam);
+  if (unresolved.length) {
+    throw new HttpsError("failed-precondition", "La propuesta requiere revisión manual antes de confirmarse.", { unresolved, reviewReasons: standings.reviewReasons });
+  }
+  const batch = db.batch();
+  for (const assignment of assignments) {
+    batch.set(db.doc(`matches/${assignment.matchId}`), {
+      resolvedHomeTeam: assignment.homeTeam,
+      resolvedAwayTeam: assignment.awayTeam,
+      isResolved: true,
+      groupStandingsImpact: {
+        confirmedAt: FieldValue.serverTimestamp(),
+        confirmedBy: request.auth.uid,
+        homeSeedLabel: assignment.homeSeedLabel,
+        awaySeedLabel: assignment.awaySeedLabel
+      },
+      updatedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
+  }
+  await batch.commit();
+  const knockout = await resolveKnockoutMatchesInFirestore(db);
+  await writeAuditLog({
+    actorUid: request.auth.uid,
+    action: "confirmRoundOf32Resolution",
+    entityType: "match",
+    entityId: "round-of-32",
+    after: { assignments, knockoutResolved: knockout.updated }
+  });
+  return { updated: assignments.length, knockoutResolved: knockout.updated };
+});
 
 export const resolveKnockoutMatches = onCall(async (request) => {
   if (!request.auth || !(await isPlatformAdmin(request.auth.uid))) throw new HttpsError("permission-denied", "Solo platform_admin.");
@@ -237,18 +296,35 @@ export const upsertManualResult = onCall<ManualResultInput>(async (request) => {
   const ref = db.doc(`matches/${input.matchId}`);
   const before = (await ref.get()).data();
   if (!before) throw new HttpsError("not-found", "Partido no encontrado.");
+  const isKnockout = !before.fifaGroup && Number(before.matchNumber ?? 0) >= 73;
+  const homeGoals90 = nullableNumber(input.homeGoals90);
+  const awayGoals90 = nullableNumber(input.awayGoals90);
+  const homeGoalsExtraTime = nullableNumber(input.homeGoalsExtraTime);
+  const awayGoalsExtraTime = nullableNumber(input.awayGoalsExtraTime);
+  const homePenaltyGoals = nullableNumber(input.homePenaltyGoals);
+  const awayPenaltyGoals = nullableNumber(input.awayPenaltyGoals);
+  const finalHomeGoals = inferFinalGoals(homeGoals90, homeGoalsExtraTime, homePenaltyGoals);
+  const finalAwayGoals = inferFinalGoals(awayGoals90, awayGoalsExtraTime, awayPenaltyGoals);
+  const hasPenaltyWinner = homePenaltyGoals !== null && awayPenaltyGoals !== null && homePenaltyGoals !== awayPenaltyGoals;
+  const nextStatus = input.status ?? "finished";
+  if (isKnockout && nextStatus === "finished" && finalHomeGoals === finalAwayGoals && !input.winnerTeam && !hasPenaltyWinner) {
+    throw new HttpsError("failed-precondition", "En eliminación directa debes capturar penales o ganador oficial si el marcador queda empatado.");
+  }
   const patch = {
-    status: input.status ?? "finished",
-    homeGoals90: nullableNumber(input.homeGoals90),
-    awayGoals90: nullableNumber(input.awayGoals90),
-    homeGoalsExtraTime: nullableNumber(input.homeGoalsExtraTime),
-    awayGoalsExtraTime: nullableNumber(input.awayGoalsExtraTime),
-    homePenaltyGoals: nullableNumber(input.homePenaltyGoals),
-    awayPenaltyGoals: nullableNumber(input.awayPenaltyGoals),
-    finalHomeGoals: nullableNumber(input.finalHomeGoals ?? input.homeGoals90),
-    finalAwayGoals: nullableNumber(input.finalAwayGoals ?? input.awayGoals90),
-    winnerTeam: input.winnerTeam || inferWinnerTeam(before, input),
+    status: nextStatus,
+    homeGoals90,
+    awayGoals90,
+    homeGoalsExtraTime,
+    awayGoalsExtraTime,
+    homePenaltyGoals,
+    awayPenaltyGoals,
+    finalHomeGoals: nullableNumber(input.finalHomeGoals) ?? finalHomeGoals,
+    finalAwayGoals: nullableNumber(input.finalAwayGoals) ?? finalAwayGoals,
+    winnerTeam: input.winnerTeam || inferWinnerTeam(before, { ...input, finalHomeGoals: nullableNumber(input.finalHomeGoals) ?? finalHomeGoals, finalAwayGoals: nullableNumber(input.finalAwayGoals) ?? finalAwayGoals }),
     provider: "manual",
+    resultSource: "manual",
+    resultUpdatedBy: request.auth.uid,
+    resultLockedAt: FieldValue.serverTimestamp(),
     rawProviderStatus: "manual result",
     updatedAt: FieldValue.serverTimestamp(),
     lastSyncedAt: FieldValue.serverTimestamp()
@@ -278,4 +354,10 @@ function inferWinnerTeam(match: FirebaseFirestore.DocumentData, input: ManualRes
   const home = match.resolvedHomeTeam || match.homeTeam;
   const away = match.resolvedAwayTeam || match.awayTeam;
   return homeGoals > awayGoals ? home : away;
+}
+
+function inferFinalGoals(goals90: number | null, goalsExtra: number | null, penalties: number | null) {
+  if (goalsExtra !== null && penalties !== null) return goalsExtra + penalties;
+  if (goalsExtra !== null) return goalsExtra;
+  return goals90;
 }

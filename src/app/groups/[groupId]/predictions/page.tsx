@@ -14,6 +14,7 @@ import { getGroup, listMatches, listPredictions, savePrediction } from "@/lib/fi
 import { getDisplayTeam, getMatchTitle } from "@/lib/matchDisplay";
 import { formatMatchTime, matchTimeLabel, type MatchTimeMode } from "@/lib/matchTime";
 import { isMatchClosed } from "@/lib/scoring";
+import { resultModeLabel } from "@/lib/standings";
 import { getUserTimeZone } from "@/lib/timezone";
 import type { Group, Match, Prediction } from "@/types";
 
@@ -99,9 +100,10 @@ function PredictionsContent() {
   return (
     <main className="container shell stack-lg">
       <div className="toolbar">
-        <PageTitle title="Pronósticos" subtitle="Captura tus marcadores antes del kickoff. El backend valida el cierre con hora confiable." />
+        <PageTitle title="Pronósticos" subtitle={`Captura un marcador simple antes del kickoff. Este grupo evalúa: ${resultModeLabel(group.validResultMode)}.`} />
         <GroupNav groupId={params.groupId} />
       </div>
+      <StatusMessage>En esta versión no se capturan penales por separado en el pronóstico. Tu marcador se compara contra el modo de resultado configurado por el grupo.</StatusMessage>
       {group.predictionVisibility === "BEFORE_CLOSE" ? (
         <StatusMessage>Este modo puede generar ventaja estratégica porque otros participantes podrían copiar pronósticos.</StatusMessage>
       ) : null}

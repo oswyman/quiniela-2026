@@ -14,7 +14,7 @@ import {
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "./client";
-import type { Group, Invite, Match, Member, Prediction, ProviderStatus, Score, TournamentConfig, UserProfile } from "@/types";
+import type { Group, Invite, Match, Member, Prediction, ProviderStatus, RoundOf32Assignment, Score, TeamStanding, TournamentConfig, UserProfile } from "@/types";
 
 export async function getUserProfile(uid: string) {
   const snap = await getDoc(doc(db, "users", uid));
@@ -176,6 +176,21 @@ export async function upsertManualResult(input: Partial<Match> & { matchId: stri
 
 export async function resolveKnockoutMatches() {
   const callable = httpsCallable<Record<string, never>, { updated: number }>(functions, "resolveKnockoutMatches");
+  return callable({});
+}
+
+export async function calculateGroupStandings() {
+  const callable = httpsCallable<Record<string, never>, { groups: Record<string, TeamStanding[]>; bestThirds: TeamStanding[]; needsReview: boolean; reviewReasons: string[] }>(functions, "calculateGroupStandings");
+  return callable({});
+}
+
+export async function previewRoundOf32Resolution() {
+  const callable = httpsCallable<Record<string, never>, { standings: { groups: Record<string, TeamStanding[]>; bestThirds: TeamStanding[]; needsReview: boolean; reviewReasons: string[] }; assignments: RoundOf32Assignment[] }>(functions, "previewRoundOf32Resolution");
+  return callable({});
+}
+
+export async function confirmRoundOf32Resolution() {
+  const callable = httpsCallable<Record<string, never>, { updated: number; knockoutResolved: number }>(functions, "confirmRoundOf32Resolution");
   return callable({});
 }
 

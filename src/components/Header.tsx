@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, ShieldCheck } from "lucide-react";
+import { LogOut, ShieldCheck, UserRound } from "lucide-react";
 import { useAuthUser } from "./useAuthUser";
 import { logout } from "@/lib/firebase/auth";
 import styles from "./Header.module.css";
 
 export function Header() {
   const { user } = useAuthUser();
+  const displayName = user?.displayName || user?.email || "Usuario";
 
   return (
     <header className={styles.header}>
@@ -22,9 +23,12 @@ export function Header() {
         <Link href="/dashboard">Dashboard</Link>
         <Link href="/groups/new">Crear grupo</Link>
         {user ? (
-          <button className={styles.iconButton} onClick={() => logout()} title="Cerrar sesión" type="button">
-            <LogOut size={18} aria-hidden />
-          </button>
+          <span className={styles.sessionCluster}>
+            <span className={styles.userBadge} title={displayName}><UserRound size={15} aria-hidden /> {displayName}</span>
+            <button className={styles.iconButton} onClick={() => logout()} title="Cerrar sesión" type="button">
+              <LogOut size={18} aria-hidden />
+            </button>
+          </span>
         ) : (
           <Link href="/login">Iniciar sesión</Link>
         )}

@@ -10,7 +10,7 @@ import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
 import { getUserProfile, listMyGroups } from "@/lib/firebase/firestore";
 import { formatMoney } from "@/lib/format";
-import type { Group } from "@/types";
+import type { Group, UserProfile } from "@/types";
 
 export default function DashboardPage() {
   return (
@@ -23,6 +23,7 @@ export default function DashboardPage() {
 function DashboardContent() {
   const { user } = useAuthUser();
   const [groups, setGroups] = useState<Array<Group & { memberRole: string }>>([]);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -30,7 +31,7 @@ function DashboardContent() {
     async function load() {
       if (!user) return;
       try {
-        await getUserProfile(user.uid);
+        setProfile(await getUserProfile(user.uid));
         setGroups(await listMyGroups(user.uid));
       } catch (err) {
         setError(err instanceof Error ? err.message : "No se pudieron cargar tus grupos.");
@@ -46,7 +47,7 @@ function DashboardContent() {
   return (
     <main className="container shell stack-lg">
       <div className="toolbar">
-        <PageTitle title="Dashboard" subtitle="Tus grupos privados, roles y estado operativo de cada quiniela." />
+        <PageTitle title={`Hola, ${profile?.displayName || user?.displayName || user?.email || "participante"}`} subtitle="Tus grupos privados, roles y estado operativo de cada quiniela." />
         <div className="cluster">
           <Link className="button gold" href="/groups/new">Crear grupo</Link>
           <Link className="button secondary" href="/admin">Admin plataforma</Link>

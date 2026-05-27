@@ -9,12 +9,14 @@ import { MetricCard } from "@/components/MetricCard";
 import { PageTitle } from "@/components/PageTitle";
 import { RulesPanel } from "@/components/RulesPanel";
 import { StatusMessage } from "@/components/StatusMessage";
+import { useAuthUser } from "@/components/useAuthUser";
 import { formatMoney, shortCountdown } from "@/lib/format";
-import { getGroup, listMatches, listMembers, listPrizes, listScores } from "@/lib/firebase/firestore";
+import { getGroup, listMatches, listMembers, listPredictions, listPrizes, listScores } from "@/lib/firebase/firestore";
 import { getMatchTitle } from "@/lib/matchDisplay";
 import { formatMatchTime, matchTimeLabel, type MatchTimeMode } from "@/lib/matchTime";
+import { resultModeLabel } from "@/lib/standings";
 import { getUserTimeZone } from "@/lib/timezone";
-import type { Group, Match, Member, Score } from "@/types";
+import type { Group, Match, Member, Prediction, Score } from "@/types";
 
 export default function GroupPage() {
   return (
@@ -25,11 +27,13 @@ export default function GroupPage() {
 }
 
 function GroupContent() {
+  const { user } = useAuthUser();
   const params = useParams<{ groupId: string }>();
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [scores, setScores] = useState<Score[]>([]);
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [prizes, setPrizes] = useState<Array<{ uid: string; estimatedPrize: number; ruleApplied: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -43,18 +47,20 @@ function GroupContent() {
   useEffect(() => {
     async function load() {
       try {
-        const [nextGroup, nextMembers, nextMatches, nextScores, nextPrizes] = await Promise.all([
+        const [nextGroup, nextMembers, nextMatches, nextScores, nextPrizes, nextPredictions] = await Promise.all([
           getGroup(params.groupId),
           listMembers(params.groupId),
           listMatches(),
           listScores(params.groupId),
-          listPrizes(params.groupId)
+          listPrizes(params.groupId),
+          listPredictions(params.groupId)
         ]);
         setGroup(nextGroup);
         setMembers(nextMembers);
         setMatches(nextMatches);
         setScores(nextScores);
         setPrizes(nextPrizes as Array<{ uid: string; estimatedPrize: number; ruleApplied: string }>);
+        setPredictions(nextPredictions);
       } catch (err) {
         setError(err instanceof Error ? err.message : "No se pudo cargar el grupo.");
       } finally {
@@ -67,6 +73,9 @@ function GroupContent() {
   const activeMembers = members.filter((member) => member.status === "active");
   const paidMembers = members.filter((member) => member.paymentStatus === "paid");
   const nextMatch = useMemo(() => matches.find((match) => match.status === "scheduled") ?? matches[0], [matches]);
+  const myPredictions = predictions.filter((prediction) => prediction.uid === user?.uid);
+  const predictionMatchIds = new Set(myPredictions.map((prediction) => prediction.matchId));
+  const pendingPredictions = matches.filter((match) => match.status === "scheduled" && !predictionMatchIds.has(match.id)).length;
 
   if (loading) return <main className="container shell"><div className="panel">Cargando panel del grupo...</div></main>;
   if (error) return <main className="container"><StatusMessage type="error">{error}</StatusMessage></main>;
@@ -77,7 +86,7 @@ function GroupContent() {
   return (
     <main className="container shell stack-lg">
       <div className="toolbar">
-        <PageTitle title={group.name} subtitle={`${formatMoney(group.contributionAmount, group.currency)} por participante · Responsable: ${group.moneyResponsibleName}`} />
+        <PageTitle title={group.name} subtitle={`${formatMoney(group.contributionAmount, group.currency)} por participante · Responsable: ${group.moneyResponsibleName} · Evalúa: ${resultModeLabel(group.validResultMode)}`} />
         <GroupNav groupId={group.id} />
       </div>
       <div className="grid">
@@ -85,12 +94,14 @@ function GroupContent() {
         <MetricCard label="Pagos marcados" value={`${paidMembers.length}/${activeMembers.length}`} detail="Control manual, sin procesar pagos" />
         <MetricCard label="Bolsa estimada" value={formatMoney(pool, group.currency)} detail="La app no custodia dinero" />
         <MetricCard label="Próximo cierre" value={nextMatch ? shortCountdown(nextMatch.kickoffAt) : "Sin partidos"} detail={nextMatch ? getMatchTitle(nextMatch) : "Sin fixtures cargados"} />
+        <MetricCard label="Mis pendientes" value={pendingPredictions} detail="Pronósticos programados sin capturar" />
       </div>
       <section className="twoCol">
         <RulesPanel group={group} />
         <aside className="panel stack">
           <h2>Operación del grupo</h2>
           <p><strong>Resultado válido:</strong> {group.validResultMode}</p>
+          <p className="muted">{resultModeLabel(group.validResultMode)}. En esta versión se pronostica un marcador simple; no se capturan penales por separado.</p>
           <p><strong>Pronósticos:</strong> {group.predictionVisibility === "AFTER_CLOSE" ? "Visibles después del cierre" : "Visibles antes del cierre"}</p>
           <p><strong>Responsable:</strong> {group.moneyResponsibleEmail}</p>
         </aside>

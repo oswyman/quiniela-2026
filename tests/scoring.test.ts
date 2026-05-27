@@ -57,6 +57,25 @@ describe("calculatePredictionScore", () => {
     expect(resolveMatchResult(match, "EXTRA_TIME")).toEqual({ homeGoals: 2, awayGoals: 1 });
   });
 
+  it("resolves final including penalties when configured", () => {
+    const match = {
+      id: "104",
+      phase: "Final",
+      homeTeam: "A",
+      awayTeam: "B",
+      kickoffAt: new Date(),
+      timezone: "UTC",
+      status: "finished" as const,
+      homeGoals90: 1,
+      awayGoals90: 1,
+      homeGoalsExtraTime: 2,
+      awayGoalsExtraTime: 2,
+      homePenaltyGoals: 4,
+      awayPenaltyGoals: 3
+    };
+    expect(resolveMatchResult(match, "FINAL_WITH_PENALTIES")).toEqual({ homeGoals: 6, awayGoals: 5 });
+  });
+
   it("detects prediction lock at kickoff", () => {
     expect(isMatchClosed(new Date("2026-06-11T10:00:00Z"), new Date("2026-06-11T10:00:00Z"))).toBe(true);
     expect(isMatchClosed(new Date("2026-06-11T10:00:00Z"), new Date("2026-06-11T09:59:00Z"))).toBe(false);

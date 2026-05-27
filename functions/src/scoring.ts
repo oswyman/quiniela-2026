@@ -44,6 +44,7 @@ export function resolveMatchResult(match: Record<string, number | null | undefin
   if (mode === "FINAL_WITH_PENALTIES") {
     return firstComplete([
       [match.finalHomeGoals, match.finalAwayGoals],
+      [sumNullable(match.homeGoalsExtraTime, match.homePenaltyGoals), sumNullable(match.awayGoalsExtraTime, match.awayPenaltyGoals)],
       [match.homeGoalsExtraTime, match.awayGoalsExtraTime],
       [match.homeGoals90, match.awayGoals90]
     ]);
@@ -80,6 +81,11 @@ function firstComplete(scores: Array<[number | null | undefined, number | null |
     if (typeof home === "number" && typeof away === "number") return { homeGoals: home, awayGoals: away };
   }
   return { homeGoals: null, awayGoals: null };
+}
+
+function sumNullable(a?: number | null, b?: number | null) {
+  if (typeof a !== "number" || typeof b !== "number") return null;
+  return a + b;
 }
 
 function summary(points: number, scoringReason: string, extra = {}) {

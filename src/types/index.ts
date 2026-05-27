@@ -109,6 +109,10 @@ export type Match = {
   finalHomeGoals?: number | null;
   finalAwayGoals?: number | null;
   winnerTeam?: string | null;
+  groupStandingsImpact?: unknown;
+  resultLockedAt?: unknown;
+  resultUpdatedBy?: string | null;
+  resultSource?: "manual" | "api" | null;
   updatedAt?: unknown;
   lastSyncedAt?: unknown;
   rawProviderStatus?: string | null;
@@ -175,4 +179,29 @@ export type TournamentConfig = {
   firstKickoffAt?: unknown;
   registrationCutoffMinutes: number;
   resultsMode: "manual" | "api-football" | "mock" | "sportmonks";
+};
+
+export type TeamStanding = {
+  group: string;
+  team: string;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifference: number;
+  points: number;
+  position: number;
+  needsReview: boolean;
+};
+
+export type RoundOf32Assignment = {
+  matchId: string;
+  matchNumber: number;
+  homeTeam: string | null;
+  awayTeam: string | null;
+  homeSeedLabel: string;
+  awaySeedLabel: string;
+  needsReview: boolean;
 };

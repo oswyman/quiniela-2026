@@ -69,6 +69,7 @@ p { line-height: 1.58; }
 .checkRow { align-items: flex-start; display: flex; gap: 10px; }
 .growField { flex: 1 1 280px; }
 .toolbar { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; }
+.fullSpan { grid-column: 1 / -1; }
 
 .grid {
   display: grid;
@@ -304,6 +305,10 @@ p { line-height: 1.58; }
   padding: 9px 14px;
 }
 .tabs a:hover { background: rgba(25, 115, 90, 0.08); color: var(--stadium-900); }
+.adminTabs {
+  border-radius: var(--radius-md);
+  width: 100%;
+}
 .tabButton {
   background: transparent;
   border: 0;
@@ -340,6 +345,37 @@ p { line-height: 1.58; }
   grid-template-columns: 1fr 1fr;
 }
 
+.resultGrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+}
+
+.resultCard h3 {
+  font-size: 1.2rem;
+  margin: 10px 0 4px;
+}
+
+.filterBar {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(220px, 1.2fr) repeat(3, minmax(130px, 0.7fr));
+  width: min(100%, 860px);
+}
+
+.searchField label {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.successPill {
+  background: #ecfdf5;
+  border-color: #9ee6c7;
+  color: var(--success);
+}
+
 .rankingRow td:first-child {
   color: var(--stadium-800);
   font-family: var(--font-display), Georgia, serif;
@@ -366,7 +402,7 @@ th { color: var(--muted); font-size: 0.78rem; letter-spacing: 0.05em; text-trans
   .shell { padding: 24px 0 40px; }
   .hero { min-height: auto; padding: 54px 0 34px; }
   .heroStats { grid-template-columns: 1fr; }
-  .twoCol, .formGrid, .scoreInputs { grid-template-columns: 1fr; }
+  .twoCol, .formGrid, .scoreInputs, .filterBar, .resultGrid { grid-template-columns: 1fr; }
   .panel, .card { padding: 16px; }
   .toolbar { align-items: stretch; flex-direction: column; }
   .button { width: 100%; }

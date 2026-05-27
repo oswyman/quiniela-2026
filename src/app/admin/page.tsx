@@ -1,20 +1,24 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { collection, getDocs, limit, query } from "firebase/firestore";
+import { CalendarDays, FileWarning, KeyRound, ListChecks, Search, ShieldCheck, Users } from "lucide-react";
 import { AuthGate } from "@/components/AuthGate";
+import { EmptyState } from "@/components/EmptyState";
 import { MetricCard } from "@/components/MetricCard";
 import { PageTitle } from "@/components/PageTitle";
 import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
 import { generateWorldCupIcs } from "@/lib/calendar";
 import { db } from "@/lib/firebase/client";
-import { bulkUpsertManualMatches, createAdminInvite, getProviderStatus, getTournamentConfig, getUserProfile, listAllGroups, listAllUsers, listMatches, recalculateGroupScores, resolveKnockoutMatches, syncFixturesFromProvider, syncLiveResultsFromProvider, updateTournamentConfig, upsertManualMatch, upsertManualResult } from "@/lib/firebase/firestore";
+import { bulkUpsertManualMatches, confirmRoundOf32Resolution, createAdminInvite, getProviderStatus, getTournamentConfig, getUserProfile, listAllGroups, listAllUsers, listMatches, previewRoundOf32Resolution, recalculateGroupScores, resolveKnockoutMatches, updateTournamentConfig, upsertManualResult } from "@/lib/firebase/firestore";
 import { parseFixtureCsv, type FixtureCsvRow } from "@/lib/fixtureCsv";
 import { formatDate } from "@/lib/format";
 import { getMatchTitle } from "@/lib/matchDisplay";
 import { formatInTimeZone, getUserTimeZone, CDMX_TIMEZONE } from "@/lib/timezone";
-import type { AuditLog, Group, Match, ProviderStatus, TournamentConfig, UserProfile } from "@/types";
+import type { AuditLog, Group, Match, ProviderStatus, RoundOf32Assignment, TeamStanding, TournamentConfig, UserProfile } from "@/types";
+
+type AdminTab = "operation" | "results" | "bracket" | "groups" | "users" | "audit";
 
 export default function PlatformAdminPage() {
   return (
@@ -33,6 +37,7 @@ function PlatformAdminContent() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [providerStatus, setProviderStatus] = useState<ProviderStatus | null>(null);
   const [tournament, setTournament] = useState<TournamentConfig | null>(null);
+  const [activeTab, setActiveTab] = useState<AdminTab>("operation");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
@@ -40,11 +45,27 @@ function PlatformAdminContent() {
   const [csvText, setCsvText] = useState("");
   const [csvRows, setCsvRows] = useState<FixtureCsvRow[]>([]);
   const [csvErrors, setCsvErrors] = useState<string[]>([]);
+  const [showMaintenance, setShowMaintenance] = useState(false);
   const [userTimeZone, setUserTimeZone] = useState(CDMX_TIMEZONE);
+  const [filters, setFilters] = useState({ query: "", phase: "", group: "", status: "" });
+  const [standings, setStandings] = useState<{ groups: Record<string, TeamStanding[]>; bestThirds: TeamStanding[]; needsReview: boolean; reviewReasons: string[] } | null>(null);
+  const [assignments, setAssignments] = useState<RoundOf32Assignment[]>([]);
 
-  useEffect(() => {
-    setUserTimeZone(getUserTimeZone());
-  }, []);
+  const calendarLoaded = matches.length >= 104;
+  const finishedMatches = matches.filter((match) => match.status === "finished").length;
+  const unresolvedKnockouts = matches.filter((match) => Number(match.matchNumber ?? 0) >= 73 && !match.isResolved).length;
+  const filteredMatches = useMemo(() => {
+    const q = filters.query.trim().toLowerCase();
+    return matches.filter((match) => {
+      if (filters.phase && match.phase !== filters.phase) return false;
+      if (filters.group && (match.fifaGroup ?? "") !== filters.group) return false;
+      if (filters.status && match.status !== filters.status) return false;
+      if (!q) return true;
+      return [match.matchNumber, getMatchTitle(match), match.venue, match.city].join(" ").toLowerCase().includes(q);
+    });
+  }, [filters, matches]);
+
+  useEffect(() => setUserTimeZone(getUserTimeZone()), []);
 
   async function load() {
     if (!user) return;
@@ -54,7 +75,7 @@ function PlatformAdminContent() {
       const [nextGroups, nextUsers, logsSnap, nextMatches, nextProvider, nextTournament] = await Promise.all([
         listAllGroups(),
         listAllUsers(),
-        getDocs(query(collection(db, "auditLogs"), limit(50))),
+        getDocs(query(collection(db, "auditLogs"), limit(80))),
         listMatches(),
         getProviderStatus(),
         getTournamentConfig()
@@ -91,53 +112,28 @@ function PlatformAdminContent() {
     }
   }
 
-  async function onUpsertMatch(event: FormEvent<HTMLFormElement>) {
+  async function onResult(event: FormEvent<HTMLFormElement>, match: Match) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    setBusy("match");
-    setError("");
-    setMessage("");
-    try {
-      await upsertManualMatch({
-        matchId: String(form.get("matchId") || ""),
-        matchNumber: Number(form.get("matchNumber") || 0) || undefined,
-        phase: String(form.get("phase") || "Mundial 2026"),
-        fifaGroup: String(form.get("fifaGroup") || ""),
-        homeTeam: String(form.get("homeTeam") || ""),
-        awayTeam: String(form.get("awayTeam") || ""),
-        kickoffAt: String(form.get("kickoffAt") || ""),
-        localDate: String(form.get("kickoffAt") || "").slice(0, 10),
-        localTime: String(form.get("kickoffAt") || "").slice(11, 16),
-        timezone: String(form.get("timezone") || CDMX_TIMEZONE),
-        venue: String(form.get("venue") || ""),
-        status: "scheduled"
-      });
-      setMessage("Partido manual guardado.");
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo guardar el partido.");
-    } finally {
-      setBusy("");
-    }
-  }
-
-  async function onResult(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    setBusy("result");
+    const confirmed = window.confirm(`Vas a guardar resultado oficial para ${getMatchTitle(match)} y recalcular rankings. ¿Continuar?`);
+    if (!confirmed) return;
+    setBusy(`result-${match.id}`);
     setError("");
     setMessage("");
     try {
       await upsertManualResult({
-        matchId: String(form.get("matchId") || ""),
-        status: "finished",
-        homeGoals90: Number(form.get("homeGoals90")),
-        awayGoals90: Number(form.get("awayGoals90")),
-        finalHomeGoals: Number(form.get("finalHomeGoals") || form.get("homeGoals90")),
-        finalAwayGoals: Number(form.get("finalAwayGoals") || form.get("awayGoals90")),
+        matchId: match.id,
+        status: String(form.get("status") || "finished") as Match["status"],
+        homeGoals90: optionalNumber(form.get("homeGoals90")),
+        awayGoals90: optionalNumber(form.get("awayGoals90")),
+        homeGoalsExtraTime: optionalNumber(form.get("homeGoalsExtraTime")),
+        awayGoalsExtraTime: optionalNumber(form.get("awayGoalsExtraTime")),
+        homePenaltyGoals: optionalNumber(form.get("homePenaltyGoals")),
+        awayPenaltyGoals: optionalNumber(form.get("awayPenaltyGoals")),
         winnerTeam: String(form.get("winnerTeam") || "")
       });
-      setMessage("Resultado manual guardado.");
+      await Promise.all(groups.map((group) => recalculateGroupScores(group.id).catch(() => null)));
+      setMessage("Resultado guardado, llaves actualizadas y rankings recalculados.");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar el resultado.");
@@ -159,8 +155,8 @@ function PlatformAdminContent() {
 
   async function onImportCsv() {
     if (!csvRows.length) return;
-    const confirmed = window.confirm(`Vas a importar o actualizar ${csvRows.length} partidos. ¿Continuar?`);
-    if (!confirmed) return;
+    const warning = calendarLoaded ? "Esto reemplazará/actualizará el calendario ya cargado. Es una acción de mantenimiento." : `Vas a importar o actualizar ${csvRows.length} partidos.`;
+    if (!window.confirm(`${warning} ¿Continuar?`)) return;
     setBusy("bulkMatches");
     setError("");
     setMessage("");
@@ -168,34 +164,12 @@ function PlatformAdminContent() {
       const result = await bulkUpsertManualMatches({
         sourceName: "FIFA schedule manual",
         sourceUrl: "https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/match-schedule-fixtures-results-teams-stadiums",
-        matches: csvRows.map((row) => ({
-          matchId: row.matchId,
-          matchNumber: row.matchNumber,
-          phase: row.phase,
-          fifaGroup: row.fifaGroup,
-          homeTeam: row.homeTeam,
-          awayTeam: row.awayTeam,
-          localDate: row.localDate,
-          localTime: row.localTime,
-          timezone: row.timezone,
-          venue: row.venue,
-          city: row.city,
-          country: row.country,
-          sourceUrl: row.sourceUrl,
-          referenceUrl: row.referenceUrl,
-          notes: row.notes,
-          homeSeedLabel: row.homeSeedLabel,
-          awaySeedLabel: row.awaySeedLabel,
-          homeSourceMatchNumber: row.homeSourceMatchNumber,
-          awaySourceMatchNumber: row.awaySourceMatchNumber,
-          homeSourceOutcome: row.homeSourceOutcome,
-          awaySourceOutcome: row.awaySourceOutcome,
-          status: "scheduled"
-        }))
+        matches: csvRows.map((row) => ({ ...row, status: "scheduled" }))
       });
       setMessage(`${result.data.imported} partidos importados.`);
       setCsvRows([]);
       setCsvErrors([]);
+      setShowMaintenance(false);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo importar el CSV.");
@@ -212,9 +186,41 @@ function PlatformAdminContent() {
     setCsvErrors([]);
   }
 
+  async function onPreviewBracket() {
+    setBusy("previewBracket");
+    setError("");
+    setMessage("");
+    try {
+      const result = await previewRoundOf32Resolution();
+      setStandings(result.data.standings);
+      setAssignments(result.data.assignments);
+      setMessage(result.data.standings.needsReview ? "Propuesta generada con criterios que requieren revisión FIFA adicional." : "Propuesta de ronda de 32 generada.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo generar la propuesta de llaves.");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function onConfirmRoundOf32() {
+    if (!window.confirm("Confirmar escribirá equipos en partidos 73-88 y quedará auditado. ¿Continuar?")) return;
+    setBusy("confirmRound32");
+    setError("");
+    setMessage("");
+    try {
+      const result = await confirmRoundOf32Resolution();
+      setMessage(`Ronda de 32 confirmada: ${result.data.updated} partidos actualizados.`);
+      await load();
+      await onPreviewBracket();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo confirmar la ronda de 32.");
+    } finally {
+      setBusy("");
+    }
+  }
+
   async function onResolveKnockout() {
-    const confirmed = window.confirm("Esto actualizará equipos de eliminación directa usando los resultados cargados. ¿Continuar?");
-    if (!confirmed) return;
+    if (!window.confirm("Esto actualizará equipos de eliminación directa usando resultados cargados. ¿Continuar?")) return;
     setBusy("resolveKnockout");
     setError("");
     setMessage("");
@@ -246,21 +252,6 @@ function PlatformAdminContent() {
     setMessage("Calendario .ics generado. Puedes importarlo en Google Calendar.");
   }
 
-  async function runProviderSync(type: "fixtures" | "live") {
-    setBusy(type);
-    setError("");
-    setMessage("");
-    try {
-      const result = type === "fixtures" ? await syncFixturesFromProvider() : await syncLiveResultsFromProvider();
-      setMessage(`Sync completado: ${result.data.updated} registros.`);
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo sincronizar.");
-    } finally {
-      setBusy("");
-    }
-  }
-
   async function onTournamentConfig(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -283,6 +274,7 @@ function PlatformAdminContent() {
   }
 
   async function recalculate(groupId: string) {
+    if (!window.confirm("Esto recalculará scores y premios del grupo. ¿Continuar?")) return;
     setBusy(groupId);
     try {
       await recalculateGroupScores(groupId);
@@ -294,164 +286,301 @@ function PlatformAdminContent() {
     }
   }
 
-  if (loading) return <main className="container shell"><div className="panel">Cargando admin...</div></main>;
-  if (profile?.roleGlobal !== "platform_admin") return <main className="container shell"><div className="error">Solo platform_admin puede ver esta pantalla.</div></main>;
+  if (loading) return <main className="container shell"><div className="panel">Verificando sesión y permisos...</div></main>;
+  if (profile?.roleGlobal !== "platform_admin") return <main className="container shell"><div className="error">Acceso denegado. Esta pantalla es solo para platform_admin.</div></main>;
 
   return (
     <main className="container shell stack-lg">
-      <PageTitle title="Superadmin comercial" subtitle="Opera admins, grupos, resultados manuales y sincronización opcional de proveedor." />
+      <div className="toolbar">
+        <PageTitle title="Centro de control" subtitle={`Hola ${profile.displayName || profile.email}. Operación del Mundial 2026, resultados, llaves y auditoría.`} />
+        <span className="pill"><ShieldCheck size={15} aria-hidden /> Superadmin</span>
+      </div>
       {message ? <StatusMessage type="success">{message}</StatusMessage> : null}
       {error ? <StatusMessage type="error">{error}</StatusMessage> : null}
+
       <div className="grid">
-        <MetricCard label="Grupos" value={groups.length} detail="Activos, cerrados o cancelados" />
-        <MetricCard label="Usuarios" value={users.length} detail="Incluye admins invitados" />
-        <MetricCard label="Resultados" value={providerStatus?.provider ?? tournament?.resultsMode ?? "manual"} detail={providerStatus?.message ?? "Modo manual recomendado"} />
-        <MetricCard label="Primer kickoff" value={formatDate(tournament?.firstKickoffAt ?? groups[0]?.firstTournamentKickoffAt)} detail="Registro cierra 90 min antes" />
+        <MetricCard label="Calendario" value={calendarLoaded ? "Cargado" : `${matches.length}/104`} detail={calendarLoaded ? "Carga CSV oculta en mantenimiento" : "Importa fixtures para operar"} />
+        <MetricCard label="Resultados" value={`${finishedMatches}/${matches.length || 104}`} detail="Partidos con marcador oficial" />
+        <MetricCard label="Llaves pendientes" value={unresolvedKnockouts} detail="Equipos por resolver en eliminación directa" />
+        <MetricCard label="Modo" value={providerStatus?.provider ?? tournament?.resultsMode ?? "manual"} detail={providerStatus?.message ?? "Manual recomendado"} />
       </div>
 
-      <section className="panel stack">
-        <h2>Invitar administrador de grupo</h2>
-        <form className="formGrid" onSubmit={onCreateAdminInvite}>
-          <div className="field"><label htmlFor="displayName">Nombre</label><input id="displayName" name="displayName" required /></div>
-          <div className="field"><label htmlFor="email">Email</label><input id="email" name="email" type="email" required /></div>
-          <button className="button" disabled={busy === "adminInvite"} type="submit">Crear invitación admin</button>
-        </form>
-      </section>
+      <div className="tabs adminTabs" aria-label="Secciones de superadmin">
+        {ADMIN_TABS.map((tab) => (
+          <button className={activeTab === tab.id ? "tabButton active" : "tabButton"} key={tab.id} onClick={() => setActiveTab(tab.id)} type="button">
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-      <section className="panel stack">
-        <h2>Configuración del torneo</h2>
-        <p className="muted">Define el primer kickoff oficial y el modo de resultados. Esta fecha calcula el cierre de registro: 90 minutos antes del primer partido.</p>
-        <form className="formGrid" onSubmit={onTournamentConfig}>
-          <div className="field">
-            <label htmlFor="firstKickoffAt">Primer kickoff</label>
-            <input id="firstKickoffAt" name="firstKickoffAt" type="datetime-local" defaultValue={toDateTimeLocal(tournament?.firstKickoffAt)} required />
-          </div>
-          <div className="field">
-            <label htmlFor="registrationCutoffMinutes">Cierre de registro (min)</label>
-            <input id="registrationCutoffMinutes" name="registrationCutoffMinutes" type="number" min="1" defaultValue={tournament?.registrationCutoffMinutes ?? 90} required />
-          </div>
-          <div className="field">
-            <label htmlFor="resultsMode">Modo de resultados</label>
-            <select id="resultsMode" name="resultsMode" defaultValue={tournament?.resultsMode ?? "manual"}>
-              <option value="manual">Manual oficial</option>
-              <option value="api-football">API-Football opcional</option>
-              <option value="mock">Mock pruebas</option>
-              <option value="sportmonks">Sportmonks legado</option>
-            </select>
-          </div>
-          <button className="button" disabled={busy === "tournament"} type="submit">Guardar configuración</button>
-        </form>
-      </section>
+      {activeTab === "operation" ? (
+        <section className="grid">
+          <article className="panel stack">
+            <CalendarDays size={26} aria-hidden />
+            <h2>Estado operativo</h2>
+            <p className="muted">{calendarLoaded ? "El calendario base ya está cargado. La operación diaria debe enfocarse en resultados y llaves." : "Aún falta cargar el calendario completo para que participantes puedan pronosticar."}</p>
+            <div className="cluster">
+              <button className="button secondary" onClick={onDownloadCalendar} type="button">Descargar .ics</button>
+              <button className="button secondary" onClick={() => setShowMaintenance((value) => !value)} type="button">{calendarLoaded ? "Mantenimiento de calendario" : "Cargar calendario"}</button>
+            </div>
+          </article>
+          <article className="panel stack">
+            <ListChecks size={26} aria-hidden />
+            <h2>Próximas acciones</h2>
+            <p>1. Captura resultados con 90, extra y penales cuando aplique.</p>
+            <p>2. Genera propuesta de ronda de 32 al terminar grupos.</p>
+            <p>3. Confirma llaves y recalcula rankings.</p>
+          </article>
+          <TournamentConfigForm tournament={tournament} busy={busy} onSubmit={onTournamentConfig} />
+          {showMaintenance || !calendarLoaded ? <CalendarMaintenance csvText={csvText} setCsvText={setCsvText} onPreviewCsv={onPreviewCsv} onCsvFile={onCsvFile} onImportCsv={onImportCsv} csvRows={csvRows} csvErrors={csvErrors} busy={busy} userTimeZone={userTimeZone} calendarLoaded={calendarLoaded} /> : null}
+        </section>
+      ) : null}
 
-      <section className="panel stack">
-        <h2>Resultados manuales</h2>
-        <p className="muted">Modo oficial recomendado para beta. API-Football puede usarse solo como apoyo si hay cuota/token suficiente.</p>
-        <form className="stack" onSubmit={onPreviewCsv}>
-          <div className="field">
-            <label htmlFor="fixturesFile">Subir CSV de partidos</label>
-            <input id="fixturesFile" accept=".csv,text/csv" type="file" onChange={onCsvFile} />
+      {activeTab === "results" ? (
+        <section className="panel stack">
+          <div className="toolbar">
+            <div>
+              <h2>Capturar resultados</h2>
+              <p className="muted">Guarda marcador a 90 minutos, después de tiempos extra y penales cuando aplique. La app calcula ganador y recalcula rankings.</p>
+            </div>
+            <MatchFilters matches={matches} filters={filters} setFilters={setFilters} />
           </div>
-          <div className="field">
-            <label htmlFor="fixturesCsv">O pegar CSV</label>
-            <textarea id="fixturesCsv" value={csvText} onChange={(event) => setCsvText(event.target.value)} rows={7} placeholder="numero_partido,fase,grupo,equipo_1,equipo_2,estadio,ciudad_sede,zona_horaria_sede,fecha_sede,hora_sede..." />
+          <div className="resultGrid">
+            {filteredMatches.map((match) => <ResultCard key={match.id} match={match} busy={busy} onResult={onResult} />)}
           </div>
-          <div className="cluster">
-            <button className="button secondary" type="submit">Previsualizar CSV</button>
-            <button className="button" disabled={!csvRows.length || busy === "bulkMatches"} onClick={onImportCsv} type="button">
-              {busy === "bulkMatches" ? "Importando..." : "Confirmar importación"}
-            </button>
+        </section>
+      ) : null}
+
+      {activeTab === "bracket" ? (
+        <section className="panel stack">
+          <div className="toolbar">
+            <div>
+              <h2>Llaves y clasificados</h2>
+              <p className="muted">La app propone top 2 por grupo y ocho mejores terceros. Si hay empates no resolubles por puntos, diferencia y goles, pedirá revisión FIFA adicional.</p>
+            </div>
+            <div className="cluster">
+              <button className="button secondary" disabled={busy === "previewBracket"} onClick={onPreviewBracket} type="button">Generar propuesta</button>
+              <button className="button" disabled={!assignments.length || busy === "confirmRound32" || Boolean(standings?.needsReview)} onClick={onConfirmRoundOf32} type="button">Confirmar ronda de 32</button>
+              <button className="button secondary" disabled={busy === "resolveKnockout"} onClick={onResolveKnockout} type="button">Resolver 89-104</button>
+            </div>
           </div>
-        </form>
-        {csvErrors.length ? (
-          <div className="error">
-            {csvErrors.slice(0, 8).map((item) => <p key={item}>{item}</p>)}
-            {csvErrors.length > 8 ? <p>Y {csvErrors.length - 8} errores más.</p> : null}
+          {standings ? <StandingsPanel standings={standings} /> : <EmptyState title="Sin propuesta generada" body="Genera una propuesta cuando terminen los partidos de fase de grupos." />}
+          {assignments.length ? <AssignmentsTable assignments={assignments} /> : null}
+        </section>
+      ) : null}
+
+      {activeTab === "groups" ? (
+        <section className="panel tableWrap">
+          <h2>Grupos comerciales</h2>
+          <table>
+            <thead><tr><th>Grupo</th><th>Estado</th><th>Cierre registro</th><th>Aportación</th><th>Acciones</th></tr></thead>
+            <tbody>
+              {groups.map((group) => (
+                <tr key={group.id}>
+                  <td>{group.name}</td>
+                  <td>{group.status}</td>
+                  <td>{formatDate(group.registrationDeadlineAt)}</td>
+                  <td>{group.currency} {group.contributionAmount}</td>
+                  <td><button className="button secondary" disabled={busy === group.id} onClick={() => recalculate(group.id)} type="button">Recalcular</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      ) : null}
+
+      {activeTab === "users" ? (
+        <section className="grid">
+          <article className="panel stack">
+            <Users size={26} aria-hidden />
+            <h2>Invitar administrador de grupo</h2>
+            <form className="formGrid" onSubmit={onCreateAdminInvite}>
+              <div className="field"><label htmlFor="displayName">Nombre</label><input id="displayName" name="displayName" required /></div>
+              <div className="field"><label htmlFor="email">Email</label><input id="email" name="email" type="email" required /></div>
+              <button className="button" disabled={busy === "adminInvite"} type="submit">Crear invitación admin</button>
+            </form>
+          </article>
+          <article className="panel stack">
+            <h2>Usuarios</h2>
+            {users.map((item) => <p key={item.uid}>{item.displayName || item.email} · <span className="muted">{item.roleGlobal}</span></p>)}
+          </article>
+        </section>
+      ) : null}
+
+      {activeTab === "audit" ? (
+        <section className="panel stack">
+          <div className="toolbar">
+            <h2>Auditoría</h2>
+            <span className="pill"><FileWarning size={14} aria-hidden /> Últimos {logs.length}</span>
           </div>
-        ) : null}
-        {csvRows.length ? (
           <div className="tableWrap">
             <table>
-              <thead><tr><th>#</th><th>Partido</th><th>Sede</th><th>Hora sede</th><th>Hora CDMX</th><th>Tu hora</th></tr></thead>
+              <thead><tr><th>Acción</th><th>Entidad</th><th>Actor</th><th>Fecha</th></tr></thead>
               <tbody>
-                {csvRows.slice(0, 12).map((row) => (
-                  <tr key={row.matchNumber}>
-                    <td>{row.matchNumber}</td>
-                    <td>{row.homeTeam} vs {row.awayTeam}</td>
-                    <td>{row.venue}</td>
-                    <td>{formatInTimeZone(row.kickoffAtIso, row.timezone)}</td>
-                    <td>{formatInTimeZone(row.kickoffAtIso, CDMX_TIMEZONE)}</td>
-                    <td>{formatInTimeZone(row.kickoffAtIso, userTimeZone)}</td>
-                  </tr>
-                ))}
+                {logs.map((log) => <tr key={log.id}><td>{log.action}</td><td>{log.entityType} · {log.entityId}</td><td>{log.actorUid}</td><td>{formatDate(log.createdAt)}</td></tr>)}
               </tbody>
             </table>
-            {csvRows.length > 12 ? <p className="muted">Mostrando 12 de {csvRows.length} partidos.</p> : null}
           </div>
-        ) : null}
-        <form className="formGrid" onSubmit={onUpsertMatch}>
-          <div className="field"><label htmlFor="matchId">ID opcional</label><input id="matchId" name="matchId" /></div>
-          <div className="field"><label htmlFor="matchNumber">Número</label><input id="matchNumber" name="matchNumber" type="number" /></div>
-          <div className="field"><label htmlFor="phase">Fase</label><input id="phase" name="phase" defaultValue="Fase de grupos" required /></div>
-          <div className="field"><label htmlFor="fifaGroup">Grupo FIFA</label><input id="fifaGroup" name="fifaGroup" /></div>
-          <div className="field"><label htmlFor="homeTeam">Local</label><input id="homeTeam" name="homeTeam" required /></div>
-          <div className="field"><label htmlFor="awayTeam">Visitante</label><input id="awayTeam" name="awayTeam" required /></div>
-          <div className="field"><label htmlFor="kickoffAt">Kickoff</label><input id="kickoffAt" name="kickoffAt" type="datetime-local" required /></div>
-          <div className="field"><label htmlFor="timezone">Zona horaria</label><input id="timezone" name="timezone" defaultValue={CDMX_TIMEZONE} required /></div>
-          <div className="field"><label htmlFor="venue">Sede</label><input id="venue" name="venue" /></div>
-          <button className="button" disabled={busy === "match"} type="submit">Guardar partido</button>
-        </form>
-        <form className="formGrid" onSubmit={onResult}>
-          <div className="field">
-            <label htmlFor="resultMatch">Partido</label>
-            <select id="resultMatch" name="matchId" required>
-              <option value="">Selecciona partido</option>
-              {matches.map((match) => <option key={match.id} value={match.id}>{getMatchTitle(match)}</option>)}
-            </select>
-          </div>
-          <div className="field"><label htmlFor="homeGoals90">Local 90</label><input id="homeGoals90" name="homeGoals90" type="number" min="0" required /></div>
-          <div className="field"><label htmlFor="awayGoals90">Visitante 90</label><input id="awayGoals90" name="awayGoals90" type="number" min="0" required /></div>
-          <div className="field"><label htmlFor="finalHomeGoals">Local final</label><input id="finalHomeGoals" name="finalHomeGoals" type="number" min="0" /></div>
-          <div className="field"><label htmlFor="finalAwayGoals">Visitante final</label><input id="finalAwayGoals" name="finalAwayGoals" type="number" min="0" /></div>
-          <div className="field"><label htmlFor="winnerTeam">Ganador</label><input id="winnerTeam" name="winnerTeam" /></div>
-          <button className="button" disabled={busy === "result"} type="submit">Guardar resultado</button>
-        </form>
-        <div className="cluster">
-          <button className="button secondary" disabled={busy === "resolveKnockout"} onClick={onResolveKnockout} type="button">Resolver llaves eliminatorias</button>
-          <button className="button secondary" onClick={onDownloadCalendar} type="button">Descargar calendario .ics</button>
-          <button className="button secondary" disabled={busy === "fixtures"} onClick={() => runProviderSync("fixtures")} type="button">Sync fixtures opcional</button>
-          <button className="button secondary" disabled={busy === "live"} onClick={() => runProviderSync("live")} type="button">Sync resultados opcional</button>
-        </div>
-      </section>
-
-      <section className="panel tableWrap">
-        <h2>Grupos</h2>
-        <table>
-          <thead><tr><th>Grupo</th><th>Estado</th><th>Cierre registro</th><th>Acciones</th></tr></thead>
-          <tbody>
-            {groups.map((group) => (
-              <tr key={group.id}>
-                <td>{group.name}</td>
-                <td>{group.status}</td>
-                <td>{formatDate(group.registrationDeadlineAt)}</td>
-                <td><button className="button secondary" disabled={busy === group.id} onClick={() => recalculate(group.id)} type="button">Recalcular</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-
-      <section className="grid">
-        <article className="panel">
-          <h2>Usuarios</h2>
-          {users.map((item) => <p key={item.uid}>{item.email} · {item.roleGlobal}</p>)}
-        </article>
-        <article className="panel">
-          <h2>Auditoría</h2>
-          {logs.map((log) => <p key={log.id}>{log.action} · {log.entityType}</p>)}
-        </article>
-      </section>
+        </section>
+      ) : null}
     </main>
   );
+}
+
+const ADMIN_TABS: Array<{ id: AdminTab; label: string }> = [
+  { id: "operation", label: "Operación" },
+  { id: "results", label: "Resultados" },
+  { id: "bracket", label: "Llaves" },
+  { id: "groups", label: "Grupos" },
+  { id: "users", label: "Usuarios/Admins" },
+  { id: "audit", label: "Auditoría" }
+];
+
+function CalendarMaintenance(props: {
+  csvText: string;
+  setCsvText: (value: string) => void;
+  onPreviewCsv: (event: FormEvent<HTMLFormElement>) => void;
+  onCsvFile: (event: ChangeEvent<HTMLInputElement>) => void;
+  onImportCsv: () => void;
+  csvRows: FixtureCsvRow[];
+  csvErrors: string[];
+  busy: string;
+  userTimeZone: string;
+  calendarLoaded: boolean;
+}) {
+  return (
+    <article className="panel stack fullSpan">
+      <h2>{props.calendarLoaded ? "Mantenimiento de calendario" : "Carga masiva de partidos"}</h2>
+      {props.calendarLoaded ? <StatusMessage>El calendario ya está cargado. Reimporta solo si FIFA actualiza horarios o detectas un error en la fuente.</StatusMessage> : null}
+      <form className="stack" onSubmit={props.onPreviewCsv}>
+        <div className="field">
+          <label htmlFor="fixturesFile">Subir CSV de partidos</label>
+          <input id="fixturesFile" accept=".csv,text/csv" type="file" onChange={props.onCsvFile} />
+        </div>
+        <div className="field">
+          <label htmlFor="fixturesCsv">O pegar CSV</label>
+          <textarea id="fixturesCsv" value={props.csvText} onChange={(event) => props.setCsvText(event.target.value)} rows={7} placeholder="numero_partido,fase,grupo,equipo_1,equipo_2..." />
+        </div>
+        <div className="cluster">
+          <button className="button secondary" type="submit">Previsualizar CSV</button>
+          <button className="button" disabled={!props.csvRows.length || props.busy === "bulkMatches"} onClick={props.onImportCsv} type="button">
+            {props.busy === "bulkMatches" ? "Importando..." : props.calendarLoaded ? "Reimportar calendario" : "Confirmar importación"}
+          </button>
+        </div>
+      </form>
+      {props.csvErrors.length ? <div className="error">{props.csvErrors.slice(0, 8).map((item) => <p key={item}>{item}</p>)}</div> : null}
+      {props.csvRows.length ? (
+        <div className="tableWrap">
+          <table>
+            <thead><tr><th>#</th><th>Partido</th><th>Sede</th><th>Hora sede</th><th>Hora CDMX</th><th>Tu hora</th></tr></thead>
+            <tbody>
+              {props.csvRows.slice(0, 12).map((row) => (
+                <tr key={row.matchNumber}><td>{row.matchNumber}</td><td>{row.homeTeam} vs {row.awayTeam}</td><td>{row.venue}</td><td>{formatInTimeZone(row.kickoffAtIso, row.timezone)}</td><td>{formatInTimeZone(row.kickoffAtIso, CDMX_TIMEZONE)}</td><td>{formatInTimeZone(row.kickoffAtIso, props.userTimeZone)}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+function TournamentConfigForm({ tournament, busy, onSubmit }: { tournament: TournamentConfig | null; busy: string; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
+  return (
+    <article className="panel stack">
+      <KeyRound size={26} aria-hidden />
+      <h2>Configuración del torneo</h2>
+      <form className="formGrid" onSubmit={onSubmit}>
+        <div className="field"><label htmlFor="firstKickoffAt">Primer kickoff</label><input id="firstKickoffAt" name="firstKickoffAt" type="datetime-local" defaultValue={toDateTimeLocal(tournament?.firstKickoffAt)} required /></div>
+        <div className="field"><label htmlFor="registrationCutoffMinutes">Cierre de registro (min)</label><input id="registrationCutoffMinutes" name="registrationCutoffMinutes" type="number" min="1" defaultValue={tournament?.registrationCutoffMinutes ?? 90} required /></div>
+        <div className="field"><label htmlFor="resultsMode">Modo resultados</label><select id="resultsMode" name="resultsMode" defaultValue={tournament?.resultsMode ?? "manual"}><option value="manual">Manual oficial</option><option value="api-football">API-Football opcional</option><option value="mock">Mock pruebas</option><option value="sportmonks">Sportmonks legado</option></select></div>
+        <button className="button" disabled={busy === "tournament"} type="submit">Guardar</button>
+      </form>
+    </article>
+  );
+}
+
+function MatchFilters({ matches, filters, setFilters }: { matches: Match[]; filters: { query: string; phase: string; group: string; status: string }; setFilters: (filters: { query: string; phase: string; group: string; status: string }) => void }) {
+  const phases = unique(matches.map((match) => match.phase));
+  const groups = unique(matches.map((match) => match.fifaGroup ?? "").filter(Boolean));
+  return (
+    <div className="filterBar">
+      <div className="field searchField"><label htmlFor="matchSearch"><Search size={14} aria-hidden /> Buscar</label><input id="matchSearch" value={filters.query} onChange={(event) => setFilters({ ...filters, query: event.target.value })} placeholder="Equipo, sede o #" /></div>
+      <div className="field"><label htmlFor="phaseFilter">Fase</label><select id="phaseFilter" value={filters.phase} onChange={(event) => setFilters({ ...filters, phase: event.target.value })}><option value="">Todas</option>{phases.map((phase) => <option key={phase}>{phase}</option>)}</select></div>
+      <div className="field"><label htmlFor="groupFilter">Grupo</label><select id="groupFilter" value={filters.group} onChange={(event) => setFilters({ ...filters, group: event.target.value })}><option value="">Todos</option>{groups.map((group) => <option key={group}>{group}</option>)}</select></div>
+      <div className="field"><label htmlFor="statusFilter">Estado</label><select id="statusFilter" value={filters.status} onChange={(event) => setFilters({ ...filters, status: event.target.value })}><option value="">Todos</option><option value="scheduled">Pendiente</option><option value="live">En vivo</option><option value="finished">Finalizado</option><option value="cancelled">Cancelado</option></select></div>
+    </div>
+  );
+}
+
+function ResultCard({ match, busy, onResult }: { match: Match; busy: string; onResult: (event: FormEvent<HTMLFormElement>, match: Match) => void }) {
+  const isKnockout = Number(match.matchNumber ?? 0) >= 73;
+  return (
+    <form className="panel stack resultCard" onSubmit={(event) => onResult(event, match)}>
+      <div className="toolbar">
+        <div><span className="pill">#{match.matchNumber ?? "?"} · {match.phase}</span><h3>{getMatchTitle(match)}</h3><p className="muted">{match.venue ?? "Sede por confirmar"} · {match.status}</p></div>
+        {match.status === "finished" ? <span className="pill successPill">Resultado guardado</span> : <span className="pill">Pendiente</span>}
+      </div>
+      <div className="scoreInputs">
+        <div className="field"><label>90 min local</label><input name="homeGoals90" type="number" min="0" defaultValue={match.homeGoals90 ?? ""} required /></div>
+        <div className="field"><label>90 min visitante</label><input name="awayGoals90" type="number" min="0" defaultValue={match.awayGoals90 ?? ""} required /></div>
+        <div className="field"><label>Extra local</label><input name="homeGoalsExtraTime" type="number" min="0" defaultValue={match.homeGoalsExtraTime ?? ""} placeholder="Si aplica" /></div>
+        <div className="field"><label>Extra visitante</label><input name="awayGoalsExtraTime" type="number" min="0" defaultValue={match.awayGoalsExtraTime ?? ""} placeholder="Si aplica" /></div>
+        <div className="field"><label>Penales local</label><input name="homePenaltyGoals" type="number" min="0" defaultValue={match.homePenaltyGoals ?? ""} placeholder="Si aplica" /></div>
+        <div className="field"><label>Penales visitante</label><input name="awayPenaltyGoals" type="number" min="0" defaultValue={match.awayPenaltyGoals ?? ""} placeholder="Si aplica" /></div>
+      </div>
+      <div className="formGrid">
+        <div className="field"><label>Ganador oficial</label><select name="winnerTeam" defaultValue={match.winnerTeam ?? ""}><option value="">Calcular si no hay empate</option><option value={match.resolvedHomeTeam || match.homeTeam}>{match.resolvedHomeTeam || match.homeTeam}</option><option value={match.resolvedAwayTeam || match.awayTeam}>{match.resolvedAwayTeam || match.awayTeam}</option></select></div>
+        <div className="field"><label>Estado</label><select name="status" defaultValue={match.status}><option value="scheduled">Pendiente</option><option value="live">En vivo</option><option value="finished">Finalizado</option><option value="cancelled">Cancelado</option></select></div>
+      </div>
+      {isKnockout ? <p className="fineprint">Eliminación directa: si el marcador queda empatado, captura penales o ganador oficial.</p> : null}
+      <button className="button" disabled={busy === `result-${match.id}`} type="submit">{busy === `result-${match.id}` ? "Guardando..." : "Guardar resultado oficial"}</button>
+    </form>
+  );
+}
+
+function StandingsPanel({ standings }: { standings: { groups: Record<string, TeamStanding[]>; bestThirds: TeamStanding[]; needsReview: boolean; reviewReasons: string[] } }) {
+  return (
+    <div className="stack">
+      {standings.needsReview ? <StatusMessage type="error">{standings.reviewReasons.slice(0, 3).join(" · ")}</StatusMessage> : <StatusMessage type="success">No hay empates críticos en puntos, diferencia y goles anotados.</StatusMessage>}
+      <div className="grid">
+        {Object.entries(standings.groups).map(([group, rows]) => (
+          <article className="card stack" key={group}>
+            <h3>Grupo {group}</h3>
+            {rows.map((row) => <p key={row.team}>{row.position}. {row.team} · {row.points} pts · DG {row.goalDifference} · GF {row.goalsFor}{row.needsReview ? " · revisar" : ""}</p>)}
+          </article>
+        ))}
+      </div>
+      <article className="panel stack">
+        <h3>Ocho mejores terceros propuestos</h3>
+        {standings.bestThirds.map((row) => <p key={`${row.group}-${row.team}`}>{row.position}. {row.team} Grupo {row.group} · {row.points} pts · DG {row.goalDifference} · GF {row.goalsFor}</p>)}
+      </article>
+    </div>
+  );
+}
+
+function AssignmentsTable({ assignments }: { assignments: RoundOf32Assignment[] }) {
+  return (
+    <div className="tableWrap">
+      <table>
+        <thead><tr><th>Partido</th><th>Seed local</th><th>Equipo local</th><th>Seed visitante</th><th>Equipo visitante</th><th>Estado</th></tr></thead>
+        <tbody>
+          {assignments.map((item) => <tr key={item.matchId}><td>#{item.matchNumber}</td><td>{item.homeSeedLabel}</td><td>{item.homeTeam ?? "Pendiente"}</td><td>{item.awaySeedLabel}</td><td>{item.awayTeam ?? "Pendiente"}</td><td>{item.needsReview ? "Revisión" : "Listo"}</td></tr>)}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function optionalNumber(value: FormDataEntryValue | null) {
+  const text = String(value ?? "");
+  if (!text) return null;
+  const next = Number(text);
+  return Number.isFinite(next) ? next : null;
+}
+
+function unique(items: string[]) {
+  return [...new Set(items)].sort((a, b) => a.localeCompare(b));
 }
 
 function toDateTimeLocal(value: unknown) {
