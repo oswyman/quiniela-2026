@@ -1,14 +1,27 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { LogOut, ShieldCheck, UserRound } from "lucide-react";
 import { useAuthUser } from "./useAuthUser";
 import { logout } from "@/lib/firebase/auth";
+import { getUserProfile } from "@/lib/firebase/firestore";
+import { canCreateGroup } from "@/lib/permissions";
+import type { UserProfile } from "@/types";
 import styles from "./Header.module.css";
 
 export function Header() {
   const { user } = useAuthUser();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const displayName = user?.displayName || user?.email || "Usuario";
+
+  useEffect(() => {
+    if (!user) {
+      setProfile(null);
+      return;
+    }
+    getUserProfile(user.uid).then(setProfile).catch(() => setProfile(null));
+  }, [user]);
 
   return (
     <header className={styles.header}>
@@ -21,7 +34,7 @@ export function Header() {
       </Link>
       <nav className={styles.nav}>
         <Link href="/dashboard">Dashboard</Link>
-        <Link href="/groups/new">Crear grupo</Link>
+        {canCreateGroup(profile) ? <Link href="/groups/new">Crear grupo</Link> : null}
         {user ? (
           <span className={styles.sessionCluster}>
             <span className={styles.userBadge} title={displayName}><UserRound size={15} aria-hidden /> {displayName}</span>

@@ -11,10 +11,11 @@ import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
 import { generateWorldCupIcs } from "@/lib/calendar";
 import { db } from "@/lib/firebase/client";
-import { bulkUpsertManualMatches, confirmRoundOf32Resolution, createAdminInvite, getProviderStatus, getTournamentConfig, getUserProfile, listAllGroups, listAllUsers, listMatches, migrateLegacyScorePredictions, previewRoundOf32Resolution, recalculateGroupScores, resolveKnockoutMatches, updateTournamentConfig, upsertManualResult } from "@/lib/firebase/firestore";
+import { bulkUpsertManualMatches, confirmRoundOf32Resolution, createAdminInvite, deleteGroup, getProviderStatus, getTournamentConfig, getUserProfile, listAllGroups, listAllUsers, listMatches, listMembers, listPredictions, listPrizes, listScores, migrateLegacyScorePredictions, previewRoundOf32Resolution, recalculateGroupScores, resolveKnockoutMatches, updateTournamentConfig, upsertManualResult } from "@/lib/firebase/firestore";
 import { parseFixtureCsv, type FixtureCsvRow } from "@/lib/fixtureCsv";
 import { formatDate } from "@/lib/format";
 import { getMatchTitle } from "@/lib/matchDisplay";
+import { generateResultsCsv } from "@/lib/resultsExport";
 import { formatInTimeZone, getUserTimeZone, CDMX_TIMEZONE } from "@/lib/timezone";
 import type { AuditLog, Group, Match, ProviderStatus, RoundOf32Assignment, TeamStanding, TournamentConfig, UserProfile } from "@/types";
 
@@ -301,6 +302,53 @@ function PlatformAdminContent() {
     }
   }
 
+  async function onCancelGroup(group: Group) {
+    if (!window.confirm(`Cancelar "${group.name}" lo ocultará como grupo activo y conservará auditoría. ¿Continuar?`)) return;
+    setBusy(`cancel-${group.id}`);
+    setError("");
+    setMessage("");
+    try {
+      await deleteGroup(group.id);
+      setMessage(`Grupo cancelado: ${group.name}.`);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo cancelar el grupo.");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function onDownloadResultsCsv() {
+    setBusy("resultsCsv");
+    setError("");
+    setMessage("");
+    try {
+      const groupDetails = await Promise.all(groups.map(async (group) => {
+        const [members, predictions, scores, prizes] = await Promise.all([
+          listMembers(group.id),
+          listPredictions(group.id),
+          listScores(group.id),
+          listPrizes(group.id)
+        ]);
+        return { group, members, predictions, scores, prizes: prizes as never };
+      }));
+      const csv = generateResultsCsv(matches, groupDetails);
+      const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "la-cancha-resultados-detalle.csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setMessage("CSV de resultados generado. Puedes abrirlo en Excel, Numbers o Google Sheets.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo generar el CSV.");
+    } finally {
+      setBusy("");
+    }
+  }
+
   if (loading) return <main className="container shell"><div className="panel">Verificando sesión y permisos...</div></main>;
   if (profile?.roleGlobal !== "platform_admin") return <main className="container shell"><div className="error">Acceso denegado. Esta pantalla es solo para platform_admin.</div></main>;
 
@@ -336,13 +384,14 @@ function PlatformAdminContent() {
             <p className="muted">{calendarLoaded ? "El calendario base ya está cargado. La operación diaria debe enfocarse en resultados y llaves." : "Aún falta cargar el calendario completo para que participantes puedan pronosticar."}</p>
             <div className="cluster">
               <button className="button secondary" onClick={onDownloadCalendar} type="button">Descargar .ics</button>
+              <button className="button secondary" disabled={busy === "resultsCsv"} onClick={onDownloadResultsCsv} type="button">{busy === "resultsCsv" ? "Generando..." : "Descargar Excel CSV"}</button>
               <button className="button secondary" onClick={() => setShowMaintenance((value) => !value)} type="button">{calendarLoaded ? "Mantenimiento de calendario" : "Cargar calendario"}</button>
             </div>
           </article>
           <article className="panel stack">
             <ListChecks size={26} aria-hidden />
             <h2>Próximas acciones</h2>
-            <p>1. Captura resultados con 90, extra y penales cuando aplique.</p>
+            <p>1. Captura resultados de grupos solo a 90 minutos.</p>
             <p>2. Genera propuesta de ronda de 32 al terminar grupos.</p>
             <p>3. Confirma llaves y recalcula rankings.</p>
             <button className="button secondary" disabled={busy === "migrateLegacy"} onClick={onMigrateLegacyPredictions} type="button">
@@ -359,13 +408,11 @@ function PlatformAdminContent() {
           <div className="toolbar">
             <div>
               <h2>Capturar resultados</h2>
-              <p className="muted">Guarda marcador a 90 minutos, después de tiempos extra y penales cuando aplique. La app calcula ganador y recalcula rankings.</p>
+              <p className="muted">En fase de grupos solo capturas 90 minutos. En eliminación directa puedes capturar extra, penales y ganador oficial.</p>
             </div>
             <MatchFilters matches={matches} filters={filters} setFilters={setFilters} />
           </div>
-          <div className="resultGrid">
-            {filteredMatches.map((match) => <ResultCard key={match.id} match={match} busy={busy} onResult={onResult} />)}
-          </div>
+          <ResultSections matches={filteredMatches} busy={busy} onResult={onResult} />
         </section>
       ) : null}
 
@@ -399,7 +446,12 @@ function PlatformAdminContent() {
                   <td>{group.status}</td>
                   <td>{formatDate(group.registrationDeadlineAt)}</td>
                   <td>{group.currency} {group.contributionAmount}</td>
-                  <td><button className="button secondary" disabled={busy === group.id} onClick={() => recalculate(group.id)} type="button">Recalcular</button></td>
+                  <td>
+                    <div className="cluster">
+                      <button className="button secondary" disabled={busy === group.id} onClick={() => recalculate(group.id)} type="button">Recalcular</button>
+                      <button className="button danger" disabled={busy === `cancel-${group.id}` || group.status === "cancelled"} onClick={() => onCancelGroup(group)} type="button">Cancelar</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -531,8 +583,35 @@ function MatchFilters({ matches, filters, setFilters }: { matches: Match[]; filt
   );
 }
 
+function ResultSections({ matches, busy, onResult }: { matches: Match[]; busy: string; onResult: (event: FormEvent<HTMLFormElement>, match: Match) => void }) {
+  const groupMatches = matches.filter(isGroupStage);
+  const knockoutMatches = matches.filter((match) => !isGroupStage(match));
+  return (
+    <div className="stack-lg">
+      <section className="stack">
+        <div>
+          <h3>Fase de grupos</h3>
+          <p className="muted">Solo marcador a 90 minutos. No hay tiempos extra ni penales.</p>
+        </div>
+        <div className="resultGrid">
+          {groupMatches.map((match) => <ResultCard key={match.id} match={match} busy={busy} onResult={onResult} />)}
+        </div>
+      </section>
+      <section className="stack">
+        <div>
+          <h3>Eliminación directa</h3>
+          <p className="muted">Captura extra, penales o ganador oficial cuando sea necesario.</p>
+        </div>
+        <div className="resultGrid">
+          {knockoutMatches.map((match) => <ResultCard key={match.id} match={match} busy={busy} onResult={onResult} />)}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function ResultCard({ match, busy, onResult }: { match: Match; busy: string; onResult: (event: FormEvent<HTMLFormElement>, match: Match) => void }) {
-  const isKnockout = Number(match.matchNumber ?? 0) >= 73;
+  const isKnockout = !isGroupStage(match);
   return (
     <form className="panel stack resultCard" onSubmit={(event) => onResult(event, match)}>
       <div className="toolbar">
@@ -542,16 +621,20 @@ function ResultCard({ match, busy, onResult }: { match: Match; busy: string; onR
       <div className="scoreInputs">
         <div className="field"><label>90 min local</label><input name="homeGoals90" type="number" min="0" defaultValue={match.homeGoals90 ?? ""} required /></div>
         <div className="field"><label>90 min visitante</label><input name="awayGoals90" type="number" min="0" defaultValue={match.awayGoals90 ?? ""} required /></div>
-        <div className="field"><label>Extra local</label><input name="homeGoalsExtraTime" type="number" min="0" defaultValue={match.homeGoalsExtraTime ?? ""} placeholder="Si aplica" /></div>
-        <div className="field"><label>Extra visitante</label><input name="awayGoalsExtraTime" type="number" min="0" defaultValue={match.awayGoalsExtraTime ?? ""} placeholder="Si aplica" /></div>
-        <div className="field"><label>Penales local</label><input name="homePenaltyGoals" type="number" min="0" defaultValue={match.homePenaltyGoals ?? ""} placeholder="Si aplica" /></div>
-        <div className="field"><label>Penales visitante</label><input name="awayPenaltyGoals" type="number" min="0" defaultValue={match.awayPenaltyGoals ?? ""} placeholder="Si aplica" /></div>
+        {isKnockout ? (
+          <>
+            <div className="field"><label>Extra local</label><input name="homeGoalsExtraTime" type="number" min="0" defaultValue={match.homeGoalsExtraTime ?? ""} placeholder="Si aplica" /></div>
+            <div className="field"><label>Extra visitante</label><input name="awayGoalsExtraTime" type="number" min="0" defaultValue={match.awayGoalsExtraTime ?? ""} placeholder="Si aplica" /></div>
+            <div className="field"><label>Penales local</label><input name="homePenaltyGoals" type="number" min="0" defaultValue={match.homePenaltyGoals ?? ""} placeholder="Si aplica" /></div>
+            <div className="field"><label>Penales visitante</label><input name="awayPenaltyGoals" type="number" min="0" defaultValue={match.awayPenaltyGoals ?? ""} placeholder="Si aplica" /></div>
+          </>
+        ) : null}
       </div>
-      <div className="formGrid">
-        <div className="field"><label>Ganador oficial</label><select name="winnerTeam" defaultValue={match.winnerTeam ?? ""}><option value="">Calcular si no hay empate</option><option value={match.resolvedHomeTeam || match.homeTeam}>{match.resolvedHomeTeam || match.homeTeam}</option><option value={match.resolvedAwayTeam || match.awayTeam}>{match.resolvedAwayTeam || match.awayTeam}</option></select></div>
+      <div className={isKnockout ? "formGrid" : "formGrid compactResultGrid"}>
+        {isKnockout ? <div className="field"><label>Ganador oficial</label><select name="winnerTeam" defaultValue={match.winnerTeam ?? ""}><option value="">Calcular si no hay empate</option><option value={match.resolvedHomeTeam || match.homeTeam}>{match.resolvedHomeTeam || match.homeTeam}</option><option value={match.resolvedAwayTeam || match.awayTeam}>{match.resolvedAwayTeam || match.awayTeam}</option></select></div> : <input name="winnerTeam" type="hidden" value="" />}
         <div className="field"><label>Estado</label><select name="status" defaultValue={match.status}><option value="scheduled">Pendiente</option><option value="live">En vivo</option><option value="finished">Finalizado</option><option value="cancelled">Cancelado</option></select></div>
       </div>
-      {isKnockout ? <p className="fineprint">Eliminación directa: si el marcador queda empatado, captura penales o ganador oficial.</p> : null}
+      {isKnockout ? <p className="fineprint">Eliminación directa: si el marcador queda empatado, captura penales o ganador oficial.</p> : <p className="fineprint">Grupo: la app calcula local, empate o visitante con el marcador a 90 minutos.</p>}
       <button className="button" disabled={busy === `result-${match.id}`} type="submit">{busy === `result-${match.id}` ? "Guardando..." : "Guardar resultado oficial"}</button>
     </form>
   );
@@ -599,6 +682,10 @@ function optionalNumber(value: FormDataEntryValue | null) {
 
 function unique(items: string[]) {
   return [...new Set(items)].sort((a, b) => a.localeCompare(b));
+}
+
+function isGroupStage(match: Match) {
+  return Boolean(match.fifaGroup) || Number(match.matchNumber ?? 0) <= 72;
 }
 
 function toDateTimeLocal(value: unknown) {

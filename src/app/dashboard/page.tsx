@@ -10,6 +10,7 @@ import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
 import { getUserProfile, listMyGroups } from "@/lib/firebase/firestore";
 import { formatMoney } from "@/lib/format";
+import { canCreateGroup } from "@/lib/permissions";
 import type { Group, UserProfile } from "@/types";
 
 export default function DashboardPage() {
@@ -32,7 +33,8 @@ function DashboardContent() {
       if (!user) return;
       try {
         setProfile(await getUserProfile(user.uid));
-        setGroups(await listMyGroups(user.uid));
+        const nextGroups = await listMyGroups(user.uid);
+        setGroups(nextGroups.filter((group) => group.status !== "cancelled"));
       } catch (err) {
         setError(err instanceof Error ? err.message : "No se pudieron cargar tus grupos.");
       } finally {
@@ -43,14 +45,17 @@ function DashboardContent() {
   }, [user]);
 
   const totalPool = groups.reduce((sum, group) => sum + Number(group.contributionAmount || 0), 0);
+  const canCreate = canCreateGroup(profile);
+  const nextGroup = groups[0];
 
   return (
     <main className="container shell stack-lg">
       <div className="toolbar">
         <PageTitle title={`Hola, ${profile?.displayName || user?.displayName || user?.email || "participante"}`} subtitle="Tus grupos privados, roles y estado operativo de cada quiniela." />
         <div className="cluster">
-          <Link className="button gold" href="/groups/new">Crear grupo</Link>
-          <Link className="button secondary" href="/admin">Admin plataforma</Link>
+          {nextGroup ? <Link className="button gold" href={`/groups/${nextGroup.id}/predictions`}>Pronosticar ahora</Link> : null}
+          {canCreate ? <Link className="button secondary" href="/groups/new">Crear grupo</Link> : null}
+          {profile?.roleGlobal === "platform_admin" ? <Link className="button secondary" href="/admin">Admin plataforma</Link> : null}
         </div>
       </div>
       {error ? <StatusMessage type="error">{error}</StatusMessage> : null}
@@ -61,16 +66,25 @@ function DashboardContent() {
       </div>
       {loading ? <div className="panel">Cargando tus grupos...</div> : null}
       {!loading && groups.length === 0 ? (
-        <EmptyState title="Todavía no hay grupos" body="Si eres administrador invitado, crea tu primer grupo. Si eres participante, abre tu liga de invitación." href="/groups/new" action="Crear grupo" />
+        <EmptyState
+          title="Todavía no hay grupos"
+          body={canCreate ? "Crea tu primer grupo e invita participantes por correo." : "Abre tu liga de invitación con el correo invitado para entrar a una quiniela."}
+          href={canCreate ? "/groups/new" : undefined}
+          action={canCreate ? "Crear grupo" : undefined}
+        />
       ) : null}
       <div className="grid">
         {groups.map((group) => (
-          <Link className="panel stack cardInteractive" href={`/groups/${group.id}`} key={group.id}>
+          <article className="panel stack cardInteractive" key={group.id}>
             <span className="pill">{group.memberRole === "group_admin" ? "Admin" : "Participante"}</span>
             <h2>{group.name}</h2>
             <p className="muted">Estado: {group.status} · Visibilidad: {group.predictionVisibility === "AFTER_CLOSE" ? "Después del cierre" : "Antes del cierre"}</p>
             <p>{formatMoney(group.contributionAmount, group.currency)} por participante</p>
-          </Link>
+            <div className="cluster">
+              <Link className="button gold" href={`/groups/${group.id}/predictions`}>Pronosticar</Link>
+              <Link className="button secondary" href={`/groups/${group.id}`}>Ver grupo</Link>
+            </div>
+          </article>
         ))}
       </div>
     </main>

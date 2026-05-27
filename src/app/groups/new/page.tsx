@@ -10,7 +10,7 @@ import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
 import { createGroup, getUserProfile } from "@/lib/firebase/firestore";
 import { canCreateGroup } from "@/lib/permissions";
-import type { PredictionVisibility, UserProfile, ValidResultMode } from "@/types";
+import type { PredictionVisibility, UserProfile } from "@/types";
 
 export default function NewGroupPage() {
   return (
@@ -30,7 +30,6 @@ function NewGroupForm() {
   const [contributionAmount, setContributionAmount] = useState("0");
   const [moneyResponsibleName, setMoneyResponsibleName] = useState("");
   const [moneyResponsibleEmail, setMoneyResponsibleEmail] = useState("");
-  const [validResultMode, setValidResultMode] = useState<ValidResultMode>("NINETY");
   const [predictionVisibility, setPredictionVisibility] = useState<PredictionVisibility>("AFTER_CLOSE");
   const [accepted, setAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -59,7 +58,7 @@ function NewGroupForm() {
         contributionAmount: Number(contributionAmount),
         moneyResponsibleName,
         moneyResponsibleEmail,
-        validResultMode,
+        validResultMode: "NINETY",
         predictionVisibility,
         legalDisclaimerAccepted: accepted
       });
@@ -102,14 +101,6 @@ function NewGroupForm() {
           <div className="field">
             <label htmlFor="responsibleEmail">Email del responsable</label>
             <input id="responsibleEmail" type="email" value={moneyResponsibleEmail} onChange={(event) => setMoneyResponsibleEmail(event.target.value)} required />
-          </div>
-          <div className="field">
-            <label htmlFor="resultMode">Resultado válido</label>
-            <select id="resultMode" value={validResultMode} onChange={(event) => setValidResultMode(event.target.value as ValidResultMode)}>
-              <option value="NINETY">Marcador a los 90 minutos</option>
-              <option value="EXTRA_TIME">Después de tiempos extra</option>
-              <option value="FINAL_WITH_PENALTIES">Final incluyendo penales</option>
-            </select>
           </div>
           <div className="field">
             <label htmlFor="visibility">Visibilidad de pronósticos</label>

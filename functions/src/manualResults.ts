@@ -299,13 +299,17 @@ export const upsertManualResult = onCall<ManualResultInput>(async (request) => {
   const ref = db.doc(`matches/${input.matchId}`);
   const before = (await ref.get()).data();
   if (!before) throw new HttpsError("not-found", "Partido no encontrado.");
-  const isKnockout = !before.fifaGroup && Number(before.matchNumber ?? 0) >= 73;
+  const isGroupStage = Boolean(before.fifaGroup) || Number(before.matchNumber ?? 0) <= 72;
+  const isKnockout = !isGroupStage;
   const homeGoals90 = nullableNumber(input.homeGoals90);
   const awayGoals90 = nullableNumber(input.awayGoals90);
-  const homeGoalsExtraTime = nullableNumber(input.homeGoalsExtraTime);
-  const awayGoalsExtraTime = nullableNumber(input.awayGoalsExtraTime);
-  const homePenaltyGoals = nullableNumber(input.homePenaltyGoals);
-  const awayPenaltyGoals = nullableNumber(input.awayPenaltyGoals);
+  if (homeGoals90 === null || awayGoals90 === null) {
+    throw new HttpsError("invalid-argument", "Captura marcador a 90 minutos.");
+  }
+  const homeGoalsExtraTime = isGroupStage ? null : nullableNumber(input.homeGoalsExtraTime);
+  const awayGoalsExtraTime = isGroupStage ? null : nullableNumber(input.awayGoalsExtraTime);
+  const homePenaltyGoals = isGroupStage ? null : nullableNumber(input.homePenaltyGoals);
+  const awayPenaltyGoals = isGroupStage ? null : nullableNumber(input.awayPenaltyGoals);
   const finalHomeGoals = inferFinalGoals(homeGoals90, homeGoalsExtraTime, homePenaltyGoals);
   const finalAwayGoals = inferFinalGoals(awayGoals90, awayGoalsExtraTime, awayPenaltyGoals);
   const hasPenaltyWinner = homePenaltyGoals !== null && awayPenaltyGoals !== null && homePenaltyGoals !== awayPenaltyGoals;
@@ -323,7 +327,7 @@ export const upsertManualResult = onCall<ManualResultInput>(async (request) => {
     awayPenaltyGoals,
     finalHomeGoals: nullableNumber(input.finalHomeGoals) ?? finalHomeGoals,
     finalAwayGoals: nullableNumber(input.finalAwayGoals) ?? finalAwayGoals,
-    winnerTeam: input.winnerTeam || inferWinnerTeam(before, { ...input, finalHomeGoals: nullableNumber(input.finalHomeGoals) ?? finalHomeGoals, finalAwayGoals: nullableNumber(input.finalAwayGoals) ?? finalAwayGoals }),
+    winnerTeam: isGroupStage ? inferWinnerTeam(before, { homeGoals90, awayGoals90 }) : input.winnerTeam || inferWinnerTeam(before, { ...input, finalHomeGoals: nullableNumber(input.finalHomeGoals) ?? finalHomeGoals, finalAwayGoals: nullableNumber(input.finalAwayGoals) ?? finalAwayGoals }),
     provider: "manual",
     resultSource: "manual",
     resultUpdatedBy: request.auth.uid,

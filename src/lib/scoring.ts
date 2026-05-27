@@ -1,4 +1,5 @@
 import type { Match, Prediction } from "@/types";
+import { canEditPredictionBeforeKickoff, PREDICTION_CUTOFF_MINUTES, predictionDeadline } from "./deadlines";
 
 export type PredictionPickType = "GROUP_OUTCOME" | "ADVANCING_TEAM";
 export type GroupPick = "HOME" | "DRAW" | "AWAY";
@@ -61,7 +62,11 @@ export function resolveAdvancingTeam(match: Pick<Match, "winnerTeam" | "homeTeam
 }
 
 export function isMatchClosed(kickoffAt: Date, now = new Date()): boolean {
-  return now.getTime() >= kickoffAt.getTime();
+  return !canEditPredictionBeforeKickoff(kickoffAt, now, PREDICTION_CUTOFF_MINUTES);
+}
+
+export function predictionClosesAt(kickoffAt: Date) {
+  return predictionDeadline(kickoffAt, PREDICTION_CUTOFF_MINUTES);
 }
 
 function normalizeTeam(value: string) {

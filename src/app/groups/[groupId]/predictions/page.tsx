@@ -9,11 +9,12 @@ import { GroupNav } from "@/components/GroupNav";
 import { PageTitle } from "@/components/PageTitle";
 import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
-import { shortCountdown, toDate } from "@/lib/format";
+import { shortCountdownToDate, toDate } from "@/lib/format";
 import { getGroup, listMatches, listPredictions, savePrediction } from "@/lib/firebase/firestore";
 import { getDisplayTeam, getMatchTitle } from "@/lib/matchDisplay";
 import { formatMatchTime, matchTimeLabel, type MatchTimeMode } from "@/lib/matchTime";
-import { inferPickType, isMatchClosed, type GroupPick, type PredictionPickType } from "@/lib/scoring";
+import { inferPickType, isMatchClosed, predictionClosesAt, type GroupPick, type PredictionPickType } from "@/lib/scoring";
+import { teamFlagEmoji } from "@/lib/teamFlags";
 import { getUserTimeZone } from "@/lib/timezone";
 import type { Group, Match, Prediction } from "@/types";
 
@@ -74,7 +75,7 @@ function PredictionsContent() {
     setSavingMatchId(match.id);
 
     if (isMatchClosed(toDate(match.kickoffAt))) {
-      setError("Este partido ya cerró. No se puede crear ni editar el pronóstico.");
+      setError("Este pronóstico cerró 90 minutos antes del kickoff.");
       setSavingMatchId("");
       return;
     }
@@ -133,6 +134,7 @@ function PredictionsContent() {
         {visibleMatches.map((match) => {
           const prediction = byMatch.get(match.id);
           const closed = isMatchClosed(toDate(match.kickoffAt));
+          const closesAt = predictionClosesAt(toDate(match.kickoffAt));
           const pickType = inferPickType(match);
           const homeTeam = getDisplayTeam(match, "home");
           const awayTeam = getDisplayTeam(match, "away");
@@ -142,12 +144,12 @@ function PredictionsContent() {
               <div className="cluster">
                 <span className="pill">{match.phase}</span>
                 <span className="pill">{pickType === "GROUP_OUTCOME" ? "Elige resultado" : "Elige clasificado"}</span>
-                <span className="pill">{closed ? "Cerrado" : `Cierra en ${shortCountdown(match.kickoffAt)}`}</span>
+                <span className="pill">{closed ? "Cerrado" : `Cierra en ${shortCountdownToDate(closesAt)}`}</span>
               </div>
               <div>
-                <h2>{homeTeam} vs {awayTeam}</h2>
+                <h2 className="teamsTitle"><span>{teamFlagEmoji(homeTeam)} {homeTeam}</span><span>vs</span><span>{teamFlagEmoji(awayTeam)} {awayTeam}</span></h2>
                 <p className="muted">{formatMatchTime(match, timeMode, userTimeZone)} · {match.venue ?? "Sede por confirmar"}</p>
-                <p className="fineprint">CDMX: {formatMatchTime(match, "cdmx", userTimeZone)} · Tu hora: {formatMatchTime(match, "local", userTimeZone)}</p>
+                <p className="fineprint">Cierre: {formatMatchTime({ ...match, kickoffAt: closesAt }, "cdmx", userTimeZone)} CDMX · Tu hora: {formatMatchTime(match, "local", userTimeZone)}</p>
               </div>
               <div className="choiceGrid" role="group" aria-label={`Elección para ${homeTeam} vs ${awayTeam}`}>
                 {options.map((option) => (
@@ -186,14 +188,14 @@ function isVisibleForParticipants(match: Match) {
 function getPickOptions(match: Match, pickType: PredictionPickType, homeTeam: string, awayTeam: string) {
   if (pickType === "ADVANCING_TEAM") {
     return [
-      { value: match.resolvedHomeTeam || match.homeTeam, label: "Avanza", caption: homeTeam },
-      { value: match.resolvedAwayTeam || match.awayTeam, label: "Avanza", caption: awayTeam }
+      { value: match.resolvedHomeTeam || match.homeTeam, label: "Avanza", caption: `${teamFlagEmoji(homeTeam)} ${homeTeam}` },
+      { value: match.resolvedAwayTeam || match.awayTeam, label: "Avanza", caption: `${teamFlagEmoji(awayTeam)} ${awayTeam}` }
     ];
   }
   return [
-    { value: "HOME" satisfies GroupPick, label: "Gana", caption: homeTeam },
+    { value: "HOME" satisfies GroupPick, label: "Gana", caption: `${teamFlagEmoji(homeTeam)} ${homeTeam}` },
     { value: "DRAW" satisfies GroupPick, label: "Empate", caption: "Igualan en 90 min" },
-    { value: "AWAY" satisfies GroupPick, label: "Gana", caption: awayTeam }
+    { value: "AWAY" satisfies GroupPick, label: "Gana", caption: `${teamFlagEmoji(awayTeam)} ${awayTeam}` }
   ];
 }
 

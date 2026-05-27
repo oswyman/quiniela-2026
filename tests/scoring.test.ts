@@ -80,6 +80,7 @@ describe("calculatePredictionScore", () => {
 
   it("detects prediction lock at kickoff", () => {
     expect(isMatchClosed(new Date("2026-06-11T10:00:00Z"), new Date("2026-06-11T10:00:00Z"))).toBe(true);
-    expect(isMatchClosed(new Date("2026-06-11T10:00:00Z"), new Date("2026-06-11T09:59:00Z"))).toBe(false);
+    expect(isMatchClosed(new Date("2026-06-11T10:00:00Z"), new Date("2026-06-11T08:30:00Z"))).toBe(true);
+    expect(isMatchClosed(new Date("2026-06-11T10:00:00Z"), new Date("2026-06-11T08:29:00Z"))).toBe(false);
   });
 });

@@ -3,6 +3,8 @@ import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { writeAuditLog } from "./audit";
 import { inferPickType, legacyPredictionToPick, PredictionPickType } from "./scoring";
 
+const PREDICTION_CUTOFF_MINUTES = 90;
+
 type SubmitPredictionInput = {
   groupId: string;
   matchId: string;
@@ -45,7 +47,8 @@ export const submitPrediction = onCall<SubmitPredictionInput>(async (request) =>
   }
 
   const kickoffMs = match.kickoffAt?.toMillis?.();
-  const isClosed = typeof kickoffMs === "number" && Date.now() >= kickoffMs;
+  const predictionClosesAt = typeof kickoffMs === "number" ? kickoffMs - PREDICTION_CUTOFF_MINUTES * 60 * 1000 : null;
+  const isClosed = typeof predictionClosesAt === "number" && Date.now() >= predictionClosesAt;
   if (isClosed) {
     await writeAuditLog({
       actorUid: request.auth.uid,
@@ -53,9 +56,9 @@ export const submitPrediction = onCall<SubmitPredictionInput>(async (request) =>
       action: "latePredictionRejected",
       entityType: "prediction",
       entityId: `${request.auth.uid}_${matchId}`,
-      after: { matchId, pickType, pick }
+      after: { matchId, pickType, pick, reason: "predictionCutoff90Min", predictionClosesAt }
     });
-    throw new HttpsError("failed-precondition", "El partido ya cerró.");
+    throw new HttpsError("failed-precondition", "El pronóstico cerró 90 minutos antes del kickoff.");
   }
 
   const ref = db.doc(`groups/${groupId}/predictions/${request.auth.uid}_${matchId}`);

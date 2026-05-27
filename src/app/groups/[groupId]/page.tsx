@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
 import { EmptyState } from "@/components/EmptyState";
@@ -10,10 +11,11 @@ import { PageTitle } from "@/components/PageTitle";
 import { RulesPanel } from "@/components/RulesPanel";
 import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
-import { formatMoney, shortCountdown } from "@/lib/format";
+import { formatMoney, shortCountdownToDate, toDate } from "@/lib/format";
 import { getGroup, listMatches, listMembers, listPredictions, listPrizes, listScores } from "@/lib/firebase/firestore";
 import { getMatchTitle } from "@/lib/matchDisplay";
 import { formatMatchTime, matchTimeLabel, type MatchTimeMode } from "@/lib/matchTime";
+import { predictionClosesAt } from "@/lib/scoring";
 import { getUserTimeZone } from "@/lib/timezone";
 import type { Group, Match, Member, Prediction, Score } from "@/types";
 
@@ -75,6 +77,8 @@ function GroupContent() {
   const myPredictions = predictions.filter((prediction) => prediction.uid === user?.uid);
   const predictionMatchIds = new Set(myPredictions.map((prediction) => prediction.matchId));
   const pendingPredictions = matches.filter((match) => match.status === "scheduled" && !predictionMatchIds.has(match.id)).length;
+  const nextPredictionClose = nextMatch ? predictionClosesAt(toDate(nextMatch.kickoffAt)) : null;
+  const myScore = scores.find((score) => score.uid === user?.uid);
 
   if (loading) return <main className="container shell"><div className="panel">Cargando panel del grupo...</div></main>;
   if (error) return <main className="container"><StatusMessage type="error">{error}</StatusMessage></main>;
@@ -83,17 +87,22 @@ function GroupContent() {
   const pool = activeMembers.length * Number(group.contributionAmount || 0);
 
   return (
+    <>
     <main className="container shell stack-lg">
       <div className="toolbar">
         <PageTitle title={group.name} subtitle={`${formatMoney(group.contributionAmount, group.currency)} por participante · Responsable: ${group.moneyResponsibleName} · Quiniela por aciertos`} />
-        <GroupNav groupId={group.id} />
+        <div className="cluster">
+          <Link className="button gold" href={`/groups/${group.id}/predictions`}>Pronosticar</Link>
+          <GroupNav groupId={group.id} />
+        </div>
       </div>
       <div className="grid">
         <MetricCard label="Participantes activos" value={`${activeMembers.length}/${group.minParticipants}+`} detail="Mínimo para operar el grupo" />
         <MetricCard label="Pagos marcados" value={`${paidMembers.length}/${activeMembers.length}`} detail="Control manual, sin procesar pagos" />
         <MetricCard label="Bolsa estimada" value={formatMoney(pool, group.currency)} detail="La app no custodia dinero" />
-        <MetricCard label="Próximo cierre" value={nextMatch ? shortCountdown(nextMatch.kickoffAt) : "Sin partidos"} detail={nextMatch ? getMatchTitle(nextMatch) : "Sin fixtures cargados"} />
+        <MetricCard label="Próximo cierre" value={nextPredictionClose ? shortCountdownToDate(nextPredictionClose) : "Sin partidos"} detail={nextMatch ? `${getMatchTitle(nextMatch)} · 90 min antes` : "Sin fixtures cargados"} />
         <MetricCard label="Mis pendientes" value={pendingPredictions} detail="Elecciones programadas sin capturar" />
+        <MetricCard label="Mis aciertos" value={myScore?.totalCorrect ?? myScore?.totalPoints ?? 0} detail="Actualizado al recalcular ranking" />
       </div>
       <section className="twoCol">
         <RulesPanel group={group} />
@@ -127,5 +136,7 @@ function GroupContent() {
         </section>
       </div>
     </main>
+    <Link className="stickyPredictButton" href={`/groups/${group.id}/predictions`}>Pronosticar ahora · {pendingPredictions} pendientes</Link>
+    </>
   );
 }
