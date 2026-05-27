@@ -1,6 +1,8 @@
 import { formatDate } from "./format";
 import { getDisplayTeam } from "./matchDisplay";
 import { rankScores } from "./prizes";
+import { isMatchClosed } from "./scoring";
+import { toDate } from "./format";
 import type { Group, Match, Member, Prediction, Prize, Score } from "@/types";
 
 type GroupExport = {
@@ -74,6 +76,63 @@ export function generateResultsCsv(matches: Match[], groups: GroupExport[]) {
   }
 
   return rows.map((row) => row.map(escapeCsv).join(",")).join("\n");
+}
+
+export function generateGroupPredictionsCsv(
+  matches: Match[],
+  members: Member[],
+  predictions: Prediction[],
+  group: Group,
+): string {
+  const afterClose = group.predictionVisibility === "AFTER_CLOSE";
+
+  // Índice: matchId → uid → prediction
+  const idx = new Map<string, Map<string, Prediction>>();
+  for (const p of predictions) {
+    if (!idx.has(p.matchId)) idx.set(p.matchId, new Map());
+    idx.get(p.matchId)!.set(p.uid, p);
+  }
+
+  const memberHeaders = members.map((m) => escapeCsv(m.displayName));
+  const header = ["partido", "fase", "grupo_fifa", "local", "visitante", "kickoff", "resultado", ...memberHeaders];
+
+  const rows = matches.map((match) => {
+    const home = getDisplayTeam(match, "home");
+    const away = getDisplayTeam(match, "away");
+    const closed = isMatchClosed(toDate(match.kickoffAt));
+
+    const resultado =
+      match.winnerTeam
+        ? `Avanza: ${match.winnerTeam}`
+        : typeof match.homeGoals90 === "number" && typeof match.awayGoals90 === "number"
+        ? `${home} ${match.homeGoals90}-${match.awayGoals90} ${away}`
+        : "";
+
+    const pickCells = members.map((m) => {
+      const visible = afterClose ? closed : true;
+      if (!visible) return "";
+      const pred = idx.get(match.id)?.get(m.uid);
+      if (!pred?.pick) return "";
+      if (pred.pick === "HOME") return `Local (${home})`;
+      if (pred.pick === "DRAW") return "Empate";
+      if (pred.pick === "AWAY") return `Visitante (${away})`;
+      return pred.pick; // ADVANCING_TEAM
+    });
+
+    return [
+      escapeCsv(String(match.matchNumber ?? match.id)),
+      escapeCsv(match.phase),
+      escapeCsv(match.fifaGroup ?? ""),
+      escapeCsv(home),
+      escapeCsv(away),
+      escapeCsv(formatDate(match.kickoffAt)),
+      escapeCsv(resultado),
+      ...pickCells,
+    ].join(",");
+  });
+
+  const note = `# Pronósticos de ${escapeCsv(group.name)} — generado ${new Date().toLocaleDateString("es-MX")} — solo lectura`;
+  return [note, header.join(","), ...rows].join("\r\n");
 }
 
 function scorePair(home?: number | null, away?: number | null) {

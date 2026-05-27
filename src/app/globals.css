@@ -861,6 +861,30 @@ details[open] .rulesSummary::after { transform: rotate(180deg); }
   overflow-wrap: anywhere;
 }
 
+/* ── Pronósticos del grupo ───────────────────────── */
+.groupPredictionsTable {
+  overflow-x: auto;
+}
+
+/* Sticky primera columna (partido) en scroll horizontal */
+.groupPredictionsTable td:first-child,
+.groupPredictionsTable th:first-child {
+  background: var(--ivory-50);
+  left: 0;
+  min-width: 180px;
+  position: sticky;
+}
+
+.groupPredictionsCards { display: none; }
+
+@media (max-width: 640px) {
+  .groupPredictionsTable { display: none; }
+  .groupPredictionsCards {
+    display: grid;
+    gap: var(--space-3);
+  }
+}
+
 /* ── Ranking mobile → cards ──────────────────────── */
 .rankingCards { display: none; }
 

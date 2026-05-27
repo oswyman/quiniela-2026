@@ -13,7 +13,8 @@ export function GroupNav({ groupId }: { groupId: string }) {
 
   const links = [
     { href: `/groups/${groupId}`, label: "Resumen" },
-    { href: `/groups/${groupId}/predictions`, label: "Pronósticos" },
+    { href: `/groups/${groupId}/predictions`, label: "Mis pronósticos" },
+    { href: `/groups/${groupId}/predictions/group`, label: "Grupo" },
     { href: `/groups/${groupId}/ranking`, label: "Ranking" },
     { href: `/groups/${groupId}/admin`, label: "Admin" }
   ];
