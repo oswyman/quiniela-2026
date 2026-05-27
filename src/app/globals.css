@@ -382,6 +382,7 @@ p { line-height: 1.58; }
   font-size: 0.82rem;
   font-weight: 900;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .choiceButton {
@@ -409,6 +410,9 @@ p { line-height: 1.58; }
   color: var(--stadium-900);
   font-size: 1rem;
   line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .choiceButton:hover,
@@ -563,7 +567,8 @@ th { color: var(--muted); font-size: var(--text-xs); letter-spacing: 0.05em; tex
   .shell { padding: 24px 0 40px; }
   .hero { min-height: auto; padding: 54px 0 34px; }
   .heroStats { grid-template-columns: 1fr; }
-  .twoCol, .formGrid, .scoreInputs, .filterBar, .resultGrid { grid-template-columns: 1fr; }
+  .twoCol, .formGrid, .scoreInputs, .filterBar, .resultGrid, .metricsGrid { grid-template-columns: 1fr; }
+  .predictionsGrid { grid-template-columns: 1fr; }
   .panel, .card { padding: 16px; }
   .toolbar { align-items: stretch; flex-direction: column; }
   .button { width: 100%; }
@@ -587,7 +592,7 @@ th { color: var(--muted); font-size: var(--text-xs); letter-spacing: 0.05em; tex
   /* choiceGrid: mantener 3 columnas en móvil pero más compacto */
   .choiceGrid { grid-template-columns: repeat(3, 1fr); }
   .choiceButton { min-height: 64px; padding: 10px 8px; }
-  .choiceButton strong { font-size: 0.88rem; }
+  .choiceButton strong { font-size: 0.82rem; }
   .choiceButton span { font-size: 0.72rem; }
   .teamsTitle { font-size: 1.25rem; }
   .toastContainer { bottom: 80px; left: 12px; right: 12px; }
@@ -775,22 +780,33 @@ code {
 }
 details[open] .rulesSummary::after { transform: rotate(180deg); }
 
-/* ── TeamsTitle — evitar wrapping raro ───────────── */
-.teamsTitle > span { white-space: nowrap; }
-
-/* ── Venue truncado en match cards ───────────────── */
-.matchCard .muted {
+/* ── Venue truncado — solo la línea de sede/hora ─── */
+.matchVenue {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* ── Pills en prediction cards — sin overflow ────── */
-.matchCard .cluster .pill {
-  max-width: 180px;
+/* ── Pills en match cards: el deadline puede truncarse */
+.pill--deadline {
+  max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ── Grid específico para cards de predicción ────── */
+.predictionsGrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+
+/* ── metricsGrid: 3 cols en desktop, 1 en móvil ─── */
+.metricsGrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 /* ── Password field ──────────────────────────────── */

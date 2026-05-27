@@ -179,7 +179,7 @@ function PredictionsContent() {
         <EmptyState title="Aún no hay partidos disponibles" body="La fase de grupos debe estar cargada, o el superadmin debe publicar la ronda de 32 tras revisar cruces, horarios y sedes." />
       ) : null}
 
-      <div className="grid">
+      <div className="predictionsGrid">
         {visibleMatches.map((match) => {
           const prediction = byMatch.get(match.id);
           const kickoffDate = toDate(match.kickoffAt);
@@ -197,16 +197,16 @@ function PredictionsContent() {
                 {closed ? (
                   <span className="closedBadge"><Lock size={12} aria-hidden /> Cerrado</span>
                 ) : (
-                  <span className="pill">Cierra {formatDeadlineCDMX(closesAt)}</span>
+                  <span className="pill pill--deadline">Cierra {formatDeadlineCDMX(closesAt)}</span>
                 )}
               </div>
               <div>
                 <h2 className="teamsTitle">
                   <span>{teamFlagEmoji(homeTeam)} {homeTeam}</span>
-                  <span>vs</span>
+                  <span style={{ color: "var(--muted)", fontSize: "0.82rem", fontWeight: 900, textTransform: "uppercase" }}>vs</span>
                   <span>{teamFlagEmoji(awayTeam)} {awayTeam}</span>
                 </h2>
-                <p className="muted">{formatMatchTime(match, timeMode, userTimeZone)} · {match.venue ?? "Sede por confirmar"}</p>
+                <p className="matchVenue muted">{formatMatchTime(match, timeMode, userTimeZone)} · {match.venue ?? "Sede por confirmar"}</p>
               </div>
               <div className="choiceGrid" role="group" aria-label={`Elección para ${homeTeam} vs ${awayTeam}`}>
                 {options.map((option) => (
