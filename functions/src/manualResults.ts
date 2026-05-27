@@ -94,6 +94,9 @@ export const confirmRoundOf32Resolution = onCall(async (request) => {
       resolvedHomeTeam: assignment.homeTeam,
       resolvedAwayTeam: assignment.awayTeam,
       isResolved: true,
+      isPublishedToParticipants: true,
+      publishedAt: FieldValue.serverTimestamp(),
+      publishedBy: request.auth.uid,
       groupStandingsImpact: {
         confirmedAt: FieldValue.serverTimestamp(),
         confirmedBy: request.auth.uid,

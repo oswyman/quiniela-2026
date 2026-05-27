@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
@@ -13,8 +13,7 @@ import { shortCountdown, toDate } from "@/lib/format";
 import { getGroup, listMatches, listPredictions, savePrediction } from "@/lib/firebase/firestore";
 import { getDisplayTeam, getMatchTitle } from "@/lib/matchDisplay";
 import { formatMatchTime, matchTimeLabel, type MatchTimeMode } from "@/lib/matchTime";
-import { isMatchClosed } from "@/lib/scoring";
-import { resultModeLabel } from "@/lib/standings";
+import { inferPickType, isMatchClosed, type GroupPick, type PredictionPickType } from "@/lib/scoring";
 import { getUserTimeZone } from "@/lib/timezone";
 import type { Group, Match, Prediction } from "@/types";
 
@@ -64,28 +63,25 @@ function PredictionsContent() {
   }, [params.groupId]);
 
   const byMatch = useMemo(() => new Map(predictions.map((prediction) => [prediction.matchId, prediction])), [predictions]);
+  const visibleMatches = useMemo(() => matches.filter(isVisibleForParticipants), [matches]);
+  const groupStageCount = visibleMatches.filter((match) => inferPickType(match) === "GROUP_OUTCOME").length;
+  const knockoutCount = visibleMatches.length - groupStageCount;
 
-  async function submitPrediction(event: FormEvent<HTMLFormElement>, match: Match) {
-    event.preventDefault();
+  async function submitPrediction(match: Match, pickType: PredictionPickType, pick: string) {
     if (!user) return;
     setError("");
     setMessage("");
     setSavingMatchId(match.id);
 
-    const closed = isMatchClosed(toDate(match.kickoffAt));
-    if (closed) {
+    if (isMatchClosed(toDate(match.kickoffAt))) {
       setError("Este partido ya cerró. No se puede crear ni editar el pronóstico.");
       setSavingMatchId("");
       return;
     }
 
-    const form = new FormData(event.currentTarget);
-    const homeGoals = Number(form.get("homeGoals"));
-    const awayGoals = Number(form.get("awayGoals"));
-
     try {
-      await savePrediction(params.groupId, user.uid, match.id, homeGoals, awayGoals);
-      setMessage(`Pronóstico guardado para ${getMatchTitle(match)}.`);
+      await savePrediction(params.groupId, match.id, pickType, pick);
+      setMessage(`Elección guardada para ${getMatchTitle(match)}.`);
       setPredictions(await listPredictions(params.groupId));
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar el pronóstico.");
@@ -100,15 +96,23 @@ function PredictionsContent() {
   return (
     <main className="container shell stack-lg">
       <div className="toolbar">
-        <PageTitle title="Pronósticos" subtitle={`Captura un marcador simple antes del kickoff. Este grupo evalúa: ${resultModeLabel(group.validResultMode)}.`} />
+        <PageTitle title="Pronósticos" subtitle="Elige quién gana o empata en grupos. Desde ronda de 32 elegirás quién avanza." />
         <GroupNav groupId={params.groupId} />
       </div>
-      <StatusMessage>En esta versión no se capturan penales por separado en el pronóstico. Tu marcador se compara contra el modo de resultado configurado por el grupo.</StatusMessage>
+      <StatusMessage>Nuevo formato: cada partido atinado suma 1 acierto. Ya no se capturan marcadores por participante.</StatusMessage>
+      <StatusMessage>La fase de grupos se evalúa a 90 minutos. La eliminación directa se evalúa por equipo que avanza.</StatusMessage>
       {group.predictionVisibility === "BEFORE_CLOSE" ? (
         <StatusMessage>Este modo puede generar ventaja estratégica porque otros participantes podrían copiar pronósticos.</StatusMessage>
       ) : null}
       {message ? <StatusMessage type="success">{message}</StatusMessage> : null}
       {error ? <StatusMessage type="error">{error}</StatusMessage> : null}
+
+      <section className="metricsGrid">
+        <div className="stat"><strong>{groupStageCount}</strong><span>partidos de grupos visibles</span></div>
+        <div className="stat"><strong>{knockoutCount}</strong><span>partidos de eliminación publicados</span></div>
+        <div className="stat"><strong>{predictions.length}</strong><span>elecciones guardadas</span></div>
+      </section>
+
       <div className="tabs" aria-label="Preferencia de horario">
         {(["cdmx", "local", "venue"] as MatchTimeMode[]).map((mode) => (
           <button className={timeMode === mode ? "tabButton active" : "tabButton"} key={mode} onClick={() => setTimeMode(mode)} type="button">
@@ -116,19 +120,28 @@ function PredictionsContent() {
           </button>
         ))}
       </div>
+
       {matches.length === 0 ? (
         <EmptyState title="No hay partidos cargados" body="Un superadmin debe cargar fixtures manuales o sincronizar un proveedor opcional." href={`/groups/${params.groupId}/admin`} action="Ir a administración" />
       ) : null}
+
+      {matches.length > 0 && visibleMatches.length === 0 ? (
+        <EmptyState title="Aún no hay partidos disponibles" body="La fase de grupos debe estar cargada o el superadmin debe publicar la ronda de 32 tras revisar cruces, horarios y sedes." />
+      ) : null}
+
       <div className="grid">
-        {matches.map((match) => {
+        {visibleMatches.map((match) => {
           const prediction = byMatch.get(match.id);
           const closed = isMatchClosed(toDate(match.kickoffAt));
+          const pickType = inferPickType(match);
           const homeTeam = getDisplayTeam(match, "home");
           const awayTeam = getDisplayTeam(match, "away");
+          const options = getPickOptions(match, pickType, homeTeam, awayTeam);
           return (
-            <form className="panel stack matchCard" key={match.id} onSubmit={(event) => submitPrediction(event, match)}>
+            <article className="panel stack matchCard" key={match.id}>
               <div className="cluster">
                 <span className="pill">{match.phase}</span>
+                <span className="pill">{pickType === "GROUP_OUTCOME" ? "Elige resultado" : "Elige clasificado"}</span>
                 <span className="pill">{closed ? "Cerrado" : `Cierra en ${shortCountdown(match.kickoffAt)}`}</span>
               </div>
               <div>
@@ -136,25 +149,58 @@ function PredictionsContent() {
                 <p className="muted">{formatMatchTime(match, timeMode, userTimeZone)} · {match.venue ?? "Sede por confirmar"}</p>
                 <p className="fineprint">CDMX: {formatMatchTime(match, "cdmx", userTimeZone)} · Tu hora: {formatMatchTime(match, "local", userTimeZone)}</p>
               </div>
-              <div className="scoreInputs">
-                <div className="field">
-                  <label htmlFor={`${match.id}-home`}>{homeTeam}</label>
-                  <input id={`${match.id}-home`} name="homeGoals" type="number" min="0" defaultValue={prediction?.homeGoals ?? ""} disabled={closed || savingMatchId === match.id} required />
-                </div>
-                <div className="field">
-                  <label htmlFor={`${match.id}-away`}>{awayTeam}</label>
-                  <input id={`${match.id}-away`} name="awayGoals" type="number" min="0" defaultValue={prediction?.awayGoals ?? ""} disabled={closed || savingMatchId === match.id} required />
-                </div>
+              <div className="choiceGrid" role="group" aria-label={`Elección para ${homeTeam} vs ${awayTeam}`}>
+                {options.map((option) => (
+                  <button
+                    className={prediction?.pick === option.value ? "choiceButton active" : "choiceButton"}
+                    disabled={closed || savingMatchId === match.id}
+                    key={option.value}
+                    onClick={() => submitPrediction(match, pickType, option.value)}
+                    type="button"
+                  >
+                    <span>{option.label}</span>
+                    <strong>{option.caption}</strong>
+                  </button>
+                ))}
               </div>
-              <button className="button" disabled={closed || savingMatchId === match.id} type="submit">
-                {savingMatchId === match.id ? "Guardando..." : prediction ? "Actualizar pronóstico" : "Guardar pronóstico"}
-              </button>
-              {prediction ? <p className="muted">Guardado · {prediction.points} pts · {prediction.scoringReason}</p> : <p className="muted">Pendiente de capturar.</p>}
+              {prediction ? (
+                <p className="muted">Guardado: {labelPick(prediction, homeTeam, awayTeam)} · {prediction.scoringReason ?? "Pendiente de resultado"}</p>
+              ) : (
+                <p className="muted">Pendiente de elegir.</p>
+              )}
               {closed ? <Link href={`/groups/${params.groupId}/ranking`}>Ver ranking</Link> : null}
-            </form>
+            </article>
           );
         })}
       </div>
     </main>
   );
+}
+
+function isVisibleForParticipants(match: Match) {
+  const pickType = inferPickType(match);
+  if (pickType === "GROUP_OUTCOME") return true;
+  return Boolean(match.isPublishedToParticipants && match.isResolved);
+}
+
+function getPickOptions(match: Match, pickType: PredictionPickType, homeTeam: string, awayTeam: string) {
+  if (pickType === "ADVANCING_TEAM") {
+    return [
+      { value: match.resolvedHomeTeam || match.homeTeam, label: "Avanza", caption: homeTeam },
+      { value: match.resolvedAwayTeam || match.awayTeam, label: "Avanza", caption: awayTeam }
+    ];
+  }
+  return [
+    { value: "HOME" satisfies GroupPick, label: "Gana", caption: homeTeam },
+    { value: "DRAW" satisfies GroupPick, label: "Empate", caption: "Igualan en 90 min" },
+    { value: "AWAY" satisfies GroupPick, label: "Gana", caption: awayTeam }
+  ];
+}
+
+function labelPick(prediction: Prediction, homeTeam: string, awayTeam: string) {
+  if (prediction.pickType === "ADVANCING_TEAM") return `avanza ${prediction.pick}`;
+  if (prediction.pick === "HOME") return `gana ${homeTeam}`;
+  if (prediction.pick === "AWAY") return `gana ${awayTeam}`;
+  if (prediction.pick === "DRAW") return "empate";
+  return prediction.pick ?? "pendiente";
 }

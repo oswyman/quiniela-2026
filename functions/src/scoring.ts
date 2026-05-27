@@ -1,103 +1,101 @@
-export type ScoringConfig = {
-  exactScore: number;
-  goalDifference: number;
-  winnerOrDraw: number;
-  incorrect: number;
-  late: number;
+export type PredictionPickType = "GROUP_OUTCOME" | "ADVANCING_TEAM";
+export type GroupPick = "HOME" | "DRAW" | "AWAY";
+
+type PredictionLike = {
+  homeGoals?: number;
+  awayGoals?: number;
+  isLate?: boolean;
+  pickType?: PredictionPickType;
+  pick?: string;
 };
 
-export const DEFAULT_SCORING: ScoringConfig = {
-  exactScore: 3,
-  goalDifference: 2,
-  winnerOrDraw: 1,
-  incorrect: 0,
-  late: 0
+type MatchLike = {
+  matchNumber?: number | null;
+  fifaGroup?: string | null;
+  homeTeam: string;
+  awayTeam: string;
+  resolvedHomeTeam?: string | null;
+  resolvedAwayTeam?: string | null;
+  homeGoals90?: number | null;
+  awayGoals90?: number | null;
+  winnerTeam?: string | null;
 };
 
-export function calculatePredictionScore(
-  prediction: { homeGoals: number; awayGoals: number; isLate: boolean },
-  result: { homeGoals: number | null; awayGoals: number | null },
-  scoring: ScoringConfig = DEFAULT_SCORING
-) {
-  if (prediction.isLate) return summary(scoring.late, "Pronostico tardio", { latePredictions: 1 });
-  if (result.homeGoals === null || result.awayGoals === null) return summary(0, "Faltan datos del resultado");
-  if (prediction.homeGoals === result.homeGoals && prediction.awayGoals === result.awayGoals) {
-    return summary(scoring.exactScore, "Marcador exacto", { exactScores: 1, validPredictions: 1 });
+export function calculatePredictionScore(prediction: PredictionLike, match: MatchLike) {
+  if (prediction.isLate) return summary(0, "Pronostico tardio", { latePredictions: 1 });
+  const pickType = prediction.pickType ?? inferPickType(match);
+  const pick = prediction.pick ?? legacyPredictionToPick(prediction);
+  if (!pick) return summary(0, "Pronostico pendiente");
+
+  if (pickType === "GROUP_OUTCOME") {
+    const actual = resolveGroupOutcome(match);
+    if (!actual) return summary(0, "Falta resultado de fase de grupos");
+    const correct = pick === actual;
+    return summary(correct ? 1 : 0, correct ? "Acierto de resultado" : "No acertado", {
+      validPredictions: 1,
+      totalCorrect: correct ? 1 : 0,
+      correctGroupPicks: correct ? 1 : 0,
+      isCorrect: correct
+    });
   }
 
-  if (isCorrectGoalDifference(prediction.homeGoals, prediction.awayGoals, result.homeGoals, result.awayGoals)) {
-    return summary(scoring.goalDifference, "Diferencia de goles correcta", { correctGoalDifferences: 1, validPredictions: 1 });
-  }
-
-  const predicted = outcome(prediction.homeGoals, prediction.awayGoals);
-  const actual = outcome(result.homeGoals, result.awayGoals);
-  if (predicted === actual) {
-    return actual === "DRAW"
-      ? summary(scoring.winnerOrDraw, "Empate correcto", { correctDraws: 1, validPredictions: 1 })
-      : summary(scoring.winnerOrDraw, "Ganador correcto", { correctWinners: 1, validPredictions: 1 });
-  }
-
-  return summary(scoring.incorrect, "Resultado incorrecto", { validPredictions: 1 });
+  const winner = resolveAdvancingTeam(match);
+  if (!winner) return summary(0, "Falta equipo que avanza");
+  const correct = normalizeTeam(pick) === normalizeTeam(winner);
+  return summary(correct ? 1 : 0, correct ? "Acierto de clasificado" : "No acertado", {
+    validPredictions: 1,
+    totalCorrect: correct ? 1 : 0,
+    correctAdvancingPicks: correct ? 1 : 0,
+    isCorrect: correct
+  });
 }
 
-export function resolveMatchResult(match: Record<string, number | null | undefined>, mode: string) {
-  if (mode === "FINAL_WITH_PENALTIES") {
-    return firstComplete([
-      [match.finalHomeGoals, match.finalAwayGoals],
-      [sumNullable(match.homeGoalsExtraTime, match.homePenaltyGoals), sumNullable(match.awayGoalsExtraTime, match.awayPenaltyGoals)],
-      [match.homeGoalsExtraTime, match.awayGoalsExtraTime],
-      [match.homeGoals90, match.awayGoals90]
-    ]);
-  }
-  if (mode === "EXTRA_TIME") {
-    return firstComplete([
-      [match.homeGoalsExtraTime, match.awayGoalsExtraTime],
-      [match.finalHomeGoals, match.finalAwayGoals],
-      [match.homeGoals90, match.awayGoals90]
-    ]);
-  }
-  return firstComplete([
-    [match.homeGoals90, match.awayGoals90],
-    [match.finalHomeGoals, match.finalAwayGoals]
-  ]);
+export function inferPickType(match: MatchLike): PredictionPickType {
+  return isGroupStage(match) ? "GROUP_OUTCOME" : "ADVANCING_TEAM";
 }
 
-function outcome(home: number, away: number) {
-  if (home > away) return "HOME";
-  if (away > home) return "AWAY";
+export function legacyPredictionToPick(prediction: Pick<PredictionLike, "homeGoals" | "awayGoals">): GroupPick | null {
+  if (typeof prediction.homeGoals !== "number" || typeof prediction.awayGoals !== "number") return null;
+  if (prediction.homeGoals > prediction.awayGoals) return "HOME";
+  if (prediction.awayGoals > prediction.homeGoals) return "AWAY";
   return "DRAW";
 }
 
-function isCorrectGoalDifference(homePred: number, awayPred: number, homeResult: number, awayResult: number) {
-  const predictedDiff = homePred - awayPred;
-  const actualDiff = homeResult - awayResult;
-  if (predictedDiff !== actualDiff) return false;
-  if (actualDiff === 0) return true;
-  return homePred + awayPred >= homeResult + awayResult;
+export function resolveGroupOutcome(match: MatchLike): GroupPick | null {
+  if (typeof match.homeGoals90 !== "number" || typeof match.awayGoals90 !== "number") return null;
+  if (match.homeGoals90 > match.awayGoals90) return "HOME";
+  if (match.awayGoals90 > match.homeGoals90) return "AWAY";
+  return "DRAW";
 }
 
-function firstComplete(scores: Array<[number | null | undefined, number | null | undefined]>) {
-  for (const [home, away] of scores) {
-    if (typeof home === "number" && typeof away === "number") return { homeGoals: home, awayGoals: away };
+export function resolveAdvancingTeam(match: MatchLike) {
+  if (match.winnerTeam) return match.winnerTeam;
+  const home = match.resolvedHomeTeam || match.homeTeam;
+  const away = match.resolvedAwayTeam || match.awayTeam;
+  if (typeof match.homeGoals90 === "number" && typeof match.awayGoals90 === "number" && match.homeGoals90 !== match.awayGoals90) {
+    return match.homeGoals90 > match.awayGoals90 ? home : away;
   }
-  return { homeGoals: null, awayGoals: null };
+  return null;
 }
 
-function sumNullable(a?: number | null, b?: number | null) {
-  if (typeof a !== "number" || typeof b !== "number") return null;
-  return a + b;
+function isGroupStage(match: MatchLike) {
+  return Boolean(match.fifaGroup) || Number(match.matchNumber ?? 0) <= 72;
 }
 
-function summary(points: number, scoringReason: string, extra = {}) {
+function normalizeTeam(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function summary(points: number, scoringReason: string, extra: Record<string, unknown> = {}) {
   return {
     points,
     scoringReason,
-    exactScores: 0,
-    correctWinners: 0,
-    correctDraws: 0,
-    correctGoalDifferences: 0,
+    totalCorrect: 0,
+    correctGroupPicks: 0,
+    correctAdvancingPicks: 0,
     validPredictions: 0,
     latePredictions: 0,
+    isCorrect: false,
     ...extra
   };
 }

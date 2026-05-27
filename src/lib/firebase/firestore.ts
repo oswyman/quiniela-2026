@@ -14,7 +14,7 @@ import {
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "./client";
-import type { Group, Invite, Match, Member, Prediction, ProviderStatus, RoundOf32Assignment, Score, TeamStanding, TournamentConfig, UserProfile } from "@/types";
+import type { Group, Invite, Match, Member, Prediction, PredictionPickType, ProviderStatus, RoundOf32Assignment, Score, TeamStanding, TournamentConfig, UserProfile } from "@/types";
 
 export async function getUserProfile(uid: string) {
   const snap = await getDoc(doc(db, "users", uid));
@@ -96,9 +96,9 @@ export async function listPredictions(groupId: string) {
   return snap.docs.map((item) => ({ id: item.id, ...item.data() }) as Prediction);
 }
 
-export async function savePrediction(groupId: string, uid: string, matchId: string, homeGoals: number, awayGoals: number) {
-  const callable = httpsCallable<{ groupId: string; matchId: string; homeGoals: number; awayGoals: number }, { predictionId: string }>(functions, "submitPrediction");
-  await callable({ groupId, matchId, homeGoals, awayGoals });
+export async function savePrediction(groupId: string, matchId: string, pickType: PredictionPickType, pick: string) {
+  const callable = httpsCallable<{ groupId: string; matchId: string; pickType: PredictionPickType; pick: string }, { predictionId: string }>(functions, "submitPrediction");
+  await callable({ groupId, matchId, pickType, pick });
 }
 
 export async function listScores(groupId: string) {
@@ -191,6 +191,11 @@ export async function previewRoundOf32Resolution() {
 
 export async function confirmRoundOf32Resolution() {
   const callable = httpsCallable<Record<string, never>, { updated: number; knockoutResolved: number }>(functions, "confirmRoundOf32Resolution");
+  return callable({});
+}
+
+export async function migrateLegacyScorePredictions() {
+  const callable = httpsCallable<Record<string, never>, { migrated: number; skipped: number }>(functions, "migrateLegacyScorePredictions");
   return callable({});
 }
 

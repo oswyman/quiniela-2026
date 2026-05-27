@@ -7,12 +7,13 @@ export function RulesPanel({ group }: { group: Group }) {
       <h2>Reglas del grupo</h2>
       <LegalNotice />
       <ul>
-        <li>Marcador exacto: 3 puntos.</li>
-        <li>Diferencia de goles correcta: 2 puntos.</li>
-        <li>Ganador correcto o empate correcto: 1 punto.</li>
-        <li>Pronóstico tardío: 0 puntos.</li>
+        <li>Cada partido atinado suma 1 acierto.</li>
+        <li>En fase de grupos se elige: local gana, empate o visitante gana.</li>
+        <li>Desde ronda de 32 se elige qué equipo avanza.</li>
+        <li>No se capturan marcadores en los pronósticos de participantes.</li>
+        <li>Pronóstico tardío: 0 aciertos.</li>
         <li>Los pronósticos cierran cuando inicia el partido.</li>
-        <li>Resultado válido: {labelResultMode(group.validResultMode)}.</li>
+        <li>La fase de grupos se evalúa a 90 minutos. La eliminación directa se evalúa por equipo que avanza.</li>
         <li>Visibilidad de pronósticos: {labelVisibility(group.predictionVisibility)}.</li>
         <li>La plataforma no procesa pagos, no custodia dinero y no incluye wallet.</li>
       </ul>
@@ -21,14 +22,6 @@ export function RulesPanel({ group }: { group: Group }) {
       ) : null}
     </section>
   );
-}
-
-function labelResultMode(value: Group["validResultMode"]) {
-  return {
-    NINETY: "marcador a los 90 minutos",
-    EXTRA_TIME: "marcador después de tiempos extra",
-    FINAL_WITH_PENALTIES: "resultado final incluyendo penales"
-  }[value];
 }
 
 function labelVisibility(value: Group["predictionVisibility"]) {

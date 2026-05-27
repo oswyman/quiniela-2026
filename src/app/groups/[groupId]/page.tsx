@@ -14,7 +14,6 @@ import { formatMoney, shortCountdown } from "@/lib/format";
 import { getGroup, listMatches, listMembers, listPredictions, listPrizes, listScores } from "@/lib/firebase/firestore";
 import { getMatchTitle } from "@/lib/matchDisplay";
 import { formatMatchTime, matchTimeLabel, type MatchTimeMode } from "@/lib/matchTime";
-import { resultModeLabel } from "@/lib/standings";
 import { getUserTimeZone } from "@/lib/timezone";
 import type { Group, Match, Member, Prediction, Score } from "@/types";
 
@@ -86,7 +85,7 @@ function GroupContent() {
   return (
     <main className="container shell stack-lg">
       <div className="toolbar">
-        <PageTitle title={group.name} subtitle={`${formatMoney(group.contributionAmount, group.currency)} por participante · Responsable: ${group.moneyResponsibleName} · Evalúa: ${resultModeLabel(group.validResultMode)}`} />
+        <PageTitle title={group.name} subtitle={`${formatMoney(group.contributionAmount, group.currency)} por participante · Responsable: ${group.moneyResponsibleName} · Quiniela por aciertos`} />
         <GroupNav groupId={group.id} />
       </div>
       <div className="grid">
@@ -94,14 +93,14 @@ function GroupContent() {
         <MetricCard label="Pagos marcados" value={`${paidMembers.length}/${activeMembers.length}`} detail="Control manual, sin procesar pagos" />
         <MetricCard label="Bolsa estimada" value={formatMoney(pool, group.currency)} detail="La app no custodia dinero" />
         <MetricCard label="Próximo cierre" value={nextMatch ? shortCountdown(nextMatch.kickoffAt) : "Sin partidos"} detail={nextMatch ? getMatchTitle(nextMatch) : "Sin fixtures cargados"} />
-        <MetricCard label="Mis pendientes" value={pendingPredictions} detail="Pronósticos programados sin capturar" />
+        <MetricCard label="Mis pendientes" value={pendingPredictions} detail="Elecciones programadas sin capturar" />
       </div>
       <section className="twoCol">
         <RulesPanel group={group} />
         <aside className="panel stack">
           <h2>Operación del grupo</h2>
-          <p><strong>Resultado válido:</strong> {group.validResultMode}</p>
-          <p className="muted">{resultModeLabel(group.validResultMode)}. En esta versión se pronostica un marcador simple; no se capturan penales por separado.</p>
+          <p><strong>Formato:</strong> quiniela por aciertos</p>
+          <p className="muted">En grupos se elige local, empate o visitante. En eliminación directa se elige el equipo que avanza.</p>
           <p><strong>Pronósticos:</strong> {group.predictionVisibility === "AFTER_CLOSE" ? "Visibles después del cierre" : "Visibles antes del cierre"}</p>
           <p><strong>Responsable:</strong> {group.moneyResponsibleEmail}</p>
         </aside>
@@ -120,7 +119,7 @@ function GroupContent() {
         </section>
         <section className="panel stack">
           <h2>Top ranking</h2>
-          {scores.length === 0 ? <p className="muted">Sin puntuación calculada todavía.</p> : scores.slice(0, 5).map((score, index) => <p key={score.uid}>{index + 1}. {score.displayName ?? score.uid}: <strong>{score.totalPoints} pts</strong></p>)}
+          {scores.length === 0 ? <p className="muted">Sin aciertos calculados todavía.</p> : scores.slice(0, 5).map((score, index) => <p key={score.uid}>{index + 1}. {score.displayName ?? score.uid}: <strong>{score.totalCorrect ?? score.totalPoints} aciertos</strong></p>)}
         </section>
         <section className="panel stack">
           <h2>Premios estimados</h2>

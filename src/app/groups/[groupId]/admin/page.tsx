@@ -104,7 +104,7 @@ function GroupAdminContent() {
   }
 
   async function onRecalculate() {
-    if (!window.confirm("¿Recalcular puntos y premios del grupo?")) return;
+    if (!window.confirm("¿Recalcular aciertos y premios del grupo?")) return;
     setError("");
     setMessage("");
     try {
@@ -145,7 +145,7 @@ function GroupAdminContent() {
   return (
     <main className="container shell stack-lg">
       <div className="toolbar">
-        <PageTitle title={`Administrar ${group.name}`} subtitle="Gestiona participantes, pagos manuales, invitaciones y recalculo." />
+        <PageTitle title={`Administrar ${group.name}`} subtitle="Gestiona participantes, pagos manuales, invitaciones y recalculo de aciertos." />
         <GroupNav groupId={params.groupId} />
       </div>
       {message ? <StatusMessage type="success">{message}</StatusMessage> : null}
@@ -158,7 +158,7 @@ function GroupAdminContent() {
         <MetricCard label="Proveedor" value={providerStatus?.provider ?? "manual"} detail={providerStatus?.message ?? "Sin sync registrada"} />
       </div>
       <div className="toolbar panel">
-        <button className="button secondary" onClick={onRecalculate} type="button">Recalcular puntos</button>
+        <button className="button secondary" onClick={onRecalculate} type="button">Recalcular aciertos</button>
         <button className="button secondary" disabled={busyAction === "fixtures"} onClick={() => runSync("fixtures")} type="button">{busyAction === "fixtures" ? "Sincronizando..." : "Sync fixtures"}</button>
         <button className="button secondary" disabled={busyAction === "live"} onClick={() => runSync("live")} type="button">{busyAction === "live" ? "Sincronizando..." : "Sync resultados"}</button>
       </div>

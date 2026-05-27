@@ -8,6 +8,8 @@ export type PredictionVisibility = "AFTER_CLOSE" | "BEFORE_CLOSE";
 export type PrizeRuleMode = "DEFAULT";
 export type MatchStatus = "scheduled" | "live" | "finished" | "cancelled";
 export type PredictionStatus = "valid" | "late" | "void";
+export type PredictionPickType = "GROUP_OUTCOME" | "ADVANCING_TEAM";
+export type PredictionPick = "HOME" | "DRAW" | "AWAY" | string;
 
 export type UserProfile = {
   uid: string;
@@ -99,6 +101,9 @@ export type Match = {
   resolvedHomeTeam?: string | null;
   resolvedAwayTeam?: string | null;
   isResolved?: boolean;
+  isPublishedToParticipants?: boolean;
+  publishedAt?: unknown;
+  publishedBy?: string | null;
   status: MatchStatus;
   homeGoals90?: number | null;
   awayGoals90?: number | null;
@@ -122,13 +127,17 @@ export type Prediction = {
   id: string;
   uid: string;
   matchId: string;
-  homeGoals: number;
-  awayGoals: number;
+  pickType?: PredictionPickType;
+  pick?: PredictionPick;
+  homeGoals?: number | null;
+  awayGoals?: number | null;
   submittedAt?: unknown;
   updatedAt?: unknown;
   status: PredictionStatus;
   isLate: boolean;
   points: number;
+  totalCorrect?: number;
+  isCorrect?: boolean | null;
   scoringReason: string;
 };
 
@@ -136,6 +145,9 @@ export type Score = {
   uid: string;
   displayName?: string;
   totalPoints: number;
+  totalCorrect?: number;
+  correctGroupPicks?: number;
+  correctAdvancingPicks?: number;
   exactScores: number;
   correctWinners: number;
   correctDraws: number;

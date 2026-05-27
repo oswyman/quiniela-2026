@@ -9,14 +9,14 @@ const base = {
 };
 
 describe("rankScores", () => {
-  it("ranks by points and tie breakers", () => {
+  it("ranks by aciertos and keeps real ties", () => {
     const ranked = rankScores([
       { uid: "a", totalPoints: 5, exactScores: 0, correctGoalDifferences: 0, correctWinners: 0, correctDraws: 0 },
       { uid: "b", totalPoints: 5, exactScores: 1, correctGoalDifferences: 0, correctWinners: 0, correctDraws: 0 },
       { uid: "c", totalPoints: 3, exactScores: 0, correctGoalDifferences: 0, correctWinners: 0, correctDraws: 0 }
     ]);
-    expect(ranked.map((item) => item.uid)).toEqual(["b", "a", "c"]);
-    expect(ranked.map((item) => item.position)).toEqual([1, 2, 3]);
+    expect(ranked.map((item) => item.uid)).toEqual(["a", "b", "c"]);
+    expect(ranked.map((item) => item.position)).toEqual([1, 1, 3]);
   });
 });
 

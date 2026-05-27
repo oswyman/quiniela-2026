@@ -2,6 +2,9 @@ export type ScoreRow = {
   uid: string;
   displayName?: string;
   totalPoints: number;
+  totalCorrect?: number;
+  correctGroupPicks?: number;
+  correctAdvancingPicks?: number;
   exactScores: number;
   correctWinners: number;
   correctDraws: number;
@@ -17,21 +20,13 @@ const RULES = [
 export function rankScores(scores: ScoreRow[]) {
   const sorted = [...scores].sort((a, b) =>
     b.totalPoints - a.totalPoints ||
-    b.exactScores - a.exactScores ||
-    b.correctGoalDifferences - a.correctGoalDifferences ||
-    b.correctWinners - a.correctWinners ||
-    b.correctDraws - a.correctDraws ||
     a.uid.localeCompare(b.uid)
   );
   let previousPosition = 0;
   return sorted.map((score, index) => {
     const previous = sorted[index - 1];
     const tied = previous &&
-      previous.totalPoints === score.totalPoints &&
-      previous.exactScores === score.exactScores &&
-      previous.correctGoalDifferences === score.correctGoalDifferences &&
-      previous.correctWinners === score.correctWinners &&
-      previous.correctDraws === score.correctDraws;
+      previous.totalPoints === score.totalPoints;
     const position = tied ? previousPosition : index + 1;
     previousPosition = position;
     return { ...score, position };

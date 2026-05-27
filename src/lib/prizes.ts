@@ -16,7 +16,7 @@ const RULES = [
 ];
 
 export function calculatePrizeAllocations(
-  scores: Array<Pick<Score, "uid" | "displayName" | "totalPoints" | "exactScores" | "correctGoalDifferences" | "correctWinners" | "correctDraws">>,
+  scores: Array<Pick<Score, "uid" | "displayName" | "totalPoints" | "exactScores" | "correctGoalDifferences" | "correctWinners" | "correctDraws"> & Partial<Pick<Score, "totalCorrect" | "correctGroupPicks" | "correctAdvancingPicks" | "validPredictions" | "latePredictions">>>,
   contributionAmount: number
 ): PrizeAllocation[] {
   const ranked = rankScores(scores);
@@ -59,15 +59,11 @@ export function calculatePrizeAllocations(
 }
 
 export function rankScores(
-  scores: Array<Pick<Score, "uid" | "displayName" | "totalPoints" | "exactScores" | "correctGoalDifferences" | "correctWinners" | "correctDraws">>
+  scores: Array<Pick<Score, "uid" | "displayName" | "totalPoints" | "exactScores" | "correctGoalDifferences" | "correctWinners" | "correctDraws"> & Partial<Pick<Score, "totalCorrect" | "correctGroupPicks" | "correctAdvancingPicks" | "validPredictions" | "latePredictions">>>
 ) {
   const sorted = [...scores].sort((a, b) => {
     return (
       b.totalPoints - a.totalPoints ||
-      b.exactScores - a.exactScores ||
-      b.correctGoalDifferences - a.correctGoalDifferences ||
-      b.correctWinners - a.correctWinners ||
-      b.correctDraws - a.correctDraws ||
       a.uid.localeCompare(b.uid)
     );
   });
@@ -78,11 +74,7 @@ export function rankScores(
     const previous = sorted[index - 1];
     const tiedWithPrevious =
       previous &&
-      previous.totalPoints === score.totalPoints &&
-      previous.exactScores === score.exactScores &&
-      previous.correctGoalDifferences === score.correctGoalDifferences &&
-      previous.correctWinners === score.correctWinners &&
-      previous.correctDraws === score.correctDraws;
+      previous.totalPoints === score.totalPoints;
     const position = tiedWithPrevious ? previousPosition : index + 1;
     previousPosition = position;
 

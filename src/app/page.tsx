@@ -19,7 +19,7 @@ export default function HomePage() {
           </div>
           <div className="heroStats">
             <p><strong>90 min</strong> Cierre de registro</p>
-            <p><strong>3-2-1</strong> Puntuación clara</p>
+            <p><strong>1</strong> Acierto por partido</p>
             <p><strong>0</strong> Pagos o wallets</p>
           </div>
         </div>
@@ -40,12 +40,12 @@ export default function HomePage() {
           <article className="panel stack cardInteractive">
             <Lock size={28} aria-hidden />
             <h2>3. Pronóstico por partido</h2>
-            <p className="muted">Cada marcador debe capturarse antes del kickoff del partido correspondiente.</p>
+            <p className="muted">En grupos eliges local, empate o visitante. Desde ronda de 32 eliges quién avanza. Siempre antes del kickoff.</p>
           </article>
           <article className="panel stack cardInteractive">
             <BarChart3 size={28} aria-hidden />
             <h2>Ranking claro</h2>
-            <p className="muted">Marcador exacto 3 pts, diferencia 2 pts, ganador o empate correcto 1 pt. Premios sugeridos para 1.º, 2.º y 3.º.</p>
+            <p className="muted">El ranking se ordena por aciertos totales. Los empates son reales y los premios sugeridos se dividen si aplica.</p>
           </article>
           <article className="panel stack cardInteractive">
             <ShieldCheck size={28} aria-hidden />

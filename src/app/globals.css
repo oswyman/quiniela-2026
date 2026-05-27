@@ -345,6 +345,57 @@ p { line-height: 1.58; }
   grid-template-columns: 1fr 1fr;
 }
 
+.choiceGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.choiceButton {
+  background: rgba(255, 253, 247, 0.88);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  color: var(--ink);
+  cursor: pointer;
+  display: grid;
+  gap: 5px;
+  min-height: 84px;
+  padding: 14px;
+  text-align: left;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease, background 160ms ease;
+}
+
+.choiceButton span {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.choiceButton strong {
+  color: var(--stadium-900);
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.choiceButton:hover,
+.choiceButton.active {
+  background: #fffaf0;
+  border-color: rgba(185, 131, 34, 0.52);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+
+.choiceButton.active {
+  outline: 2px solid rgba(185, 131, 34, 0.28);
+}
+
+.choiceButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+  transform: none;
+}
+
 .resultGrid {
   display: grid;
   gap: 16px;
@@ -402,7 +453,7 @@ th { color: var(--muted); font-size: 0.78rem; letter-spacing: 0.05em; text-trans
   .shell { padding: 24px 0 40px; }
   .hero { min-height: auto; padding: 54px 0 34px; }
   .heroStats { grid-template-columns: 1fr; }
-  .twoCol, .formGrid, .scoreInputs, .filterBar, .resultGrid { grid-template-columns: 1fr; }
+  .twoCol, .formGrid, .scoreInputs, .choiceGrid, .filterBar, .resultGrid { grid-template-columns: 1fr; }
   .panel, .card { padding: 16px; }
   .toolbar { align-items: stretch; flex-direction: column; }
   .button { width: 100%; }

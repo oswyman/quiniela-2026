@@ -11,7 +11,7 @@ import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
 import { generateWorldCupIcs } from "@/lib/calendar";
 import { db } from "@/lib/firebase/client";
-import { bulkUpsertManualMatches, confirmRoundOf32Resolution, createAdminInvite, getProviderStatus, getTournamentConfig, getUserProfile, listAllGroups, listAllUsers, listMatches, previewRoundOf32Resolution, recalculateGroupScores, resolveKnockoutMatches, updateTournamentConfig, upsertManualResult } from "@/lib/firebase/firestore";
+import { bulkUpsertManualMatches, confirmRoundOf32Resolution, createAdminInvite, getProviderStatus, getTournamentConfig, getUserProfile, listAllGroups, listAllUsers, listMatches, migrateLegacyScorePredictions, previewRoundOf32Resolution, recalculateGroupScores, resolveKnockoutMatches, updateTournamentConfig, upsertManualResult } from "@/lib/firebase/firestore";
 import { parseFixtureCsv, type FixtureCsvRow } from "@/lib/fixtureCsv";
 import { formatDate } from "@/lib/format";
 import { getMatchTitle } from "@/lib/matchDisplay";
@@ -235,6 +235,21 @@ function PlatformAdminContent() {
     }
   }
 
+  async function onMigrateLegacyPredictions() {
+    if (!window.confirm("Esto convertirá pronósticos antiguos de marcador a elección HOME/DRAW/AWAY sin borrar los marcadores legacy. ¿Continuar?")) return;
+    setBusy("migrateLegacy");
+    setError("");
+    setMessage("");
+    try {
+      const result = await migrateLegacyScorePredictions();
+      setMessage(`Migración terminada: ${result.data.migrated} pronósticos convertidos, ${result.data.skipped} sin cambios.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudieron migrar pronósticos legacy.");
+    } finally {
+      setBusy("");
+    }
+  }
+
   function onDownloadCalendar() {
     if (!matches.length) {
       setError("Carga partidos antes de descargar el calendario.");
@@ -330,6 +345,9 @@ function PlatformAdminContent() {
             <p>1. Captura resultados con 90, extra y penales cuando aplique.</p>
             <p>2. Genera propuesta de ronda de 32 al terminar grupos.</p>
             <p>3. Confirma llaves y recalcula rankings.</p>
+            <button className="button secondary" disabled={busy === "migrateLegacy"} onClick={onMigrateLegacyPredictions} type="button">
+              {busy === "migrateLegacy" ? "Migrando..." : "Migrar pronósticos anteriores"}
+            </button>
           </article>
           <TournamentConfigForm tournament={tournament} busy={busy} onSubmit={onTournamentConfig} />
           {showMaintenance || !calendarLoaded ? <CalendarMaintenance csvText={csvText} setCsvText={setCsvText} onPreviewCsv={onPreviewCsv} onCsvFile={onCsvFile} onImportCsv={onImportCsv} csvRows={csvRows} csvErrors={csvErrors} busy={busy} userTimeZone={userTimeZone} calendarLoaded={calendarLoaded} /> : null}

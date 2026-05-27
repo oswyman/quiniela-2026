@@ -47,13 +47,13 @@ function RankingContent() {
   return (
     <main className="container shell stack-lg">
       <div className="toolbar">
-        <PageTitle title="Ranking" subtitle="Desempates: puntos, marcadores exactos, diferencias, ganadores, empates." />
+        <PageTitle title="Ranking" subtitle="Ordenado por aciertos. Si dos participantes tienen la misma cantidad, comparten posición." />
         <GroupNav groupId={params.groupId} />
       </div>
       <section className="grid">
         <article className="panel stack">
-          <h2>Cómo se leen los puntos</h2>
-          <p className="muted">Marcador exacto: 3 pts. Diferencia correcta: 2 pts. Ganador o empate correcto: 1 pt. Pronóstico tardío: 0 pts.</p>
+          <h2>Cómo se leen los aciertos</h2>
+          <p className="muted">Cada partido atinado vale 1 acierto. En grupos cuenta local gana, empate o visitante gana. En eliminación directa cuenta el equipo que avanza.</p>
         </article>
         <article className="panel stack">
           <h2>Premios estimados</h2>
@@ -66,11 +66,10 @@ function RankingContent() {
             <tr>
               <th>Posición</th>
               <th>Participante</th>
-              <th>Puntos</th>
-              <th>Exactos</th>
-              <th>Diferencias</th>
-              <th>Ganadores</th>
-              <th>Empates</th>
+              <th>Aciertos</th>
+              <th>Grupos</th>
+              <th>Eliminación</th>
+              <th>Válidos</th>
               <th>Premio estimado</th>
             </tr>
           </thead>
@@ -81,18 +80,17 @@ function RankingContent() {
                 <tr className="rankingRow" key={score.uid}>
                   <td>{score.position}</td>
                   <td>{score.displayName ?? score.uid}</td>
-                  <td>{score.totalPoints}</td>
-                  <td>{score.exactScores}</td>
-                  <td>{score.correctGoalDifferences}</td>
-                  <td>{score.correctWinners}</td>
-                  <td>{score.correctDraws}</td>
+                  <td>{score.totalCorrect ?? score.totalPoints}</td>
+                  <td>{score.correctGroupPicks ?? 0}</td>
+                  <td>{score.correctAdvancingPicks ?? 0}</td>
+                  <td>{score.validPredictions ?? 0}</td>
                   <td>{prize ? formatMoney(prize.estimatedPrize, group?.currency ?? "MXN") : "Resultado pendiente"}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
-        {ranked.length === 0 ? <EmptyState title="Todavía no hay ranking" body="Cuando existan resultados, el administrador puede recalcular puntos y premios." /> : null}
+        {ranked.length === 0 ? <EmptyState title="Todavía no hay ranking" body="Cuando existan resultados, el administrador puede recalcular aciertos y premios." /> : null}
       </div>
       {prizes.length > 0 ? (
         <section className="panel stack">

@@ -101,7 +101,7 @@ Funciones principales:
 - `submitPrediction`: valida kickoff con hora de servidor, guarda pronostico y registra auditoria.
 - `upsertManualMatch`: `platform_admin` carga o edita fixtures manuales.
 - `upsertManualResult`: `platform_admin` captura resultados manuales.
-- `recalculateGroupScores` / `updateGroupRanking`: recalcula puntos, ranking y premios.
+- `recalculateGroupScores` / `updateGroupRanking`: recalcula aciertos, ranking y premios.
 - `syncFixturesFromProvider` / `syncLiveResultsFromProvider`: sync opcional de proveedor.
 - `scheduledFixturesSync` / `scheduledLiveResultsSync`: programadas, utiles solo si el proveedor no es `manual` ni `disabled`.
 
@@ -121,12 +121,12 @@ Las variables de proveedor de resultados con secretos no deben exponerse al clie
 
 1. Un superadmin crea una invitacion para un administrador de grupo desde `/admin`.
 2. El administrador acepta la invitacion en `/join/[inviteCode]` y crea su cuenta con ese correo.
-3. El administrador crea su grupo y configura moneda, aportacion, responsable del dinero, resultado valido y visibilidad de pronosticos.
+3. El administrador crea su grupo y configura moneda, aportacion, responsable del dinero y visibilidad de pronosticos.
 4. El administrador invita participantes por correo desde `/groups/[groupId]/admin`.
 5. Los participantes aceptan la invitacion y solo pueden entrar si el email autenticado coincide.
 6. El registro del grupo cierra 90 minutos antes del primer partido del Mundial.
 7. Cada pronostico cierra por partido cuando `now >= match.kickoffAt`.
-8. El ranking muestra puntos, desempates y premios estimados.
+8. El ranking muestra aciertos, empates reales y premios estimados.
 
 ## Como crear un grupo
 
@@ -138,7 +138,6 @@ Campos configurables:
 - Moneda.
 - Aportacion administrativa.
 - Responsable del dinero.
-- Resultado valido: 90 minutos, tiempos extra o final con penales.
 - Visibilidad de pronosticos: por defecto despues del cierre.
 - Aceptacion de advertencia legal.
 
@@ -155,18 +154,19 @@ No se aceptan registros libres al grupo. Despues del deadline de registro, Funct
 ## Como capturar pronosticos
 
 1. Entra a `/groups/[groupId]/predictions`.
-2. Captura marcador local y visitante antes del kickoff.
-3. El frontend bloquea el formulario cuando el partido cerro.
-4. `submitPrediction` vuelve a validar en backend con hora de servidor.
-5. Si un pronostico entra tarde por error operativo, se marca `isLate=true` y vale 0 puntos.
+2. En fase de grupos elige local gana, empate o visitante gana.
+3. Desde ronda de 32 elige que equipo avanza, una vez que el superadmin publique los cruces.
+4. El frontend bloquea la eleccion cuando el partido cerro.
+5. `submitPrediction` vuelve a validar en backend con hora de servidor.
+6. Si un pronostico entra tarde por error operativo, se marca `isLate=true` y vale 0 aciertos.
 
 ## Como calcular ranking
 
 1. Asegura que existan resultados en `matches`.
 2. En `/groups/[groupId]/admin` o `/admin`, usa `Recalcular`.
-3. Cloud Functions calcula puntos, actualiza `scores`, calcula `prizes` y registra auditoria.
+3. Cloud Functions calcula aciertos, actualiza `scores`, calcula `prizes` y registra auditoria.
 
-El ranking explica puntos totales, marcadores exactos, diferencias, ganadores/empates, premios estimados y empates en zona de premio.
+El ranking explica aciertos totales, aciertos en fase de grupos, aciertos en eliminacion directa, premios estimados y empates en zona de premio.
 
 ## Como registrar resultados manualmente
 
@@ -177,7 +177,8 @@ En `/admin`, un `platform_admin` puede:
 - Importar fixtures por CSV desde la fuente oficial/manual.
 - Crear o editar partidos.
 - Capturar marcador a 90 minutos.
-- Capturar marcador final.
+- Capturar marcador tras tiempos extra y penales cuando aplique.
+- Confirmar ronda de 32 despues de revisar clasificados, horarios y sedes.
 - Capturar ganador.
 - Resolver llaves eliminatorias de octavos en adelante con los ganadores/perdedores de partidos previos.
 - Descargar un calendario `.ics` de los 104 partidos para importarlo en Google Calendar.
@@ -257,13 +258,13 @@ Antes de abrir trafico publico:
 3. Monitorea metricas antes de activar enforcement.
 4. Agrega el dominio Vercel en Firebase Auth.
 
-## Reglas de puntuacion
+## Reglas de aciertos
 
-- Marcador exacto: 3 puntos.
-- Diferencia de goles correcta: 2 puntos.
-- Ganador correcto o empate correcto: 1 punto.
-- Resultado incorrecto: 0 puntos.
-- Pronostico tardio: 0 puntos.
+- Cada partido atinado suma 1 acierto.
+- En fase de grupos se elige local gana, empate o visitante gana y se evalua a 90 minutos.
+- Desde ronda de 32 se elige el equipo que avanza.
+- Resultado incorrecto: 0 aciertos.
+- Pronostico tardio: 0 aciertos.
 
 Tests: `tests/scoring.test.ts`.
 

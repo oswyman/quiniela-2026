@@ -1,165 +1,83 @@
-import type { Match, Prediction, ValidResultMode } from "@/types";
+import type { Match, Prediction } from "@/types";
 
-export type ScoringConfig = {
-  exactScore: number;
-  goalDifference: number;
-  winnerOrDraw: number;
-  incorrect: number;
-  late: number;
-};
+export type PredictionPickType = "GROUP_OUTCOME" | "ADVANCING_TEAM";
+export type GroupPick = "HOME" | "DRAW" | "AWAY";
 
-export const DEFAULT_SCORING: ScoringConfig = {
-  exactScore: 3,
-  goalDifference: 2,
-  winnerOrDraw: 1,
-  incorrect: 0,
-  late: 0
-};
+export function calculatePredictionScore(prediction: Partial<Prediction>, match: Match) {
+  if (prediction.isLate) return score(0, "Pronostico tardio", { latePredictions: 1 });
+  const pickType = prediction.pickType ?? inferPickType(match);
+  const pick = prediction.pick ?? legacyPredictionToPick(prediction);
+  if (!pick) return score(0, "Pronostico pendiente");
 
-export type ScoreResult = {
-  points: number;
-  code:
-    | "LATE"
-    | "NO_RESULT"
-    | "EXACT_SCORE"
-    | "GOAL_DIFFERENCE"
-    | "CORRECT_WINNER"
-    | "CORRECT_DRAW"
-    | "INCORRECT";
-  reason: string;
-  exactScores: number;
-  correctWinners: number;
-  correctDraws: number;
-  correctGoalDifferences: number;
-  validPredictions: number;
-  latePredictions: number;
-};
-
-export function calculatePredictionScore(
-  prediction: Pick<Prediction, "homeGoals" | "awayGoals" | "isLate">,
-  result: { homeGoals: number | null; awayGoals: number | null },
-  config: ScoringConfig = DEFAULT_SCORING
-): ScoreResult {
-  if (prediction.isLate) {
-    return buildScore(config.late, "LATE", "Pronostico tardio", { latePredictions: 1 });
-  }
-
-  if (result.homeGoals === null || result.awayGoals === null) {
-    return buildScore(0, "NO_RESULT", "Faltan datos del resultado");
-  }
-
-  if (prediction.homeGoals === result.homeGoals && prediction.awayGoals === result.awayGoals) {
-    return buildScore(config.exactScore, "EXACT_SCORE", "Marcador exacto", {
-      exactScores: 1,
-      validPredictions: 1
+  if (pickType === "GROUP_OUTCOME") {
+    const actual = resolveGroupOutcome(match);
+    if (!actual) return score(0, "Falta resultado de fase de grupos");
+    const correct = pick === actual;
+    return score(correct ? 1 : 0, correct ? "Acierto de resultado" : "No acertado", {
+      validPredictions: 1,
+      totalCorrect: correct ? 1 : 0,
+      correctGroupPicks: correct ? 1 : 0,
+      isCorrect: correct
     });
   }
 
-  const predictedOutcome = outcome(prediction.homeGoals, prediction.awayGoals);
-  const actualOutcome = outcome(result.homeGoals, result.awayGoals);
-  const predictedDiff = prediction.homeGoals - prediction.awayGoals;
-  const actualDiff = result.homeGoals - result.awayGoals;
-
-  if (isCorrectGoalDifference(prediction.homeGoals, prediction.awayGoals, result.homeGoals, result.awayGoals)) {
-    return buildScore(config.goalDifference, "GOAL_DIFFERENCE", "Diferencia de goles correcta", {
-      correctGoalDifferences: 1,
-      validPredictions: 1
-    });
-  }
-
-  if (predictedOutcome === actualOutcome) {
-    if (actualOutcome === "DRAW") {
-      return buildScore(config.winnerOrDraw, "CORRECT_DRAW", "Empate correcto", {
-        correctDraws: 1,
-        validPredictions: 1
-      });
-    }
-
-    return buildScore(config.winnerOrDraw, "CORRECT_WINNER", "Ganador correcto", {
-      correctWinners: 1,
-      validPredictions: 1
-    });
-  }
-
-  return buildScore(config.incorrect, "INCORRECT", "Resultado incorrecto", { validPredictions: 1 });
+  const winner = resolveAdvancingTeam(match);
+  if (!winner) return score(0, "Falta equipo que avanza");
+  const correct = normalizeTeam(pick) === normalizeTeam(winner);
+  return score(correct ? 1 : 0, correct ? "Acierto de clasificado" : "No acertado", {
+    validPredictions: 1,
+    totalCorrect: correct ? 1 : 0,
+    correctAdvancingPicks: correct ? 1 : 0,
+    isCorrect: correct
+  });
 }
 
-export function resolveMatchResult(
-  match: Match,
-  resultMode: ValidResultMode
-): { homeGoals: number | null; awayGoals: number | null } {
-  if (resultMode === "FINAL_WITH_PENALTIES") {
-    return firstComplete([
-      [match.finalHomeGoals, match.finalAwayGoals],
-      [sumNullable(match.homeGoalsExtraTime, match.homePenaltyGoals), sumNullable(match.awayGoalsExtraTime, match.awayPenaltyGoals)],
-      [match.homeGoalsExtraTime, match.awayGoalsExtraTime],
-      [match.homeGoals90, match.awayGoals90]
-    ]);
-  }
+export function inferPickType(match: Pick<Match, "matchNumber" | "fifaGroup">): PredictionPickType {
+  return Boolean(match.fifaGroup) || Number(match.matchNumber ?? 0) <= 72 ? "GROUP_OUTCOME" : "ADVANCING_TEAM";
+}
 
-  if (resultMode === "EXTRA_TIME") {
-    return firstComplete([
-      [match.homeGoalsExtraTime, match.awayGoalsExtraTime],
-      [match.finalHomeGoals, match.finalAwayGoals],
-      [match.homeGoals90, match.awayGoals90]
-    ]);
-  }
+export function legacyPredictionToPick(prediction: Partial<Pick<Prediction, "homeGoals" | "awayGoals">>): GroupPick | null {
+  if (typeof prediction.homeGoals !== "number" || typeof prediction.awayGoals !== "number") return null;
+  if (prediction.homeGoals > prediction.awayGoals) return "HOME";
+  if (prediction.awayGoals > prediction.homeGoals) return "AWAY";
+  return "DRAW";
+}
 
-  return firstComplete([
-    [match.homeGoals90, match.awayGoals90],
-    [match.finalHomeGoals, match.finalAwayGoals]
-  ]);
+export function resolveGroupOutcome(match: Pick<Match, "homeGoals90" | "awayGoals90">): GroupPick | null {
+  if (typeof match.homeGoals90 !== "number" || typeof match.awayGoals90 !== "number") return null;
+  if (match.homeGoals90 > match.awayGoals90) return "HOME";
+  if (match.awayGoals90 > match.homeGoals90) return "AWAY";
+  return "DRAW";
+}
+
+export function resolveAdvancingTeam(match: Pick<Match, "winnerTeam" | "homeTeam" | "awayTeam" | "resolvedHomeTeam" | "resolvedAwayTeam" | "homeGoals90" | "awayGoals90">) {
+  if (match.winnerTeam) return match.winnerTeam;
+  const home = match.resolvedHomeTeam || match.homeTeam;
+  const away = match.resolvedAwayTeam || match.awayTeam;
+  if (typeof match.homeGoals90 === "number" && typeof match.awayGoals90 === "number" && match.homeGoals90 !== match.awayGoals90) {
+    return match.homeGoals90 > match.awayGoals90 ? home : away;
+  }
+  return null;
 }
 
 export function isMatchClosed(kickoffAt: Date, now = new Date()): boolean {
   return now.getTime() >= kickoffAt.getTime();
 }
 
-function outcome(home: number, away: number): "HOME" | "AWAY" | "DRAW" {
-  if (home > away) return "HOME";
-  if (away > home) return "AWAY";
-  return "DRAW";
+function normalizeTeam(value: string) {
+  return value.trim().toLowerCase();
 }
 
-function isCorrectGoalDifference(homePred: number, awayPred: number, homeResult: number, awayResult: number) {
-  const predictedDiff = homePred - awayPred;
-  const actualDiff = homeResult - awayResult;
-  if (predictedDiff !== actualDiff) return false;
-  if (actualDiff === 0) return true;
-  return homePred + awayPred >= homeResult + awayResult;
-}
-
-function firstComplete(scores: Array<[number | null | undefined, number | null | undefined]>) {
-  for (const [home, away] of scores) {
-    if (typeof home === "number" && typeof away === "number") {
-      return { homeGoals: home, awayGoals: away };
-    }
-  }
-
-  return { homeGoals: null, awayGoals: null };
-}
-
-function sumNullable(a?: number | null, b?: number | null) {
-  if (typeof a !== "number" || typeof b !== "number") return null;
-  return a + b;
-}
-
-function buildScore(
-  points: number,
-  code: ScoreResult["code"],
-  reason: string,
-  counters: Partial<Omit<ScoreResult, "points" | "code" | "reason">> = {}
-): ScoreResult {
+function score(points: number, scoringReason: string, extra: Record<string, unknown> = {}) {
   return {
     points,
-    code,
-    reason,
-    exactScores: 0,
-    correctWinners: 0,
-    correctDraws: 0,
-    correctGoalDifferences: 0,
+    scoringReason,
+    totalCorrect: 0,
+    correctGroupPicks: 0,
+    correctAdvancingPicks: 0,
     validPredictions: 0,
     latePredictions: 0,
-    ...counters
+    isCorrect: false,
+    ...extra
   };
 }

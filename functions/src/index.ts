@@ -3,11 +3,11 @@ import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { writeAuditLog } from "./audit";
 import { calculatePrizeAllocations, ScoreRow } from "./prizes";
-import { calculatePredictionScore, resolveMatchResult } from "./scoring";
+import { calculatePredictionScore, legacyPredictionToPick } from "./scoring";
 import { acceptInvite, createAdminInvite, createInvite, createParticipantInvite, previewInvite } from "./invites";
 import { createGroup, deleteGroup, updateGroup, updateTournamentConfig } from "./groups";
 import { bulkUpsertManualMatches, calculateGroupStandings, confirmRoundOf32Resolution, previewRoundOf32Resolution, resolveKnockoutMatches, upsertManualMatch, upsertManualResult } from "./manualResults";
-import { submitPrediction } from "./predictions";
+import { migrateLegacyScorePredictions, submitPrediction } from "./predictions";
 import {
   scheduledFixturesSync,
   scheduledLiveResultsSync,
@@ -27,6 +27,7 @@ export {
   createInvite,
   createParticipantInvite,
   deleteGroup,
+  migrateLegacyScorePredictions,
   previewInvite,
   previewRoundOf32Resolution,
   resolveKnockoutMatches,
@@ -100,6 +101,9 @@ async function updateGroupRankingInternal(groupId: string, actorUid: string) {
       uid: member.id,
       displayName: data.displayName,
       totalPoints: 0,
+      totalCorrect: 0,
+      correctGroupPicks: 0,
+      correctAdvancingPicks: 0,
       exactScores: 0,
       correctWinners: 0,
       correctDraws: 0,
@@ -115,17 +119,22 @@ async function updateGroupRankingInternal(groupId: string, actorUid: string) {
     const match = matches.get(prediction.matchId);
     const score = scores.get(prediction.uid);
     if (!match || !score) continue;
-    const result = resolveMatchResult(match, group.validResultMode);
-    const scored = calculatePredictionScore(prediction as { homeGoals: number; awayGoals: number; isLate: boolean }, result);
-    score.totalPoints += scored.points;
-    score.exactScores += scored.exactScores;
-    score.correctWinners += scored.correctWinners;
-    score.correctDraws += scored.correctDraws;
-    score.correctGoalDifferences += scored.correctGoalDifferences;
+    const normalizedPrediction = prediction.pick
+      ? prediction
+      : { ...prediction, pickType: "GROUP_OUTCOME", pick: legacyPredictionToPick(prediction as { homeGoals?: number; awayGoals?: number }) ?? "" };
+    const scored = calculatePredictionScore(normalizedPrediction, match as never);
+    score.totalPoints += scored.totalCorrect;
+    score.totalCorrect = (score.totalCorrect ?? 0) + scored.totalCorrect;
+    score.correctGroupPicks = (score.correctGroupPicks ?? 0) + scored.correctGroupPicks;
+    score.correctAdvancingPicks = (score.correctAdvancingPicks ?? 0) + scored.correctAdvancingPicks;
     score.validPredictions += scored.validPredictions;
     score.latePredictions += scored.latePredictions;
     batch.update(predictionDoc.ref, {
+      pickType: normalizedPrediction.pickType,
+      pick: normalizedPrediction.pick,
       points: scored.points,
+      totalCorrect: scored.totalCorrect,
+      isCorrect: scored.isCorrect,
       scoringReason: scored.scoringReason,
       status: prediction.isLate ? "late" : "valid",
       updatedAt: FieldValue.serverTimestamp()

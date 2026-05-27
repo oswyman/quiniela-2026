@@ -1,24 +1,22 @@
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { writeAuditLog } from "./audit";
+import { inferPickType, legacyPredictionToPick, PredictionPickType } from "./scoring";
 
 type SubmitPredictionInput = {
   groupId: string;
   matchId: string;
-  homeGoals: number;
-  awayGoals: number;
+  pickType?: PredictionPickType;
+  pick?: string;
+  homeGoals?: number;
+  awayGoals?: number;
 };
 
 export const submitPrediction = onCall<SubmitPredictionInput>(async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Inicia sesión.");
   const { groupId, matchId } = request.data;
-  const homeGoals = Number(request.data.homeGoals);
-  const awayGoals = Number(request.data.awayGoals);
 
   if (!groupId || !matchId) throw new HttpsError("invalid-argument", "Falta grupo o partido.");
-  if (!Number.isInteger(homeGoals) || !Number.isInteger(awayGoals) || homeGoals < 0 || awayGoals < 0) {
-    throw new HttpsError("invalid-argument", "El marcador debe usar enteros positivos.");
-  }
 
   const db = getFirestore();
   const [memberSnap, matchSnap] = await Promise.all([
@@ -28,6 +26,23 @@ export const submitPrediction = onCall<SubmitPredictionInput>(async (request) =>
   if (!memberSnap.exists) throw new HttpsError("permission-denied", "No perteneces a este grupo.");
   const match = matchSnap.data();
   if (!match) throw new HttpsError("not-found", "Partido no encontrado.");
+  const pickType = inferPickType(match as never);
+  if (request.data.pickType && request.data.pickType !== pickType) {
+    throw new HttpsError("invalid-argument", "El tipo de elección no corresponde a la fase del partido.");
+  }
+  const pick = String(request.data.pick ?? legacyPredictionToPick(request.data) ?? "");
+  if (!pick) throw new HttpsError("invalid-argument", "Falta elección.");
+  if (pickType === "GROUP_OUTCOME" && !["HOME", "DRAW", "AWAY"].includes(pick)) {
+    throw new HttpsError("invalid-argument", "Elección inválida para fase de grupos.");
+  }
+  if (pickType === "ADVANCING_TEAM" && (!match.isResolved || !match.isPublishedToParticipants)) {
+    throw new HttpsError("failed-precondition", "Este partido aún no está publicado para pronosticar.");
+  }
+  if (pickType === "ADVANCING_TEAM") {
+    const home = match.resolvedHomeTeam || match.homeTeam;
+    const away = match.resolvedAwayTeam || match.awayTeam;
+    if (![home, away].includes(pick)) throw new HttpsError("invalid-argument", "Elige uno de los equipos del partido.");
+  }
 
   const kickoffMs = match.kickoffAt?.toMillis?.();
   const isClosed = typeof kickoffMs === "number" && Date.now() >= kickoffMs;
@@ -38,24 +53,29 @@ export const submitPrediction = onCall<SubmitPredictionInput>(async (request) =>
       action: "latePredictionRejected",
       entityType: "prediction",
       entityId: `${request.auth.uid}_${matchId}`,
-      after: { matchId, homeGoals, awayGoals }
+      after: { matchId, pickType, pick }
     });
     throw new HttpsError("failed-precondition", "El partido ya cerró.");
   }
 
   const ref = db.doc(`groups/${groupId}/predictions/${request.auth.uid}_${matchId}`);
   const before = await ref.get();
+  const beforeData = before.data();
   const prediction = {
     uid: request.auth.uid,
     matchId,
-    homeGoals,
-    awayGoals,
-    submittedAt: before.exists ? before.data()?.submittedAt ?? FieldValue.serverTimestamp() : FieldValue.serverTimestamp(),
+    pickType,
+    pick,
+    homeGoals: request.data.homeGoals ?? beforeData?.homeGoals ?? null,
+    awayGoals: request.data.awayGoals ?? beforeData?.awayGoals ?? null,
+    submittedAt: before.exists ? beforeData?.submittedAt ?? FieldValue.serverTimestamp() : FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
     status: "valid",
     isLate: false,
-    points: before.data()?.points ?? 0,
-    scoringReason: before.data()?.scoringReason ?? "Pendiente de resultado"
+    points: beforeData?.points ?? 0,
+    totalCorrect: beforeData?.totalCorrect ?? 0,
+    isCorrect: beforeData?.isCorrect ?? false,
+    scoringReason: beforeData?.scoringReason ?? "Pendiente de resultado"
   };
 
   await ref.set(prediction, { merge: true });
@@ -70,4 +90,54 @@ export const submitPrediction = onCall<SubmitPredictionInput>(async (request) =>
   });
 
   return { predictionId: ref.id };
+});
+
+export const migrateLegacyScorePredictions = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Inicia sesión.");
+  const db = getFirestore();
+  const userSnap = await db.doc(`users/${request.auth.uid}`).get();
+  if (userSnap.data()?.roleGlobal !== "platform_admin") throw new HttpsError("permission-denied", "Solo platform_admin.");
+
+  const groupsSnap = await db.collection("groups").get();
+  let migrated = 0;
+  let skipped = 0;
+
+  for (const groupDoc of groupsSnap.docs) {
+    const predictionsSnap = await db.collection(`groups/${groupDoc.id}/predictions`).get();
+    const batch = db.batch();
+    let batchHasWrites = false;
+
+    for (const predictionDoc of predictionsSnap.docs) {
+      const prediction = predictionDoc.data();
+      if (prediction.pick) {
+        skipped += 1;
+        continue;
+      }
+      const pick = legacyPredictionToPick(prediction as { homeGoals?: number; awayGoals?: number });
+      if (!pick) {
+        skipped += 1;
+        continue;
+      }
+      batch.set(predictionDoc.ref, {
+        pickType: "GROUP_OUTCOME",
+        pick,
+        migrationVersion: "pick-v1",
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true });
+      migrated += 1;
+      batchHasWrites = true;
+    }
+
+    if (batchHasWrites) await batch.commit();
+  }
+
+  await writeAuditLog({
+    actorUid: request.auth.uid,
+    action: "migrateLegacyScorePredictions",
+    entityType: "prediction",
+    entityId: "all-groups",
+    after: { migrated, skipped }
+  });
+
+  return { migrated, skipped };
 });
