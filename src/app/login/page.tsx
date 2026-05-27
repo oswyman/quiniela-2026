@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 import { loginWithEmail } from "@/lib/firebase/auth";
 import { PageTitle } from "@/components/PageTitle";
 import { StatusMessage } from "@/components/StatusMessage";
@@ -11,6 +12,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -38,9 +40,27 @@ export default function LoginPage() {
             <label htmlFor="email">Email</label>
             <input id="email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
           </div>
-          <div className="field">
-            <label htmlFor="password">Contraseña</label>
-            <input id="password" type="password" autoComplete="current-password" minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} required />
+          <div className="inputGroup">
+            <div className="field" style={{ flex: 1 }}>
+              <label htmlFor="password">Contraseña</label>
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                minLength={6}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+              />
+            </div>
+            <button
+              type="button"
+              className="inputSuffix"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
           </div>
           {error ? <StatusMessage type="error">{error}</StatusMessage> : null}
           <button className="button" disabled={loading} type="submit">

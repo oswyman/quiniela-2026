@@ -1,10 +1,12 @@
+import { randomBytes } from "crypto";
 import { getFirestore, FieldValue, Timestamp } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { writeAuditLog } from "./audit";
 import { isAfterTimestamp, resolveRegistrationDeadline } from "./tournament";
 
 function code() {
-  return Math.random().toString(36).slice(2, 8).toUpperCase();
+  // Criptográficamente seguro: 16^10 ≈ 1 billón de combinaciones
+  return randomBytes(5).toString("hex").toUpperCase();
 }
 
 async function isPlatformAdmin(uid: string) {

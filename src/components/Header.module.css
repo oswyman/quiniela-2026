@@ -1,3 +1,18 @@
+.skipLink {
+  background: var(--stadium-800);
+  border-radius: 0 0 8px 0;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  left: 0;
+  padding: 8px 16px;
+  position: absolute;
+  top: -48px;
+  transition: top 0.2s;
+  z-index: 999;
+}
+.skipLink:focus { top: 0; }
+
 .header {
   align-items: center;
   backdrop-filter: blur(18px);

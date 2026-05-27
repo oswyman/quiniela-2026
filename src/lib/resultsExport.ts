@@ -1,5 +1,6 @@
 import { formatDate } from "./format";
 import { getDisplayTeam } from "./matchDisplay";
+import { rankScores } from "./prizes";
 import type { Group, Match, Member, Prediction, Prize, Score } from "@/types";
 
 type GroupExport = {
@@ -83,4 +84,35 @@ function escapeCsv(value: unknown) {
   const text = String(value ?? "");
   if (!/[",\n]/.test(text)) return text;
   return `"${text.replace(/"/g, '""')}"`;
+}
+
+export function generateRankingCsv(
+  scores: Score[],
+  prizes: Array<{ uid: string; estimatedPrize: number; ruleApplied: string; tieApplied: boolean }>,
+  members: Member[],
+  groupName: string,
+  currency: string
+): string {
+  const memberMap = new Map(members.map((m) => [m.uid, m]));
+  const prizeMap = new Map(prizes.map((p) => [p.uid, p]));
+  const ranked = rankScores(scores);
+  const header = ["posicion", "participante", "aciertos_totales", "grupos", "eliminacion", "validos", "tarde", "premio_estimado_" + currency, "regla_premio", "empate_aplicado"];
+  const rows = ranked.map((score) => {
+    const prize = prizeMap.get(score.uid);
+    const member = memberMap.get(score.uid);
+    return [
+      score.position,
+      escapeCsv(score.displayName ?? member?.displayName ?? score.uid),
+      score.totalCorrect ?? score.totalPoints ?? 0,
+      score.correctGroupPicks ?? 0,
+      score.correctAdvancingPicks ?? 0,
+      score.validPredictions ?? 0,
+      score.latePredictions ?? 0,
+      prize ? prize.estimatedPrize.toFixed(2) : "",
+      prize ? escapeCsv(prize.ruleApplied) : "",
+      prize?.tieApplied ? "si" : "no"
+    ].join(",");
+  });
+  const note = `# Ranking informativo de ${escapeCsv(groupName)} — generado ${new Date().toLocaleDateString("es-MX")} — solo lectura`;
+  return [note, header.join(","), ...rows].join("\r\n");
 }

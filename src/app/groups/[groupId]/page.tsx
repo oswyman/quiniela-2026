@@ -129,7 +129,10 @@ function GroupContent() {
         </section>
         <section className="panel stack">
           <h2>Top ranking</h2>
-          {scores.length === 0 ? <p className="muted">Sin aciertos calculados todavía.</p> : scores.slice(0, 5).map((score, index) => <p key={score.uid}>{index + 1}. {score.displayName ?? score.uid}: <strong>{score.totalCorrect ?? score.totalPoints} aciertos</strong></p>)}
+          {scores.length === 0 ? <p className="muted">Sin aciertos calculados todavía.</p> : scores.slice(0, 5).map((score, index) => {
+            const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `${index + 1}.`;
+            return <p key={score.uid}>{medal} {score.displayName ?? score.uid}: <strong>{score.totalCorrect ?? score.totalPoints} aciertos</strong></p>;
+          })}
         </section>
         <section className="panel stack">
           <h2>Premios estimados</h2>
@@ -137,7 +140,10 @@ function GroupContent() {
         </section>
       </div>
     </main>
-    <Link className="stickyPredictButton" href={`/groups/${group.id}/predictions`}>Pronosticar ahora · {pendingPredictions} pendientes</Link>
+    <Link className="stickyPredictButton" href={`/groups/${group.id}/predictions`}>
+      Pronosticar ahora
+      {pendingPredictions > 0 ? <span className="badge">{pendingPredictions}</span> : null}
+    </Link>
     </>
   );
 }

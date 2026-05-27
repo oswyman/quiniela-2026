@@ -24,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es" className={`${display.variable} ${sans.variable}`}>
       <body>
         <Header />
+        <div id="main-content" tabIndex={-1} style={{ outline: "none" }} />
         {children}
       </body>
     </html>

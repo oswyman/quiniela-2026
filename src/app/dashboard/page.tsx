@@ -76,9 +76,16 @@ function DashboardContent() {
       <div className="grid">
         {groups.map((group) => (
           <article className="panel stack cardInteractive" key={group.id}>
-            <span className="pill">{group.memberRole === "group_admin" ? "Admin" : "Participante"}</span>
+            <div className="cluster">
+              <span className={`pill ${group.memberRole === "group_admin" ? "pill--admin" : ""}`}>
+                {group.memberRole === "group_admin" ? "Admin" : "Participante"}
+              </span>
+              <span className={`pill ${group.status === "active" ? "pill--active" : group.status === "draft" ? "pill--draft" : group.status === "closed" ? "pill--closed" : group.status === "cancelled" ? "pill--cancelled" : ""}`}>
+                {group.status === "active" ? "Activo" : group.status === "draft" ? "Borrador" : group.status === "closed" ? "Cerrado" : group.status === "cancelled" ? "Cancelado" : group.status}
+              </span>
+            </div>
             <h2>{group.name}</h2>
-            <p className="muted">Estado: {group.status} · Visibilidad: {group.predictionVisibility === "AFTER_CLOSE" ? "Después del cierre" : "Antes del cierre"}</p>
+            <p className="muted">Visibilidad: {group.predictionVisibility === "AFTER_CLOSE" ? "Después del cierre" : "Antes del cierre"}</p>
             <p>{formatMoney(group.contributionAmount, group.currency)} por participante</p>
             <div className="cluster">
               <Link className="button gold" href={`/groups/${group.id}/predictions`}>Pronosticar</Link>

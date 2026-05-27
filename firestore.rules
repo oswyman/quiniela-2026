@@ -85,7 +85,8 @@ service cloud.firestore {
     }
 
     match /groupMembers/{id} {
-      allow read: if signedIn() && resource.data.uid == request.auth.uid || isPlatformAdmin();
+      // Paréntesis explícitos para evitar ambigüedad de precedencia (&&/||)
+      allow read: if (signedIn() && resource.data.uid == request.auth.uid) || isPlatformAdmin();
       allow write: if false;
     }
 
@@ -105,7 +106,8 @@ service cloud.firestore {
     }
 
     match /systemConfig/{id} {
-      allow read: if signedIn();
+      // providerStatus y tournament son necesarios para el cliente; el resto solo para admin
+      allow read: if (id == "providerStatus" || id == "tournament") && signedIn() || isPlatformAdmin();
       allow write: if false;
     }
   }
