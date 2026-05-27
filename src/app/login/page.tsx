@@ -40,9 +40,9 @@ export default function LoginPage() {
             <label htmlFor="email">Email</label>
             <input id="email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
           </div>
-          <div className="inputGroup">
-            <div className="field" style={{ flex: 1 }}>
-              <label htmlFor="password">Contraseña</label>
+          <div className="field">
+            <label htmlFor="password">Contraseña</label>
+            <div className="inputGroup">
               <input
                 id="password"
                 type={showPassword ? "text" : "password"}
@@ -52,15 +52,15 @@ export default function LoginPage() {
                 onChange={(event) => setPassword(event.target.value)}
                 required
               />
+              <button
+                type="button"
+                className="inputSuffix"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
-            <button
-              type="button"
-              className="inputSuffix"
-              onClick={() => setShowPassword((v) => !v)}
-              aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-            >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
           </div>
           {error ? <StatusMessage type="error">{error}</StatusMessage> : null}
           <button className="button" disabled={loading} type="submit">

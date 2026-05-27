@@ -809,29 +809,52 @@ details[open] .rulesSummary::after { transform: rotate(180deg); }
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-/* ── Password field ──────────────────────────────── */
+/* ── Password field con toggle ───────────────────── */
 .inputGroup {
-  display: flex;
   position: relative;
 }
-.inputGroup .field input {
+.inputGroup input {
   padding-right: 44px;
+  width: 100%;
 }
 .inputSuffix {
   background: none;
   border: none;
   border-radius: 6px;
-  bottom: 0;
   color: var(--muted);
   cursor: pointer;
   min-height: auto;
   padding: var(--space-2);
   position: absolute;
   right: 10px;
-  top: 0;
+  top: 50%;
+  transform: translateY(-50%);
   width: auto;
 }
 .inputSuffix:hover { color: var(--ink); }
+
+/* ── tableWrap dentro de panel ───────────────────── */
+/* El padding:0 de tableWrap cancela el padding del panel.
+   Devolvemos espaciado a elementos no-tabla dentro de tableWrap */
+.tableWrap > h2,
+.tableWrap > h3 {
+  padding: 20px 20px 0;
+}
+
+/* UID truncado en celdas muy largas */
+.cell-truncate {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+/* MetricCard value — evitar overflow con cifras largas */
+.metric strong,
+.stat strong {
+  overflow-wrap: anywhere;
+}
 
 /* ── Ranking mobile → cards ──────────────────────── */
 .rankingCards { display: none; }

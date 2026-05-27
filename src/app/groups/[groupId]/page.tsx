@@ -136,7 +136,10 @@ function GroupContent() {
         </section>
         <section className="panel stack">
           <h2>Premios estimados</h2>
-          {prizes.length === 0 ? <p className="muted">Recalcula ranking cuando haya resultados.</p> : prizes.map((prize) => <p key={prize.uid}>{prize.uid}: {formatMoney(prize.estimatedPrize, group.currency)}</p>)}
+          {prizes.length === 0 ? <p className="muted">Recalcula ranking cuando haya resultados.</p> : prizes.map((prize) => {
+            const name = scores.find((s) => s.uid === prize.uid)?.displayName ?? members.find((m) => m.uid === prize.uid)?.displayName ?? prize.uid;
+            return <p key={prize.uid}><strong>{name}</strong>: {formatMoney(prize.estimatedPrize, group.currency)}</p>;
+          })}
         </section>
       </div>
     </main>

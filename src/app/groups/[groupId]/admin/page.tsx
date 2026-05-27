@@ -179,26 +179,26 @@ function GroupAdminContent() {
           <thead>
             <tr>
               <th>Nombre</th>
-              <th>Email</th>
-              <th>Rol</th>
-              <th>Pago manual</th>
-              <th>Estado</th>
+              <th className="cell-nowrap">Email</th>
+              <th className="cell-nowrap">Rol</th>
+              <th className="cell-nowrap">Pago manual</th>
+              <th className="cell-nowrap">Estado</th>
             </tr>
           </thead>
           <tbody>
             {members.map((member) => (
               <tr key={member.uid}>
-                <td>{member.displayName}</td>
-                <td>{member.email}</td>
-                <td>{member.role}</td>
-                <td>
+                <td style={{ minWidth: 120 }}>{member.displayName}</td>
+                <td className="cell-nowrap">{member.email}</td>
+                <td className="cell-nowrap">{member.role}</td>
+                <td className="cell-nowrap">
                   <select value={member.paymentStatus} onChange={(event) => onPaymentChange(member.uid, event.target.value as Member["paymentStatus"])}>
                     <option value="pending">Pendiente</option>
                     <option value="paid">Pagado</option>
                     <option value="not_applicable">No aplica</option>
                   </select>
                 </td>
-                <td>{member.status}</td>
+                <td className="cell-nowrap">{member.status}</td>
               </tr>
             ))}
           </tbody>

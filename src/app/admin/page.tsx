@@ -447,14 +447,14 @@ function PlatformAdminContent() {
         <section className="panel tableWrap">
           <h2>Grupos comerciales</h2>
           <table>
-            <thead><tr><th>Grupo</th><th>Estado</th><th>Cierre registro</th><th>Aportación</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>Grupo</th><th className="cell-nowrap">Estado</th><th className="cell-nowrap">Cierre registro</th><th className="cell-nowrap">Aportación</th><th>Acciones</th></tr></thead>
             <tbody>
               {groups.map((group) => (
                 <tr key={group.id}>
                   <td>{group.name}</td>
-                  <td>{group.status}</td>
-                  <td>{formatDate(group.registrationDeadlineAt)}</td>
-                  <td>{group.currency} {group.contributionAmount}</td>
+                  <td className="cell-nowrap">{group.status}</td>
+                  <td className="cell-nowrap">{formatDate(group.registrationDeadlineAt)}</td>
+                  <td className="cell-nowrap">{group.currency} {group.contributionAmount}</td>
                   <td>
                     <div className="cluster">
                       <button className="button secondary" disabled={busy === group.id} onClick={() => recalculate(group.id)} type="button">Recalcular</button>
@@ -494,9 +494,16 @@ function PlatformAdminContent() {
           </div>
           <div className="tableWrap">
             <table>
-              <thead><tr><th>Acción</th><th>Entidad</th><th>Actor</th><th>Fecha</th></tr></thead>
+              <thead><tr><th className="cell-nowrap">Acción</th><th>Entidad</th><th className="cell-nowrap">Actor</th><th className="cell-nowrap">Fecha</th></tr></thead>
               <tbody>
-                {logs.map((log) => <tr key={log.id}><td>{log.action}</td><td>{log.entityType} · {log.entityId}</td><td>{log.actorUid}</td><td>{formatDate(log.createdAt)}</td></tr>)}
+                {logs.map((log) => (
+                  <tr key={log.id}>
+                    <td className="cell-nowrap">{log.action}</td>
+                    <td style={{ wordBreak: "break-all", maxWidth: 220 }}>{log.entityType} · {log.entityId}</td>
+                    <td className="cell-truncate" title={log.actorUid}>{log.actorUid}</td>
+                    <td className="cell-nowrap">{formatDate(log.createdAt)}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

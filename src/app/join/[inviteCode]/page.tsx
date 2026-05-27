@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 import { registerWithInvite } from "@/lib/firebase/auth";
 import { acceptInvite, previewInvite } from "@/lib/firebase/firestore";
 import { PageTitle } from "@/components/PageTitle";
@@ -17,6 +18,7 @@ export default function JoinPage() {
   const [invite, setInvite] = useState<Invite | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -95,7 +97,24 @@ export default function JoinPage() {
                 </div>
                 <div className="field">
                   <label htmlFor="password">Contraseña</label>
-                  <input id="password" type="password" minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} required />
+                  <div className="inputGroup">
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      minLength={6}
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="inputSuffix"
+                      onClick={() => setShowPassword((v) => !v)}
+                      aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </div>
                 <button className="button" disabled={loading} type="submit">{loading ? "Creando cuenta..." : "Crear cuenta y aceptar"}</button>
                 <Link href="/login">Ya tengo cuenta</Link>
