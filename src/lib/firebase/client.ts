@@ -29,8 +29,14 @@ export const db = app ? getFirestore(app) : null as unknown as ReturnType<typeof
 export const functions = app ? getFunctions(app) : null as unknown as ReturnType<typeof getFunctions>;
 
 // Conectar a Firebase Local Emulator Suite cuando NEXT_PUBLIC_USE_EMULATOR=true
+// Guard para HMR: evitar llamar connect*Emulator más de una vez por instancia
 if (app && typeof window !== "undefined" && process.env.NEXT_PUBLIC_USE_EMULATOR === "true") {
-  connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
-  connectFirestoreEmulator(db, "localhost", 8080);
-  connectFunctionsEmulator(functions, "localhost", 5001);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const win = window as any;
+  if (!win.__fbEmulatorsConnected) {
+    win.__fbEmulatorsConnected = true;
+    connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
+    connectFirestoreEmulator(db, "localhost", 8080);
+    connectFunctionsEmulator(functions, "localhost", 5001);
+  }
 }

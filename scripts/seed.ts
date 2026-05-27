@@ -28,7 +28,7 @@ import type { Match, Prediction, Score } from "@/types";
 // ── Inicializar Admin SDK ─────────────────────────────────────────────────────
 
 if (!getApps().length) {
-  initializeApp({ projectId: "demo-quiniela" });
+  initializeApp({ projectId: "quiniela-2026-9883d" });
 }
 
 const adminAuth = getAuth();

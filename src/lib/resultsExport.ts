@@ -96,7 +96,7 @@ export function generateRankingCsv(
   const memberMap = new Map(members.map((m) => [m.uid, m]));
   const prizeMap = new Map(prizes.map((p) => [p.uid, p]));
   const ranked = rankScores(scores);
-  const header = ["posicion", "participante", "aciertos_totales", "grupos", "eliminacion", "validos", "tarde", "premio_estimado_" + currency, "regla_premio", "empate_aplicado"];
+  const header = ["posicion", "participante", "aciertos_totales", "grupos", "eliminacion", "a_tiempo", "tarde", "premio_estimado_" + currency, "regla_premio", "empate_aplicado"];
   const rows = ranked.map((score) => {
     const prize = prizeMap.get(score.uid);
     const member = memberMap.get(score.uid);

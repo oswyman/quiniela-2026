@@ -96,7 +96,7 @@ function RankingContent() {
               <th className="cell-nowrap">Aciertos</th>
               <th className="cell-nowrap">Grupos</th>
               <th className="cell-nowrap">Eliminación</th>
-              <th className="cell-nowrap">Válidos</th>
+              <th className="cell-nowrap">A tiempo</th>
               <th className="cell-nowrap">Premio estimado</th>
             </tr>
           </thead>
@@ -130,7 +130,7 @@ function RankingContent() {
                 <span className="rankingCard__pos">{positionMedal(score.position)}</span>
                 <span className="rankingCard__name">{score.displayName ?? score.uid}</span>
                 <span className="rankingCard__detail">
-                  {score.totalCorrect ?? score.totalPoints} aciertos · {score.correctGroupPicks ?? 0} grupos · {score.correctAdvancingPicks ?? 0} elim. · {score.validPredictions ?? 0} válidos
+                  {score.totalCorrect ?? score.totalPoints} aciertos · {score.correctGroupPicks ?? 0} grupos · {score.correctAdvancingPicks ?? 0} elim. · {score.validPredictions ?? 0} a tiempo
                 </span>
                 <span className="rankingCard__prize">
                   {prize ? formatMoney(prize.estimatedPrize, group?.currency ?? "MXN") : "Premio pendiente"}
