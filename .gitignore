@@ -5,9 +5,11 @@ dist
 .vercel
 .env
 .env.local
+.env.local.emulator
 coverage
 *.tsbuildinfo
 functions/lib
 functions/node_modules
 firebase-debug.log
 firestore-debug.log
+emulator-data/

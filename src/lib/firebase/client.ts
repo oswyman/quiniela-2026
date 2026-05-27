@@ -2,9 +2,9 @@
 
 import { getApps, initializeApp } from "firebase/app";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { getFunctions } from "firebase/functions";
+import { connectAuthEmulator, getAuth } from "firebase/auth";
+import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
+import { connectFunctionsEmulator, getFunctions } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "demo-api-key",
@@ -27,3 +27,10 @@ if (app && process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_SITE_KEY) {
 export const auth = app ? getAuth(app) : null as unknown as ReturnType<typeof getAuth>;
 export const db = app ? getFirestore(app) : null as unknown as ReturnType<typeof getFirestore>;
 export const functions = app ? getFunctions(app) : null as unknown as ReturnType<typeof getFunctions>;
+
+// Conectar a Firebase Local Emulator Suite cuando NEXT_PUBLIC_USE_EMULATOR=true
+if (app && typeof window !== "undefined" && process.env.NEXT_PUBLIC_USE_EMULATOR === "true") {
+  connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "localhost", 8080);
+  connectFunctionsEmulator(functions, "localhost", 5001);
+}
