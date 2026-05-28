@@ -642,7 +642,8 @@ th { color: var(--muted); font-size: var(--text-xs); letter-spacing: 0.05em; tex
   .twoCol, .formGrid, .scoreInputs, .filterBar, .resultGrid, .metricsGrid { grid-template-columns: 1fr; }
   .landingStep { grid-template-columns: 48px 1fr; gap: 14px; padding: 20px 0; }
   .landingPrinciple { grid-template-columns: 1fr; gap: 10px; }
-  .predictionsToolbar { flex-direction: column; align-items: flex-start; }
+  .predictionsToolbar { top: 96px; margin: 0 -12px; padding-left: 12px; padding-right: 12px; }
+  .predictionsToolbarRow { gap: 8px; }
   .statsStrip { grid-template-columns: 1fr; gap: 16px; }
   .bentoGrid { grid-template-columns: 1fr; }
   .bentoWide, .bentoMid { grid-column: span 1; }
@@ -1050,13 +1051,87 @@ details[open] .rulesSummary::after { transform: rotate(180deg); }
   white-space: nowrap;
 }
 
-/* ── Predictions toolbar (progreso + filtros) ────── */
+/* ── Predictions sticky toolbar ──────────────────── */
 .predictionsToolbar {
+  backdrop-filter: blur(8px);
+  background: rgba(255, 253, 247, 0.97);
+  border-bottom: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  gap: 10px;
+  /* Negamos el padding del shell para llegar al borde */
+  margin: 0 calc(-1 * (100vw - min(1180px, 100% - 32px)) / 2);
+  padding: 10px calc((100vw - min(1180px, 100% - 32px)) / 2 + 16px) 12px;
+  position: sticky;
+  top: 74px;
+  z-index: 10;
+}
+
+/* ── Progress bar ────────────────────────────────── */
+.progressBar {
+  background: var(--ivory-200);
+  border-radius: 999px;
+  height: 3px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.progressBarFill {
+  background: var(--grass-500);
+  border-radius: 999px;
+  height: 100%;
+  transition: width 500ms var(--ease-out);
+}
+
+/* ── Predictions toolbar inner rows ─────────────── */
+.predictionsToolbarRow {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
   justify-content: space-between;
+}
+
+/* ── Phase nav strip ─────────────────────────────── */
+.phaseNav {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.phaseNav::-webkit-scrollbar { display: none; }
+
+.phaseNavBtn {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  min-height: auto;
+  padding: 5px 12px;
+  transition: background 120ms var(--ease-out), color 120ms var(--ease-out), border-color 120ms var(--ease-out);
+  white-space: nowrap;
+  width: auto;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .phaseNavBtn:hover {
+    background: rgba(25, 115, 90, 0.07);
+    border-color: rgba(25, 115, 90, 0.2);
+    color: var(--stadium-900);
+  }
+}
+
+.phaseNavBtn.active {
+  background: var(--stadium-800);
+  border-color: var(--stadium-800);
+  color: #fff;
 }
 
 /* ── Prediction phase header ─────────────────────── */

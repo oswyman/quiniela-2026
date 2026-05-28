@@ -88,7 +88,7 @@ export const submitPrediction = onCall<SubmitPredictionInput>(async (request) =>
     action: before.exists ? "updatePrediction" : "createPrediction",
     entityType: "prediction",
     entityId: ref.id,
-    before: before.data(),
+    before: before.exists ? (before.data() ?? null) : null,
     after: prediction
   });
 

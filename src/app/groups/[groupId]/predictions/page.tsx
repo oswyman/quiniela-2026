@@ -3,7 +3,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Lock } from "lucide-react";
+import { ChevronDown, Lock } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { AuthGate } from "@/components/AuthGate";
 import { EmptyState } from "@/components/EmptyState";
@@ -14,7 +14,7 @@ import { Toast, createToastId, type ToastItem } from "@/components/Toast";
 import { useAuthUser } from "@/components/useAuthUser";
 import { toDate } from "@/lib/format";
 import { getGroup, listMatches, listPredictions, savePrediction } from "@/lib/firebase/firestore";
-import { getDisplayTeam, getMatchTitle } from "@/lib/matchDisplay";
+import { getDisplayTeam } from "@/lib/matchDisplay";
 import { formatMatchTime, matchTimeLabel, type MatchTimeMode } from "@/lib/matchTime";
 import { inferPickType, isMatchClosed, predictionClosesAt, type GroupPick, type PredictionPickType } from "@/lib/scoring";
 import { teamFlagEmoji } from "@/lib/teamFlags";
@@ -29,6 +29,10 @@ export default function PredictionsPage() {
       <PredictionsContent />
     </AuthGate>
   );
+}
+
+function phaseId(phase: string) {
+  return `phase-${phase.replace(/\s+/g, "-").toLowerCase()}`;
 }
 
 function PredictionsContent() {
@@ -46,7 +50,9 @@ function PredictionsContent() {
   const [userTimeZone, setUserTimeZone] = useState("America/Mexico_City");
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [matchFilter, setMatchFilter] = useState<MatchFilter>("all");
+  const [activePhase, setActivePhase] = useState<string>("");
   const [, setTick] = useState(0);
+  const toolbarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setUserTimeZone(getUserTimeZone());
@@ -77,6 +83,83 @@ function PredictionsContent() {
     load();
   }, [params.groupId, retryCount]);
 
+  const byMatch = useMemo(() => new Map(predictions.map((p) => [p.matchId, p])), [predictions]);
+  const visibleMatches = useMemo(() => matches.filter(isVisibleForParticipants), [matches]);
+
+  const filteredMatches = useMemo(() => {
+    if (matchFilter === "pending") {
+      return visibleMatches.filter((m) => {
+        const kickoffDate = toDate(m.kickoffAt);
+        return !isMatchClosed(kickoffDate) && !byMatch.get(m.id);
+      });
+    }
+    return visibleMatches;
+  }, [visibleMatches, matchFilter, byMatch]);
+
+  const groupedByPhase = useMemo(() => {
+    const groups = new Map<string, Match[]>();
+    for (const match of filteredMatches) {
+      const phase = match.phase || "Sin fase";
+      if (!groups.has(phase)) groups.set(phase, []);
+      groups.get(phase)!.push(match);
+    }
+    return groups;
+  }, [filteredMatches]);
+
+  // Todas las fases (para el nav), independiente del filtro activo
+  const allPhases = useMemo(() => {
+    const seen = new Set<string>();
+    for (const m of visibleMatches) seen.add(m.phase || "Sin fase");
+    return [...seen];
+  }, [visibleMatches]);
+
+  const totalVisible = visibleMatches.length;
+  const totalDone = visibleMatches.filter((m) => byMatch.get(m.id)).length;
+  const totalPending = visibleMatches.filter((m) => {
+    const kickoffDate = toDate(m.kickoffAt);
+    return !isMatchClosed(kickoffDate) && !byMatch.get(m.id);
+  }).length;
+  const progressPct = totalVisible > 0 ? Math.round((totalDone / totalVisible) * 100) : 0;
+
+  // IntersectionObserver para fase activa
+  useEffect(() => {
+    if (allPhases.length === 0) return;
+    const observers: IntersectionObserver[] = [];
+    for (const phase of allPhases) {
+      const el = document.getElementById(phaseId(phase));
+      if (!el) continue;
+      const obs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) setActivePhase(phase); },
+        { rootMargin: "-20% 0px -70% 0px", threshold: 0 }
+      );
+      obs.observe(el);
+      observers.push(obs);
+    }
+    return () => observers.forEach((o) => o.disconnect());
+  }, [allPhases]);
+
+  function getScrollOffset() {
+    const headerH = 74;
+    const toolbarH = toolbarRef.current?.offsetHeight ?? 0;
+    return headerH + toolbarH + 8;
+  }
+
+  function scrollToPhase(phase: string) {
+    const el = document.getElementById(phaseId(phase));
+    if (!el) return;
+    window.scrollTo({ top: el.offsetTop - getScrollOffset(), behavior: "smooth" });
+  }
+
+  function scrollToNextPending() {
+    const match = visibleMatches.find((m) => {
+      return !isMatchClosed(toDate(m.kickoffAt)) && !byMatch.get(m.id);
+    });
+    if (!match) return;
+    const el = document.getElementById(`match-${match.id}`);
+    if (!el) return;
+    window.scrollTo({ top: el.offsetTop - getScrollOffset(), behavior: "smooth" });
+  }
+
   const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
@@ -91,77 +174,31 @@ function PredictionsContent() {
     setToasts((prev) => [...prev, { ...item, id: createToastId() }]);
   }
 
-  const byMatch = useMemo(() => new Map(predictions.map((p) => [p.matchId, p])), [predictions]);
-  const visibleMatches = useMemo(() => matches.filter(isVisibleForParticipants), [matches]);
-
-  const filteredMatches = useMemo(() => {
-    if (matchFilter === "pending") {
-      return visibleMatches.filter((m) => {
-        const kickoffDate = toDate(m.kickoffAt);
-        return !isMatchClosed(kickoffDate) && !byMatch.get(m.id);
-      });
-    }
-    return visibleMatches;
-  }, [visibleMatches, matchFilter, byMatch]);
-
-  // Agrupar por fase manteniendo el orden original
-  const groupedByPhase = useMemo(() => {
-    const groups = new Map<string, Match[]>();
-    for (const match of filteredMatches) {
-      const phase = match.phase || "Sin fase";
-      if (!groups.has(phase)) groups.set(phase, []);
-      groups.get(phase)!.push(match);
-    }
-    return groups;
-  }, [filteredMatches]);
-
-  const totalVisible = visibleMatches.length;
-  const totalDone = visibleMatches.filter((m) => byMatch.get(m.id)).length;
-  const totalPending = visibleMatches.filter((m) => {
-    const kickoffDate = toDate(m.kickoffAt);
-    return !isMatchClosed(kickoffDate) && !byMatch.get(m.id);
-  }).length;
-
   async function submitPrediction(match: Match, pickType: PredictionPickType, pick: string) {
     if (!user) return;
 
     const kickoffDate = toDate(match.kickoffAt);
     if (isMatchClosed(kickoffDate)) {
-      pushToast({
-        type: "warning",
-        title: "Pronóstico cerrado",
-        body: "El tiempo para elegir en este partido ya venció."
-      });
+      pushToast({ type: "warning", title: "Pronóstico cerrado", body: "El tiempo para elegir en este partido ya venció." });
       return;
     }
 
     const prevPredictions = predictions;
     setPredictions((prev) => {
       const existing = prev.find((p) => p.matchId === match.id);
-      if (existing) {
-        return prev.map((p) => p.matchId === match.id ? { ...p, pick, pickType } : p);
-      }
+      if (existing) return prev.map((p) => p.matchId === match.id ? { ...p, pick, pickType } : p);
       return [...prev, { id: `optimistic-${match.id}`, uid: user.uid, matchId: match.id, pick, pickType, points: 0, isLate: false, status: "valid", scoringReason: "" }];
     });
 
     setSavingMatchId(match.id);
     try {
       await savePrediction(params.groupId, match.id, pickType, pick);
-
       const closesAt = predictionClosesAt(kickoffDate);
-      const deadline = formatDeadlineCDMX(closesAt);
-      pushToast({
-        type: "success",
-        title: "Pronóstico guardado",
-        body: `Puedes cambiarlo hasta ${deadline}`
-      });
-
+      pushToast({ type: "success", title: "Pronóstico guardado", body: `Puedes cambiarlo hasta ${formatDeadlineCDMX(closesAt)}` });
       listPredictions(params.groupId).then(setPredictions).catch(() => null);
     } catch (err) {
-      // Revertir optimistic update
       setPredictions(prevPredictions);
       const msg = err instanceof Error ? err.message : "No se pudo guardar el pronóstico.";
-      // El error de guardado va solo al toast — no al StatusMessage de carga
       pushToast({ type: "error", title: "No se pudo guardar", body: msg });
     } finally {
       setSavingMatchId("");
@@ -170,9 +207,7 @@ function PredictionsContent() {
 
   if (loading) return (
     <main className="container shell">
-      <div className="panel" role="status" aria-live="polite">
-        <p className="muted" style={{ margin: 0 }}>Cargando partidos...</p>
-      </div>
+      <div className="panel" role="status" aria-live="polite"><p className="muted" style={{ margin: 0 }}>Cargando partidos...</p></div>
     </main>
   );
 
@@ -193,32 +228,62 @@ function PredictionsContent() {
 
       <details className="panel stack rulesPanel">
         <summary className="rulesSummary">¿Cómo funciona? <span className="muted">(toca para ver las reglas)</span></summary>
-        <p>Cada partido atinado suma <strong>1 acierto</strong>. En la fase de grupos elige Local gana, Empate o Visitante gana — el resultado se evalúa a 90 minutos. Desde la ronda de 32, elige el equipo que avanza al siguiente round.</p>
-        <p>Puedes cambiar tu elección en cualquier momento hasta <strong>90 minutos antes del kickoff</strong> de cada partido. Después de ese límite, el pronóstico queda bloqueado.</p>
+        <p>Cada partido atinado suma <strong>1 acierto</strong>. Fase de grupos: elige Local gana, Empate o Visitante gana — resultado a 90 min. Desde ronda de 32, elige el equipo que avanza.</p>
+        <p>Puedes cambiar tu elección hasta <strong>90 minutos antes del kickoff</strong>. Después queda bloqueado.</p>
         {group.predictionVisibility === "BEFORE_CLOSE" ? (
-          <p className="muted">Este grupo tiene visibilidad antes del cierre — otros participantes pueden ver tus elecciones antes de que el partido cierre.</p>
+          <p className="muted">Este grupo tiene visibilidad antes del cierre — otros pueden ver tus elecciones antes de que el partido cierre.</p>
         ) : null}
       </details>
 
       {loadError ? <StatusMessage type="error" onRetry={retryLoad}>{loadError}</StatusMessage> : null}
 
-      {/* Progreso + filtros */}
-      <div className="predictionsToolbar">
-        <p className="matchStats">
-          <span><strong>{totalDone}</strong>/{totalVisible} pronósticos</span>
+      {/* ── Sticky toolbar ───────────────────────────── */}
+      <div className="predictionsToolbar" ref={toolbarRef}>
+        {/* Barra de progreso */}
+        <div className="progressBar" role="progressbar" aria-valuenow={progressPct} aria-valuemin={0} aria-valuemax={100} aria-label={`${totalDone} de ${totalVisible} pronósticos`}>
+          <div className="progressBarFill" style={{ width: `${progressPct}%` }} />
+        </div>
+
+        {/* Fila 1: progreso + siguiente pendiente */}
+        <div className="predictionsToolbarRow">
+          <p className="matchStats" style={{ margin: 0 }}>
+            <span><strong>{totalDone}</strong>/{totalVisible} pronósticos</span>
+            {totalPending > 0 ? (
+              <>
+                <span className="matchStatsDivider" aria-hidden="true">·</span>
+                <span className="pill pill--deadline" style={{ fontSize: "0.78rem", padding: "3px 10px" }}>{totalPending} pendientes</span>
+              </>
+            ) : null}
+          </p>
           {totalPending > 0 ? (
-            <>
-              <span className="matchStatsDivider" aria-hidden="true">·</span>
-              <span className="pill pill--deadline" style={{ fontSize: "0.8rem", padding: "4px 10px" }}>{totalPending} sin elegir</span>
-            </>
+            <button className="button secondary" onClick={scrollToNextPending} type="button" style={{ gap: 6, minHeight: 36, padding: "6px 14px", fontSize: "0.85rem" }}>
+              Siguiente pendiente <ChevronDown size={14} aria-hidden />
+            </button>
           ) : null}
-        </p>
-        <div className="cluster">
+        </div>
+
+        {/* Fila 2: navegación por fase */}
+        {allPhases.length > 1 ? (
+          <nav className="phaseNav" aria-label="Saltar a fase">
+            {allPhases.map((phase) => (
+              <button
+                className={activePhase === phase ? "phaseNavBtn active" : "phaseNavBtn"}
+                key={phase}
+                onClick={() => scrollToPhase(phase)}
+                type="button"
+              >
+                {phase}
+              </button>
+            ))}
+          </nav>
+        ) : null}
+
+        {/* Fila 3: filtros + zona horaria */}
+        <div className="predictionsToolbarRow">
           <div className="tabs" aria-label="Filtrar partidos">
             <button className={matchFilter === "all" ? "tabButton active" : "tabButton"} onClick={() => setMatchFilter("all")} type="button">Todos</button>
             <button className={matchFilter === "pending" ? "tabButton active" : "tabButton"} onClick={() => setMatchFilter("pending")} type="button">
-              Solo pendientes
-              {totalPending > 0 ? <span className="badge">{totalPending}</span> : null}
+              Solo pendientes{totalPending > 0 ? <span className="badge" style={{ marginLeft: 6 }}>{totalPending}</span> : null}
             </button>
           </div>
           <div className="tabs" aria-label="Preferencia de horario">
@@ -231,24 +296,23 @@ function PredictionsContent() {
         </div>
       </div>
 
+      {/* ── Estados vacíos ───────────────────────────── */}
       {matches.length === 0 ? (
         <EmptyState title="No hay partidos cargados" body="Un superadmin debe cargar fixtures para que puedas pronosticar." href={`/groups/${params.groupId}/admin`} action="Ir a administración" />
       ) : null}
-
       {matches.length > 0 && visibleMatches.length === 0 ? (
-        <EmptyState title="Aún no hay partidos disponibles" body="La fase de grupos debe estar cargada, o el superadmin debe publicar la ronda de 32 tras revisar cruces, horarios y sedes." />
+        <EmptyState title="Aún no hay partidos disponibles" body="La fase de grupos debe estar cargada, o el superadmin debe publicar la ronda de 32." />
       ) : null}
-
-      {matchFilter === "pending" && filteredMatches.length === 0 ? (
+      {matchFilter === "pending" && filteredMatches.length === 0 && visibleMatches.length > 0 ? (
         <EmptyState title="Todo pronósticado" body="Ya elegiste en todos los partidos abiertos. Vuelve antes del siguiente kickoff si quieres cambiar alguno." />
       ) : null}
 
-      {/* Partidos agrupados por fase */}
+      {/* ── Partidos agrupados por fase ───────────────── */}
       <div className="stack-lg">
         {[...groupedByPhase.entries()].map(([phase, phaseMatches]) => {
           const phaseDone = phaseMatches.filter((m) => byMatch.get(m.id)).length;
           return (
-            <section key={phase}>
+            <section key={phase} id={phaseId(phase)}>
               <div className="predictionPhaseHeader">
                 <span className="predictionPhaseTitle">{phase}</span>
                 <span className="muted fineprint">{phaseDone}/{phaseMatches.length}</span>
@@ -266,6 +330,7 @@ function PredictionsContent() {
                   return (
                     <motion.article
                       className={`panel stack matchCard${closed ? " matchCard--closed" : ""}`}
+                      id={`match-${match.id}`}
                       key={match.id}
                       initial={reduce ? false : { opacity: 0, y: 16 }}
                       whileInView={{ opacity: 1, y: 0 }}
@@ -360,10 +425,6 @@ function labelPick(prediction: Prediction, homeTeam: string, awayTeam: string) {
 
 function formatDeadlineCDMX(date: Date) {
   return new Intl.DateTimeFormat("es-MX", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: CDMX_TIMEZONE
+    day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: CDMX_TIMEZONE
   }).format(date) + " CDMX";
 }
