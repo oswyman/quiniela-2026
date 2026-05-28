@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Lock } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
 import { AuthGate } from "@/components/AuthGate";
 import { EmptyState } from "@/components/EmptyState";
 import { GroupNav } from "@/components/GroupNav";
@@ -30,6 +31,7 @@ export default function PredictionsPage() {
 
 function PredictionsContent() {
   const { user } = useAuthUser();
+  const reduce = useReducedMotion();
   const params = useParams<{ groupId: string }>();
   const [group, setGroup] = useState<Group | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
@@ -190,7 +192,14 @@ function PredictionsContent() {
           const awayTeam = getDisplayTeam(match, "away");
           const options = getPickOptions(match, pickType, homeTeam, awayTeam);
           return (
-            <article className={`panel stack matchCard${closed ? " matchCard--closed" : ""}`} key={match.id}>
+            <motion.article
+            className={`panel stack matchCard${closed ? " matchCard--closed" : ""}`}
+            key={match.id}
+            initial={reduce ? false : { opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.08 }}
+            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+          >
               <div className="cluster">
                 <span className="pill">{match.phase}</span>
                 <span className="pill">{pickType === "GROUP_OUTCOME" ? "Resultado a 90 min" : "Elige clasificado"}</span>
@@ -236,7 +245,7 @@ function PredictionsContent() {
                 </p>
               )}
               {closed ? <Link href={`/groups/${params.groupId}/ranking`}>Ver ranking</Link> : null}
-            </article>
+          </motion.article>
           );
         })}
       </div>

@@ -66,7 +66,7 @@ button { -webkit-tap-highlight-color: transparent; }
 main { min-height: calc(100vh - 74px); }
 h1, h2, h3, p { overflow-wrap: anywhere; }
 h1, h2, h3 { color: var(--ink); margin-top: 0; }
-h1 { font-family: var(--font-display), Georgia, serif; }
+h1 { font-family: var(--font-display), system-ui, sans-serif; }
 p { line-height: 1.58; }
 
 .container {
@@ -75,11 +75,11 @@ p { line-height: 1.58; }
 }
 
 .shell {
-  padding: 34px 0 56px;
+  padding: 32px 0 56px;
 }
 
 .section {
-  padding: 34px 0;
+  padding: 32px 0;
 }
 
 .stack { display: grid; gap: 16px; }
@@ -183,15 +183,15 @@ p { line-height: 1.58; }
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-top: 34px;
+  margin-top: 32px;
   max-width: 760px;
-  padding-top: 18px;
+  padding-top: 16px;
 }
 
 .heroStats strong {
   color: var(--gold-200);
   display: block;
-  font-family: var(--font-display), Georgia, serif;
+  font-family: var(--font-display), system-ui, sans-serif;
   font-size: 1.7rem;
 }
 
@@ -232,11 +232,11 @@ p { line-height: 1.58; }
   color: #fff;
   cursor: pointer;
   display: inline-flex;
-  font-weight: 850;
+  font-weight: 900;
   gap: 8px;
   justify-content: center;
-  min-height: 46px;
-  padding: 11px 18px;
+  min-height: 48px;
+  padding: 12px 20px;
   transition: transform 150ms var(--ease-out), box-shadow 150ms var(--ease-out), background 150ms var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
@@ -248,15 +248,15 @@ p { line-height: 1.58; }
 .button.danger { background: var(--danger); border-color: var(--danger); }
 .button:disabled { cursor: not-allowed; opacity: 0.56; transform: none; }
 
-.field { display: grid; gap: 7px; }
-.field label { color: var(--ink-soft); font-size: 0.92rem; font-weight: 850; }
+.field { display: grid; gap: 8px; }
+.field label { color: var(--ink-soft); font-size: 0.92rem; font-weight: 900; }
 .field input, .field select, .field textarea {
   background: #fff;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   color: var(--ink);
   min-height: 48px;
-  padding: 11px 12px;
+  padding: 12px;
   width: 100%;
 }
 .field textarea {
@@ -296,9 +296,9 @@ p { line-height: 1.58; }
   color: var(--stadium-800);
   display: inline-flex;
   font-size: 0.82rem;
-  font-weight: 850;
-  gap: 6px;
-  padding: 7px 10px;
+  font-weight: 900;
+  gap: 8px;
+  padding: 8px 10px;
   width: fit-content;
 }
 
@@ -307,16 +307,16 @@ p { line-height: 1.58; }
   background:
     linear-gradient(180deg, rgba(255, 253, 247, 0.96), rgba(248, 243, 231, 0.86));
   border-left: 4px solid var(--gold-500);
-  min-height: 126px;
+  min-height: 128px;
 }
 .stat strong,
 .metric strong {
   color: var(--stadium-900);
   display: block;
-  font-family: var(--font-display), Georgia, serif;
+  font-family: var(--font-display), system-ui, sans-serif;
   font-size: 2rem;
   line-height: 1;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .tabs {
@@ -327,7 +327,7 @@ p { line-height: 1.58; }
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  padding: 5px;
+  padding: 4px;
   width: fit-content;
   max-width: 100%;
   overflow-x: auto;
@@ -335,8 +335,8 @@ p { line-height: 1.58; }
 .tabs a {
   border-radius: 999px;
   color: var(--ink-soft);
-  font-weight: 850;
-  padding: 9px 14px;
+  font-weight: 900;
+  padding: 8px 14px;
   transition: background 120ms var(--ease-out), color 120ms var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
@@ -353,14 +353,17 @@ p { line-height: 1.58; }
   width: 100%;
 }
 .tabButton {
+  align-items: center;
   background: transparent;
   border: 0;
   border-radius: 999px;
   color: var(--ink-soft);
   cursor: pointer;
+  display: inline-flex;
   font: inherit;
-  font-weight: 850;
-  padding: 9px 14px;
+  font-weight: 900;
+  gap: 6px;
+  padding: 8px 14px;
   transition: background 120ms var(--ease-out), color 120ms var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
@@ -424,9 +427,9 @@ p { line-height: 1.58; }
   color: var(--ink);
   cursor: pointer;
   display: grid;
-  gap: 5px;
-  min-height: 84px;
-  padding: 14px;
+  gap: 4px;
+  min-height: 80px;
+  padding: 16px;
   text-align: left;
   transition: border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out), transform 160ms var(--ease-out), background 160ms var(--ease-out);
 }
@@ -434,7 +437,7 @@ p { line-height: 1.58; }
 .choiceButton span {
   color: var(--ink-soft);
   font-size: 0.8rem;
-  font-weight: 850;
+  font-weight: 900;
   text-transform: uppercase;
 }
 
@@ -456,20 +459,15 @@ p { line-height: 1.58; }
 }
 
 .choiceButton.active {
-  background: #fffaf0;
-  border-color: rgba(185, 131, 34, 0.52);
-  box-shadow: var(--shadow-sm);
+  background: rgba(25, 115, 90, 0.13);
+  border-color: var(--grass-500);
+  border-width: 2px;
+  box-shadow: 0 0 0 3px rgba(34, 138, 109, 0.12);
 }
 
 .choiceButton:active:not(:disabled) {
   box-shadow: none;
   transform: scale(0.97);
-}
-
-.choiceButton.active {
-  background: rgba(25, 115, 90, 0.09);
-  border-color: var(--grass-500);
-  outline: 2px solid rgba(34, 138, 109, 0.18);
 }
 
 .choiceButton:disabled {
@@ -478,20 +476,22 @@ p { line-height: 1.58; }
   transform: none;
 }
 
-/* Elección guardada en partido cerrado — se mantiene visible */
-.matchCard--closed .choiceButton.active {
-  opacity: 1;
-  background: rgba(25, 115, 90, 0.09);
-  border-color: var(--grass-600);
-}
-
 /* Match card estado cerrado */
 .matchCard--closed {
-  opacity: 0.82;
+  opacity: 0.6;
 }
 
 .matchCard--closed::before {
   background: var(--muted) !important;
+}
+
+/* Elección guardada en partido cerrado — se mantiene visible y clara */
+.matchCard--closed .choiceButton.active {
+  opacity: 1;
+  background: rgba(25, 115, 90, 0.13);
+  border-color: var(--grass-600);
+  border-width: 2px;
+  box-shadow: 0 0 0 3px rgba(34, 138, 109, 0.12);
 }
 
 .closedBadge {
@@ -502,7 +502,7 @@ p { line-height: 1.58; }
   color: var(--muted);
   display: inline-flex;
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 900;
   gap: 6px;
   padding: 8px 12px;
 }
@@ -513,7 +513,7 @@ p { line-height: 1.58; }
 
 .rulesSummary {
   cursor: pointer;
-  font-weight: 850;
+  font-weight: 900;
   list-style: none;
   user-select: none;
 }
@@ -559,7 +559,7 @@ details[open] .rulesSummary { margin-bottom: 8px; }
 
 .rankingRow td:first-child {
   color: var(--stadium-800);
-  font-family: var(--font-display), Georgia, serif;
+  font-family: var(--font-display), system-ui, sans-serif;
   font-size: 1.16rem;
   font-weight: 800;
 }
@@ -611,6 +611,9 @@ th { color: var(--muted); font-size: var(--text-xs); letter-spacing: 0.05em; tex
   .hero { min-height: auto; padding: 54px 0 34px; }
   .heroStats { grid-template-columns: 1fr; }
   .twoCol, .formGrid, .scoreInputs, .filterBar, .resultGrid, .metricsGrid { grid-template-columns: 1fr; }
+  .statsStrip { grid-template-columns: 1fr; gap: 16px; }
+  .bentoGrid { grid-template-columns: 1fr; }
+  .bentoWide, .bentoMid { grid-column: span 1; }
   .predictionsGrid { grid-template-columns: 1fr; }
   .panel, .card { padding: 16px; }
   .toolbar { align-items: stretch; flex-direction: column; }
@@ -634,7 +637,7 @@ th { color: var(--muted); font-size: var(--text-xs); letter-spacing: 0.05em; tex
   body { padding-bottom: 78px; }
   /* choiceGrid: mantener 3 columnas en móvil pero más compacto */
   .choiceGrid { grid-template-columns: repeat(3, 1fr); }
-  .choiceButton { min-height: 64px; padding: 10px 8px; }
+  .choiceButton { min-height: 64px; padding: 10px; }
   .choiceButton strong { font-size: 0.72rem; }
   .choiceButton span { font-size: 0.66rem; }
   .teamsTitle { font-size: 1.25rem; }
@@ -716,13 +719,13 @@ th { color: var(--muted); font-size: var(--text-xs); letter-spacing: 0.05em; tex
 .toastContent {
   display: grid;
   flex: 1;
-  gap: 3px;
+  gap: 4px;
 }
 
 .toastTitle {
   color: var(--ink);
   font-size: 0.9rem;
-  font-weight: 850;
+  font-weight: 900;
   line-height: 1.3;
 }
 
@@ -758,6 +761,43 @@ th { color: var(--muted); font-size: var(--text-xs); letter-spacing: 0.05em; tex
   right: 0;
   transform-origin: left;
 }
+
+/* ── Skeleton loader ─────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton {
+  animation: shimmer 1.6s ease-in-out infinite;
+  background: linear-gradient(90deg, var(--ivory-200) 25%, var(--ivory-100) 50%, var(--ivory-200) 75%);
+  background-size: 200% 100%;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; background: var(--ivory-200); }
+}
+
+.skeletonLine      { height: 1em;   width: 100%; }
+.skeletonLineShort { height: 1em;   width: 55%;  }
+.skeletonTitle     { height: 1.4em; width: 72%;  }
+.skeletonPill      { height: 28px;  width: 80px; border-radius: 999px; }
+.skeletonButton    { height: 48px;  width: 112px; border-radius: 999px; }
+
+/* ── Ranking row variants ────────────────────────── */
+.rankingRow--top1 td { background: rgba(212, 166, 66, 0.08); }
+.rankingRow--top2 td { background: rgba(140, 148, 163, 0.06); }
+.rankingRow--top3 td { background: rgba(180, 120, 60, 0.05); }
+.rankingRow--me   td { background: rgba(25, 115, 90, 0.05); }
+.rankingRow--me   td:first-child { box-shadow: inset 3px 0 0 var(--grass-500); }
+
+/* ── Ranking mobile card variants ───────────────── */
+.rankingCard--top1 { border-color: rgba(212, 166, 66, 0.4); background: rgba(255, 253, 247, 0.97); }
+.rankingCard--me   { border-left: 3px solid var(--grass-500); }
+
+/* ── Ranking prize cell ──────────────────────────── */
+.rankingPrize { color: var(--gold-600); font-weight: 700; }
 
 /* ── Code inline ─────────────────────────────────── */
 code {
@@ -805,6 +845,63 @@ code {
   background: rgba(180, 35, 24, 0.08);
   border-color: rgba(180, 35, 24, 0.2);
   color: var(--danger);
+}
+
+/* ── Stats strip (below hero) ───────────────────── */
+.statsStrip {
+  border-bottom: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 24px 0;
+}
+
+.statsStrip strong {
+  color: var(--stadium-900);
+  display: block;
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.statsStrip span {
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+/* ── Bento grid (landing features) ─────────────── */
+.bentoGrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(6, 1fr);
+}
+
+.bentoWide { grid-column: span 3; }
+.bentoMid  { grid-column: span 2; }
+
+/* ── Feature card dark variant ──────────────────── */
+.featureCard--dark {
+  background: var(--stadium-900);
+  border-color: var(--stadium-800);
+  color: var(--ivory-50);
+}
+
+.featureCard--dark h2 { color: var(--ivory-50); }
+.featureCard--dark p.muted { color: rgba(255, 253, 247, 0.64); }
+.featureCard--dark svg { color: var(--gold-500); }
+
+/* ── Tab separator (admin) ──────────────────────── */
+.tabSeparator {
+  align-self: center;
+  background: var(--line);
+  border-radius: 999px;
+  flex-shrink: 0;
+  height: 20px;
+  width: 1px;
 }
 
 /* ── Skip-to-content ─────────────────────────────── */
@@ -957,14 +1054,14 @@ details[open] .rulesSummary::after { transform: rotate(180deg); }
   }
   .rankingCard__pos {
     color: var(--stadium-800);
-    font-family: var(--font-display), Georgia, serif;
+    font-family: var(--font-display), system-ui, sans-serif;
     font-size: var(--text-2xl);
     font-weight: 800;
     line-height: 1;
   }
   .rankingCard__name {
     font-size: var(--text-base);
-    font-weight: 850;
+    font-weight: 900;
     word-break: break-word;
   }
   .rankingCard__detail {
@@ -974,6 +1071,6 @@ details[open] .rulesSummary::after { transform: rotate(180deg); }
   .rankingCard__prize {
     color: var(--gold-600);
     font-size: var(--text-sm);
-    font-weight: 850;
+    font-weight: 900;
   }
 }

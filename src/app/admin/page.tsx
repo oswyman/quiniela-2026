@@ -378,10 +378,10 @@ function PlatformAdminContent() {
       </div>
 
       <div className="tabs adminTabs" aria-label="Secciones de superadmin">
-        {ADMIN_TABS.map((tab) => (
-          <button className={activeTab === tab.id ? "tabButton active" : "tabButton"} key={tab.id} onClick={() => setActiveTab(tab.id)} type="button">
-            {tab.label}
-          </button>
+        {ADMIN_TABS.map((tab, i) => (
+          "separator" in tab
+            ? <span className="tabSeparator" key={i} aria-hidden />
+            : <button className={activeTab === tab.id ? "tabButton active" : "tabButton"} key={tab.id} onClick={() => setActiveTab(tab.id)} type="button">{tab.label}</button>
         ))}
       </div>
 
@@ -513,10 +513,13 @@ function PlatformAdminContent() {
   );
 }
 
-const ADMIN_TABS: Array<{ id: AdminTab; label: string }> = [
+type AdminTabItem = { id: AdminTab; label: string } | { separator: true };
+
+const ADMIN_TABS: AdminTabItem[] = [
   { id: "operation", label: "Operación" },
   { id: "results", label: "Resultados" },
   { id: "bracket", label: "Llaves" },
+  { separator: true },
   { id: "groups", label: "Grupos" },
   { id: "users", label: "Usuarios/Admins" },
   { id: "audit", label: "Auditoría" }

@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import { AuthGate } from "@/components/AuthGate";
-import { EmptyState } from "@/components/EmptyState";
+import { DashboardSkeleton } from "@/components/DashboardSkeleton";
 import { MetricCard } from "@/components/MetricCard";
 import { PageTitle } from "@/components/PageTitle";
+import { EmptyState } from "@/components/EmptyState";
 import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
 import { getUserProfile, listMyGroups } from "@/lib/firebase/firestore";
@@ -23,6 +25,7 @@ export default function DashboardPage() {
 
 function DashboardContent() {
   const { user } = useAuthUser();
+  const reduce = useReducedMotion();
   const [groups, setGroups] = useState<Array<Group & { memberRole: string }>>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,9 +65,9 @@ function DashboardContent() {
       <div className="grid">
         <MetricCard label="Grupos activos" value={loading ? "..." : groups.length} detail="Donde participas o administras" />
         <MetricCard label="Aportaciones base" value={formatMoney(totalPool || 0, "MXN")} detail="Suma administrativa visible para ti" />
-        <MetricCard label="Cierre por partido" value="90 min antes" detail="Así cierra cada pronóstico — no al kickoff" />
+        <MetricCard label="Cierre por partido" value="90 min antes" detail="Así cierra cada pronóstico - no al kickoff" />
       </div>
-      {loading ? <div className="panel">Cargando tus grupos...</div> : null}
+      {loading ? <DashboardSkeleton /> : null}
       {!loading && groups.length === 0 ? (
         <EmptyState
           title="Todavía no hay grupos"
@@ -74,8 +77,14 @@ function DashboardContent() {
         />
       ) : null}
       <div className="grid">
-        {groups.map((group) => (
-          <article className="panel stack cardInteractive" key={group.id}>
+        {groups.map((group, index) => (
+          <motion.article
+            className="panel stack cardInteractive"
+            key={group.id}
+            initial={reduce ? false : { opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: index * 0.08, ease: [0.16, 1, 0.3, 1] }}
+          >
             <div className="cluster">
               <span className={`pill ${group.memberRole === "group_admin" ? "pill--admin" : ""}`}>
                 {group.memberRole === "group_admin" ? "Admin" : "Participante"}
@@ -91,7 +100,7 @@ function DashboardContent() {
               <Link className="button gold" href={`/groups/${group.id}/predictions`}>Pronosticar</Link>
               <Link className="button secondary" href={`/groups/${group.id}`}>Ver grupo</Link>
             </div>
-          </article>
+          </motion.article>
         ))}
       </div>
     </main>

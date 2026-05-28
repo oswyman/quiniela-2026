@@ -7,6 +7,7 @@ import { AuthGate } from "@/components/AuthGate";
 import { EmptyState } from "@/components/EmptyState";
 import { GroupNav } from "@/components/GroupNav";
 import { PageTitle } from "@/components/PageTitle";
+import { useAuthUser } from "@/components/useAuthUser";
 import { getGroup, listMembers, listPrizes, listScores } from "@/lib/firebase/firestore";
 import { formatMoney } from "@/lib/format";
 import { rankScores } from "@/lib/prizes";
@@ -28,8 +29,21 @@ function positionMedal(position: number) {
   return String(position);
 }
 
+function rowClass(position: number, isMe: boolean) {
+  const posClass = position === 1 ? "rankingRow--top1" : position === 2 ? "rankingRow--top2" : position === 3 ? "rankingRow--top3" : "";
+  const meClass = isMe ? "rankingRow--me" : "";
+  return ["rankingRow", posClass, meClass].filter(Boolean).join(" ");
+}
+
+function cardClass(position: number, isMe: boolean) {
+  const posClass = position === 1 ? "rankingCard--top1" : "";
+  const meClass = isMe ? "rankingCard--me" : "";
+  return ["rankingCard", posClass, meClass].filter(Boolean).join(" ");
+}
+
 function RankingContent() {
   const params = useParams<{ groupId: string }>();
+  const { user } = useAuthUser();
   const [group, setGroup] = useState<Group | null>(null);
   const [scores, setScores] = useState<Score[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -103,15 +117,21 @@ function RankingContent() {
           <tbody>
             {ranked.map((score) => {
               const prize = prizes.find((item) => item.uid === score.uid);
+              const isMe = user?.uid === score.uid;
               return (
-                <tr className="rankingRow" key={score.uid}>
+                <tr className={rowClass(score.position, isMe)} key={score.uid}>
                   <td className="cell-nowrap">{positionMedal(score.position)}</td>
-                  <td style={{ wordBreak: "break-word" }}>{score.displayName ?? score.uid}</td>
+                  <td style={{ wordBreak: "break-word" }}>
+                    {score.displayName ?? score.uid}
+                    {isMe ? <span className="muted" style={{ fontSize: "0.78rem", marginLeft: 6 }}>tú</span> : null}
+                  </td>
                   <td className="cell-nowrap">{score.totalCorrect ?? score.totalPoints}</td>
                   <td className="cell-nowrap">{score.correctGroupPicks ?? 0}</td>
                   <td className="cell-nowrap">{score.correctAdvancingPicks ?? 0}</td>
                   <td className="cell-nowrap">{score.validPredictions ?? 0}</td>
-                  <td className="cell-nowrap">{prize ? formatMoney(prize.estimatedPrize, group?.currency ?? "MXN") : "Resultado pendiente"}</td>
+                  <td className="cell-nowrap rankingPrize">
+                    {prize ? formatMoney(prize.estimatedPrize, group?.currency ?? "MXN") : <span className="muted" style={{ fontWeight: 400 }}>Pendiente</span>}
+                  </td>
                 </tr>
               );
             })}
@@ -125,10 +145,14 @@ function RankingContent() {
         <div className="rankingCards">
           {ranked.map((score) => {
             const prize = prizes.find((item) => item.uid === score.uid);
+            const isMe = user?.uid === score.uid;
             return (
-              <div className="rankingCard" key={score.uid}>
+              <div className={cardClass(score.position, isMe)} key={score.uid}>
                 <span className="rankingCard__pos">{positionMedal(score.position)}</span>
-                <span className="rankingCard__name">{score.displayName ?? score.uid}</span>
+                <span className="rankingCard__name">
+                  {score.displayName ?? score.uid}
+                  {isMe ? <span className="muted" style={{ fontSize: "0.78rem", marginLeft: 6 }}>tú</span> : null}
+                </span>
                 <span className="rankingCard__detail">
                   {score.totalCorrect ?? score.totalPoints} aciertos · {score.correctGroupPicks ?? 0} grupos · {score.correctAdvancingPicks ?? 0} elim. · {score.validPredictions ?? 0} a tiempo
                 </span>
