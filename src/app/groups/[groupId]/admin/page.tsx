@@ -8,9 +8,9 @@ import { MetricCard } from "@/components/MetricCard";
 import { PageTitle } from "@/components/PageTitle";
 import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
-import { createInvite, deleteGroup, getGroup, getMyMember, getProviderStatus, listMembers, recalculateGroupScores, syncFixturesFromProvider, syncLiveResultsFromProvider, updateGroup, updatePaymentStatus } from "@/lib/firebase/firestore";
+import { createOpenInvite, deleteGroup, getGroup, getMyMember, getProviderStatus, listMembers, listOpenInvites, recalculateGroupScores, revokeOpenInvite, syncFixturesFromProvider, syncLiveResultsFromProvider, updateGroup, updatePaymentStatus } from "@/lib/firebase/firestore";
 import { formatDate, formatMoney } from "@/lib/format";
-import type { Group, Member, ProviderStatus } from "@/types";
+import type { Group, Invite, Member, ProviderStatus } from "@/types";
 
 export default function GroupAdminPage() {
   return (
@@ -30,19 +30,23 @@ function GroupAdminContent() {
   const [error, setError] = useState("");
   const [providerStatus, setProviderStatus] = useState<ProviderStatus | null>(null);
   const [busyAction, setBusyAction] = useState("");
-  const [inviteEmail, setInviteEmail] = useState("");
+  const [openInvites, setOpenInvites] = useState<Invite[]>([]);
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [copiedCode, setCopiedCode] = useState("");
   const [savingConfig, setSavingConfig] = useState(false);
   const [loading, setLoading] = useState(true);
 
   async function reload() {
-    const [nextGroup, nextMember, nextMembers] = await Promise.all([
+    const [nextGroup, nextMember, nextMembers, nextInvites] = await Promise.all([
       getGroup(params.groupId),
       user ? getMyMember(params.groupId, user.uid) : Promise.resolve(null),
-      listMembers(params.groupId)
+      listMembers(params.groupId),
+      listOpenInvites(params.groupId)
     ]);
     setGroup(nextGroup);
     setMyMember(nextMember);
     setMembers(nextMembers);
+    setOpenInvites(nextInvites);
     setProviderStatus(await getProviderStatus());
   }
 
@@ -51,16 +55,41 @@ function GroupAdminContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.groupId, user?.uid]);
 
-  async function onCreateInvite(event: FormEvent) {
-    event.preventDefault();
+  async function onGenerateLink() {
+    setError("");
+    setMessage("");
+    setGeneratingLink(true);
+    try {
+      const result = await createOpenInvite(params.groupId);
+      await reload();
+      const link = `${window.location.origin}/join/${result.data.code}`;
+      await navigator.clipboard.writeText(link);
+      setCopiedCode(result.data.code ?? "");
+      setMessage("Link generado y copiado al portapapeles.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo generar el link.");
+    } finally {
+      setGeneratingLink(false);
+    }
+  }
+
+  async function onCopyLink(code: string) {
+    const link = `${window.location.origin}/join/${code}`;
+    await navigator.clipboard.writeText(link);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(""), 2000);
+  }
+
+  async function onRevokeLink(code: string) {
+    if (!window.confirm("¿Desactivar este link? Los participantes que ya se unieron no serán afectados.")) return;
     setError("");
     setMessage("");
     try {
-      const result = await createInvite(params.groupId, inviteEmail);
-      setInviteEmail("");
-      setMessage(`Invitación creada para ${result.data.inviteeEmail}: ${window.location.origin}/join/${result.data.code}`);
+      await revokeOpenInvite(params.groupId, code);
+      setMessage("Link desactivado.");
+      await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo crear la invitación.");
+      setError(err instanceof Error ? err.message : "No se pudo desactivar el link.");
     }
   }
 
@@ -163,15 +192,32 @@ function GroupAdminContent() {
         <button className="button secondary" disabled={busyAction === "live"} onClick={() => runSync("live")} type="button">{busyAction === "live" ? "Sincronizando..." : "Sync resultados"}</button>
       </div>
       <section className="panel stack">
-        <h2>Invitar participante</h2>
-        <p className="muted">Solo se puede registrar con invitación por correo antes del cierre del grupo.</p>
-        <form className="cluster" onSubmit={onCreateInvite}>
-          <div className="field growField">
-            <label htmlFor="inviteEmail">Email del participante</label>
-            <input id="inviteEmail" type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} required />
+        <h2>Links de invitación</h2>
+        <p className="muted">Genera un link compartible. Cualquiera con el link puede unirse al grupo hasta el cierre del registro.</p>
+        <button className="button" disabled={generatingLink} onClick={onGenerateLink} type="button">
+          {generatingLink ? "Generando..." : "Generar nuevo link"}
+        </button>
+        {openInvites.length > 0 ? (
+          <div className="stack" style={{ marginTop: 8 }}>
+            {openInvites.map((inv) => {
+              const link = typeof window !== "undefined" ? `${window.location.origin}/join/${inv.code}` : `/join/${inv.code}`;
+              return (
+                <div key={inv.code} className="inviteLinkRow">
+                  <code className="inviteLinkCode">{link}</code>
+                  <div className="cluster" style={{ gap: 8, flexShrink: 0 }}>
+                    <span className="muted" style={{ fontSize: "0.8rem" }}>{inv.usedCount} usos</span>
+                    <button className="button secondary" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => onCopyLink(inv.code ?? "")} type="button">
+                      {copiedCode === inv.code ? "¡Copiado!" : "Copiar"}
+                    </button>
+                    <button className="button danger" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => onRevokeLink(inv.code ?? "")} type="button">
+                      Desactivar
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <button className="button" type="submit">Crear invitación</button>
-        </form>
+        ) : null}
       </section>
       <section className="panel tableWrap">
         <h2>Participantes</h2>

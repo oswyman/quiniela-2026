@@ -4,7 +4,7 @@ import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { writeAuditLog } from "./audit";
 import { calculatePrizeAllocations, ScoreRow } from "./prizes";
 import { calculatePredictionScore, legacyPredictionToPick } from "./scoring";
-import { acceptInvite, createAdminInvite, createInvite, createParticipantInvite, previewInvite } from "./invites";
+import { acceptInvite, createAdminInvite, createInvite, createOpenInvite, createParticipantInvite, previewInvite, revokeOpenInvite } from "./invites";
 import { createGroup, deleteGroup, updateGroup, updateTournamentConfig } from "./groups";
 import { bulkUpsertManualMatches, calculateGroupStandings, confirmRoundOf32Resolution, previewRoundOf32Resolution, resolveKnockoutMatches, upsertManualMatch, upsertManualResult } from "./manualResults";
 import { migrateLegacyScorePredictions, submitPrediction } from "./predictions";
@@ -25,11 +25,13 @@ export {
   createAdminInvite,
   createGroup,
   createInvite,
+  createOpenInvite,
   createParticipantInvite,
   deleteGroup,
   migrateLegacyScorePredictions,
   previewInvite,
   previewRoundOf32Resolution,
+  revokeOpenInvite,
   resolveKnockoutMatches,
   scheduledFixturesSync,
   scheduledLiveResultsSync,

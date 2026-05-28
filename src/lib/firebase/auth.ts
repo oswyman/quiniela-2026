@@ -2,9 +2,11 @@
 
 import {
   User,
+  GoogleAuthProvider,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
   updateProfile
 } from "firebase/auth";
@@ -26,6 +28,18 @@ export async function registerWithEmail(email: string, password: string, display
 export async function loginWithEmail(email: string, password: string) {
   const credential = await signInWithEmailAndPassword(auth, email, password);
   await ensureUserProfile(credential.user.uid, credential.user.displayName ?? "", credential.user.email ?? email);
+  return credential.user;
+}
+
+export async function loginWithGoogle() {
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+  const credential = await signInWithPopup(auth, provider);
+  await ensureUserProfile(
+    credential.user.uid,
+    credential.user.displayName ?? "",
+    credential.user.email ?? ""
+  );
   return credential.user;
 }
 

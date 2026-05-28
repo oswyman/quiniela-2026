@@ -73,12 +73,85 @@ export const createParticipantInvite = onCall<InviteInput>(async (request) => {
 
 export const createInvite = createParticipantInvite;
 
+// ── Open invite links ────────────────────────────────────────────────────────
+
+export const createOpenInvite = onCall<{ groupId: string }>(async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Inicia sesión.");
+  const groupId = String(request.data.groupId ?? "");
+  if (!groupId) throw new HttpsError("invalid-argument", "Falta groupId.");
+  if (!(await isGroupAdmin(groupId, request.auth.uid))) throw new HttpsError("permission-denied", "No puedes invitar a este grupo.");
+
+  const groupSnap = await getFirestore().doc(`groups/${groupId}`).get();
+  const group = groupSnap.data();
+  if (!group) throw new HttpsError("not-found", "Grupo no encontrado.");
+  const registrationDeadlineAt = await resolveRegistrationDeadline(group);
+  if (isAfterTimestamp(registrationDeadlineAt)) {
+    throw new HttpsError("failed-precondition", "El registro cerró 90 minutos antes del primer partido del Mundial.");
+  }
+
+  const db = getFirestore();
+  const inviteCode = code();
+  const invite = {
+    code: inviteCode,
+    groupId,
+    inviteeEmail: "",
+    displayName: "",
+    role: "participant" as const,
+    type: "open" as const,
+    createdBy: request.auth.uid,
+    createdAt: FieldValue.serverTimestamp(),
+    expiresAt: null,       // sin expiración
+    maxUses: 9999,         // ilimitado en la práctica
+    usedCount: 0,
+    status: "active" as const
+  };
+
+  await db.doc(`groups/${groupId}/invites/${inviteCode}`).set(invite);
+  await writeAuditLog({
+    actorUid: request.auth.uid,
+    groupId,
+    action: "createOpenInvite",
+    entityType: "invite",
+    entityId: inviteCode,
+    after: invite
+  });
+
+  return invite;
+});
+
+export const revokeOpenInvite = onCall<{ groupId: string; inviteCode: string }>(async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Inicia sesión.");
+  const groupId = String(request.data.groupId ?? "");
+  const inviteCode = String(request.data.inviteCode ?? "").toUpperCase();
+  if (!groupId || !inviteCode) throw new HttpsError("invalid-argument", "Falta groupId o inviteCode.");
+  if (!(await isGroupAdmin(groupId, request.auth.uid))) throw new HttpsError("permission-denied", "No puedes revocar invitaciones de este grupo.");
+
+  const db = getFirestore();
+  const ref = db.doc(`groups/${groupId}/invites/${inviteCode}`);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError("not-found", "Invitación no encontrada.");
+  await ref.update({ status: "disabled" });
+
+  await writeAuditLog({
+    actorUid: request.auth.uid,
+    groupId,
+    action: "revokeOpenInvite",
+    entityType: "invite",
+    entityId: inviteCode,
+    after: { status: "disabled" }
+  });
+
+  return { ok: true };
+});
+
+// ── Preview & Accept ─────────────────────────────────────────────────────────
+
 export const previewInvite = onCall<{ inviteCode: string }>(async (request) => {
   const invite = await findInvite(String(request.data.inviteCode ?? ""));
   if (!invite) throw new HttpsError("not-found", "Invitación no encontrada.");
   return {
     code: invite.data.code,
-    inviteeEmail: invite.data.inviteeEmail,
+    inviteeEmail: invite.data.inviteeEmail ?? "",
     role: invite.data.role,
     type: invite.data.type,
     groupId: invite.data.groupId ?? null,
@@ -94,10 +167,16 @@ export const acceptInvite = onCall(async (request) => {
 
   const db = getFirestore();
   const inviteData = found.data;
+  const isOpen = inviteData.type === "open";
   const authEmail = normalizeEmail(request.auth.token.email);
-  if (!authEmail || authEmail !== normalizeEmail(inviteData.inviteeEmail)) {
-    throw new HttpsError("permission-denied", "Esta invitación pertenece a otro correo electrónico.");
+
+  // Email-locked invites: verify the email matches
+  if (!isOpen) {
+    if (!authEmail || authEmail !== normalizeEmail(inviteData.inviteeEmail)) {
+      throw new HttpsError("permission-denied", "Esta invitación pertenece a otro correo electrónico.");
+    }
   }
+
   if (inviteData.status !== "active") throw new HttpsError("failed-precondition", "Invitación inactiva.");
   if (inviteData.usedCount >= inviteData.maxUses) throw new HttpsError("failed-precondition", "Invitación agotada.");
   if (inviteData.expiresAt?.toMillis && inviteData.expiresAt.toMillis() < Date.now()) throw new HttpsError("failed-precondition", "Invitación expirada.");
@@ -126,6 +205,15 @@ export const acceptInvite = onCall(async (request) => {
   const displayName = userSnap.data()?.displayName ?? request.auth.token.name ?? inviteData.displayName ?? authEmail;
   const roleGlobal = inviteData.type === "group_admin" ? "group_admin" : userSnap.data()?.roleGlobal ?? "user";
 
+  // For open invites: check the user isn't already a member of this group
+  if (isOpen && inviteData.groupId) {
+    const existingMember = await db.doc(`groups/${inviteData.groupId}/members/${uid}`).get();
+    if (existingMember.exists) {
+      // Already a member — just redirect, don't error
+      return { groupId: inviteData.groupId, roleGlobal };
+    }
+  }
+
   await db.runTransaction(async (transaction) => {
     const latest = await transaction.get(found.ref);
     const latestData = latest.data();
@@ -146,7 +234,7 @@ export const acceptInvite = onCall(async (request) => {
         uid,
         displayName,
         email: authEmail,
-        role: inviteData.role,
+        role: inviteData.role ?? "participant",
         paymentStatus: "pending",
         joinedAt: FieldValue.serverTimestamp(),
         status: "active",
@@ -156,12 +244,19 @@ export const acceptInvite = onCall(async (request) => {
       transaction.set(db.doc(`groupMembers/${inviteData.groupId}_${uid}`), member);
     }
 
-    transaction.update(found.ref, {
-      usedCount: FieldValue.increment(1),
-      usedAt: FieldValue.serverTimestamp(),
-      usedByUid: uid,
-      status: "used"
-    });
+    // Open invites: keep "active" so others can still use the link
+    if (isOpen) {
+      transaction.update(found.ref, {
+        usedCount: FieldValue.increment(1)
+      });
+    } else {
+      transaction.update(found.ref, {
+        usedCount: FieldValue.increment(1),
+        usedAt: FieldValue.serverTimestamp(),
+        usedByUid: uid,
+        status: "used"
+      });
+    }
   });
 
   await writeAuditLog({
@@ -170,11 +265,13 @@ export const acceptInvite = onCall(async (request) => {
     action: "acceptInvite",
     entityType: "invite",
     entityId: inviteData.code,
-    after: { inviteeEmail: inviteData.inviteeEmail, role: inviteData.role, type: inviteData.type }
+    after: { inviteeEmail: authEmail, role: inviteData.role, type: inviteData.type }
   });
 
   return { groupId: inviteData.groupId ?? null, roleGlobal };
 });
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 async function createInviteRecord(input: {
   actorUid: string;

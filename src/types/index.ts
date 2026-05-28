@@ -65,7 +65,7 @@ export type Invite = {
   role?: GroupRole;
   usedAt?: unknown;
   usedByUid?: string;
-  type?: "group_admin" | "participant";
+  type?: "group_admin" | "participant" | "open";
 };
 
 export type Match = {

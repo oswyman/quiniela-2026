@@ -164,6 +164,23 @@ export async function createInvite(groupId: string, inviteeEmail: string, displa
   return createParticipantInvite(groupId, inviteeEmail, displayName);
 }
 
+export async function createOpenInvite(groupId: string) {
+  const callable = httpsCallable<{ groupId: string }, Invite>(functions, "createOpenInvite");
+  return callable({ groupId });
+}
+
+export async function listOpenInvites(groupId: string) {
+  const snap = await getDocs(
+    query(collection(db, "groups", groupId, "invites"), where("type", "==", "open"), where("status", "==", "active"))
+  );
+  return snap.docs.map((item) => ({ id: item.id, ...item.data() } as unknown as Invite));
+}
+
+export async function revokeOpenInvite(groupId: string, inviteCode: string) {
+  const callable = httpsCallable<{ groupId: string; inviteCode: string }, { ok: boolean }>(functions, "revokeOpenInvite");
+  return callable({ groupId, inviteCode });
+}
+
 export async function createAdminInvite(inviteeEmail: string, displayName?: string) {
   const callable = httpsCallable<{ inviteeEmail: string; displayName?: string }, Invite>(functions, "createAdminInvite");
   return callable({ inviteeEmail, displayName });

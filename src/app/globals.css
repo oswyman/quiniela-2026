@@ -1557,3 +1557,63 @@ details[open] .rulesSummary::after { transform: rotate(180deg); }
     font-weight: 900;
   }
 }
+
+/* ── Google Sign-In button ───────────────────────────────────────────────── */
+.googleButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #fff;
+  color: #3c4043;
+  border: 1.5px solid #dadce0;
+  font-weight: 600;
+  font-size: var(--text-sm);
+  border-radius: var(--radius);
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+  width: 100%;
+}
+.googleButton:hover:not(:disabled) {
+  background: #f8f9fa;
+  box-shadow: 0 1px 3px rgba(60,64,67,.2);
+}
+.googleButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Or divider ─────────────────────────────────────────────────────────── */
+.orDivider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.orDivider::before,
+.orDivider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── Open invite link row ────────────────────────────────────────────────── */
+.inviteLinkRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--surface-2, #f5f4ef);
+  border-radius: var(--radius);
+  flex-wrap: wrap;
+}
+.inviteLinkCode {
+  flex: 1;
+  font-size: 0.75rem;
+  word-break: break-all;
+  color: var(--muted);
+  min-width: 0;
+}
