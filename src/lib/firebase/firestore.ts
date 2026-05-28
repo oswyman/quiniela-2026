@@ -82,10 +82,25 @@ export async function listMatches() {
 }
 
 export async function listRecentResults(count = 6) {
+  // No orderBy to avoid requiring a composite index while it builds.
+  // Sort client-side instead.
   const snap = await getDocs(
-    query(collection(db, "matches"), where("status", "==", "finished"), orderBy("kickoffAt", "desc"), limit(count))
+    query(collection(db, "matches"), where("status", "==", "finished"), limit(50))
   );
-  return snap.docs.map((item) => ({ id: item.id, ...item.data() }) as Match);
+  const all = snap.docs.map((item) => ({ id: item.id, ...item.data() }) as Match);
+  all.sort((a, b) => {
+    const ta = toTimestampMillis(a.kickoffAt);
+    const tb = toTimestampMillis(b.kickoffAt);
+    return tb - ta;
+  });
+  return all.slice(0, count);
+}
+
+function toTimestampMillis(val: unknown): number {
+  if (!val) return 0;
+  if (typeof val === "object" && val !== null && "toMillis" in val) return (val as { toMillis(): number }).toMillis();
+  if (typeof val === "string" || typeof val === "number") return new Date(val).getTime();
+  return 0;
 }
 
 export async function listAllGroups() {
