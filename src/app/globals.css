@@ -1092,7 +1092,209 @@ details[open] .rulesSummary::after { transform: rotate(180deg); }
   justify-content: space-between;
 }
 
-/* ── Phase nav strip ─────────────────────────────── */
+/* ── Phase tabs (nueva navegación por fase) ─────── */
+.phaseTabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.phaseTabs::-webkit-scrollbar { display: none; }
+
+.phaseTab {
+  align-items: center;
+  background: rgba(255, 253, 247, 0.7);
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 16px;
+  transition: background 140ms var(--ease-out), border-color 140ms var(--ease-out), color 140ms var(--ease-out), box-shadow 140ms var(--ease-out);
+  white-space: nowrap;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .phaseTab:hover {
+    background: rgba(25, 115, 90, 0.07);
+    border-color: rgba(25, 115, 90, 0.28);
+    color: var(--stadium-900);
+  }
+}
+
+.phaseTab.active {
+  background: var(--stadium-800);
+  border-color: var(--stadium-800);
+  box-shadow: 0 2px 8px rgba(10, 36, 27, 0.18);
+  color: #fff;
+}
+
+.phaseTabBadge {
+  background: var(--gold-500);
+  border-radius: 999px;
+  color: #211704;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+  min-width: 18px;
+  padding: 2px 6px;
+  text-align: center;
+}
+
+.phaseTab.active .phaseTabBadge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+/* ── Resultado en card de partido ────────────────── */
+.matchResultBadge {
+  align-items: center;
+  background: linear-gradient(135deg, rgba(10, 36, 27, 0.05), rgba(10, 36, 27, 0.02));
+  border: 1px solid rgba(10, 36, 27, 0.1);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 16px;
+  text-align: center;
+}
+
+.matchResultLabel {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.matchResultScore {
+  color: var(--stadium-900);
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.matchResultSep {
+  color: var(--muted);
+  margin: 0 4px;
+}
+
+/* ── Pick del usuario en partidos cerrados ───────── */
+.pickResultRow {
+  align-items: center;
+  background: rgba(110, 119, 114, 0.07);
+  border-radius: var(--radius-sm);
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 8px 12px;
+}
+
+.pickResultRow--correct {
+  background: rgba(8, 127, 91, 0.08);
+  border: 1px solid rgba(8, 127, 91, 0.18);
+}
+
+.pickResultRow--wrong {
+  background: rgba(180, 35, 24, 0.07);
+  border: 1px solid rgba(180, 35, 24, 0.14);
+}
+
+.pickResultLabel {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.pickCorrectTag {
+  color: var(--success);
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.pickWrongTag {
+  color: var(--danger);
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* ── TBD match card ──────────────────────────────── */
+.matchCard--tbd {
+  opacity: 0.8;
+}
+
+.pill--tbd {
+  align-items: center;
+  background: rgba(110, 119, 114, 0.08);
+  border-color: rgba(110, 119, 114, 0.22);
+  color: var(--muted);
+  display: inline-flex;
+  gap: 4px;
+}
+
+/* ── Results widget (dashboard + grupo) ─────────── */
+.resultsGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+}
+
+.resultCard {
+  background: rgba(248, 243, 231, 0.6);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 10px 10px;
+  text-align: center;
+}
+
+.resultCardTeams {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+.resultCardTeam {
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.resultCardScore {
+  color: var(--stadium-900);
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 4px 0;
+}
+
+@media (max-width: 640px) {
+  .resultsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ── Phase nav strip (legacy) ────────────────────── */
 .phaseNav {
   display: flex;
   gap: 6px;

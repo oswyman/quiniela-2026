@@ -10,8 +10,10 @@ import { PageTitle } from "@/components/PageTitle";
 import { EmptyState } from "@/components/EmptyState";
 import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
-import { getUserProfile, listMyGroups } from "@/lib/firebase/firestore";
+import { getUserProfile, listMyGroups, listRecentResults } from "@/lib/firebase/firestore";
 import { formatMoney } from "@/lib/format";
+import { getMatchTitle } from "@/lib/matchDisplay";
+import type { Match } from "@/types";
 import { canCreateGroup } from "@/lib/permissions";
 import type { Group, UserProfile } from "@/types";
 
@@ -28,6 +30,7 @@ function DashboardContent() {
   const reduce = useReducedMotion();
   const [groups, setGroups] = useState<Array<Group & { memberRole: string }>>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [recentResults, setRecentResults] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [retryCount, setRetryCount] = useState(0);
@@ -42,9 +45,14 @@ function DashboardContent() {
     async function load() {
       if (!user) return;
       try {
-        setProfile(await getUserProfile(user.uid));
-        const nextGroups = await listMyGroups(user.uid);
+        const [nextProfile, nextGroups, nextResults] = await Promise.all([
+          getUserProfile(user.uid),
+          listMyGroups(user.uid),
+          listRecentResults(6),
+        ]);
+        setProfile(nextProfile);
         setGroups(nextGroups.filter((group) => group.status !== "cancelled"));
+        setRecentResults(nextResults);
       } catch (err) {
         setError(err instanceof Error ? err.message : "No se pudieron cargar tus grupos.");
       } finally {
@@ -75,6 +83,35 @@ function DashboardContent() {
         <MetricCard label="Cierre por partido" value="90 min antes" detail="Así cierra cada pronóstico - no al kickoff" />
       </div>
       {loading ? <DashboardSkeleton /> : null}
+      {/* ── Últimos resultados del torneo ─────────── */}
+      {recentResults.length > 0 ? (
+        <section className="panel stack">
+          <h2>Últimos resultados</h2>
+          <div className="resultsGrid">
+            {recentResults.map((match) => {
+              const title = getMatchTitle(match);
+              const [home, away] = title.split(" vs ");
+              return (
+                <div className="resultCard" key={match.id}>
+                  <span className="pill" style={{ fontSize: "0.7rem", marginBottom: 4 }}>{match.phase}</span>
+                  <div className="resultCardTeams">
+                    <span className="resultCardTeam">{home}</span>
+                    {match.winnerTeam
+                      ? <span className="resultCardScore">Avanza</span>
+                      : <span className="resultCardScore">{match.homeGoals90 ?? "?"} – {match.awayGoals90 ?? "?"}</span>
+                    }
+                    <span className="resultCardTeam">{away}</span>
+                  </div>
+                  {match.winnerTeam && (
+                    <p className="muted" style={{ margin: "4px 0 0", fontSize: "0.75rem", textAlign: "center" }}>{match.winnerTeam}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
       {!loading && groups.length === 0 ? (
         <EmptyState
           title="Todavía no hay grupos"

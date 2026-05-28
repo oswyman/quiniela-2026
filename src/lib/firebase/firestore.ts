@@ -81,6 +81,13 @@ export async function listMatches() {
   return snap.docs.map((item) => ({ id: item.id, ...item.data() }) as Match);
 }
 
+export async function listRecentResults(count = 6) {
+  const snap = await getDocs(
+    query(collection(db, "matches"), where("status", "==", "finished"), orderBy("kickoffAt", "desc"), limit(count))
+  );
+  return snap.docs.map((item) => ({ id: item.id, ...item.data() }) as Match);
+}
+
 export async function listAllGroups() {
   const snap = await getDocs(query(collection(db, "groups"), limit(100)));
   return snap.docs.map((item) => ({ id: item.id, ...item.data() }) as Group);

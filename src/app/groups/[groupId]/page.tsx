@@ -154,6 +154,39 @@ function GroupContent() {
         </section>
 
         <div className="grid">
+          {/* Últimos resultados */}
+          {(() => {
+            const finished = matches.filter((m) => m.status === "finished").slice(-6).reverse();
+            if (finished.length === 0) return null;
+            return (
+              <section className="panel stack" style={{ gridColumn: "1 / -1" }}>
+                <h2>Últimos resultados</h2>
+                <div className="resultsGrid">
+                  {finished.map((match) => {
+                    const home = getMatchTitle(match).split(" vs ")[0];
+                    const away = getMatchTitle(match).split(" vs ")[1];
+                    return (
+                      <div className="resultCard" key={match.id}>
+                        <span className="pill" style={{ fontSize: "0.7rem", marginBottom: 4 }}>{match.phase}</span>
+                        <div className="resultCardTeams">
+                          <span className="resultCardTeam">{home}</span>
+                          {match.winnerTeam
+                            ? <span className="resultCardScore">Avanza</span>
+                            : <span className="resultCardScore">{match.homeGoals90 ?? "?"} – {match.awayGoals90 ?? "?"}</span>
+                          }
+                          <span className="resultCardTeam">{away}</span>
+                        </div>
+                        {match.winnerTeam && (
+                          <p className="muted" style={{ margin: "4px 0 0", fontSize: "0.75rem", textAlign: "center" }}>{match.winnerTeam}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })()}
+
           <section className="panel stack">
             <h2>Próximos partidos</h2>
             <div className="tabs" aria-label="Preferencia de horario de partidos">
@@ -167,12 +200,15 @@ function GroupContent() {
               <p className="muted">Aún no hay fixtures cargados.</p>
             ) : (
               <div className="stack">
-                {matches.slice(0, 5).map((match) => (
+                {matches.filter((m) => m.status === "scheduled").slice(0, 5).map((match) => (
                   <div key={match.id}>
                     <p style={{ margin: 0, fontWeight: 700 }}>{getMatchTitle(match)}</p>
                     <p className="muted" style={{ margin: 0, fontSize: "0.875rem" }}>{formatMatchTime(match, timeMode, userTimeZone)} · {match.venue ?? "Sede por confirmar"}</p>
                   </div>
                 ))}
+                {matches.filter((m) => m.status === "scheduled").length === 0 && (
+                  <p className="muted">No hay partidos próximos.</p>
+                )}
               </div>
             )}
           </section>
