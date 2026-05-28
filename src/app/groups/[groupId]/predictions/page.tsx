@@ -258,11 +258,21 @@ function PredictionsContent() {
               const awayTeam = getDisplayTeam(match, "away");
               const teamsKnown = match.isResolved !== false;
               const hasResult = match.status === "finished";
+              const isCorrect = prediction?.isCorrect;
               const options = getPickOptions(match, pickType, homeTeam, awayTeam);
+
+              // Card state classes
+              const cardClass = [
+                "panel stack matchCard",
+                closed ? "matchCard--closed" : "",
+                !teamsKnown ? "matchCard--tbd" : "",
+                hasResult && isCorrect === true ? "matchCard--correct" : "",
+                hasResult && isCorrect === false ? "matchCard--wrong" : "",
+              ].filter(Boolean).join(" ");
 
               return (
                 <article
-                  className={`panel stack matchCard${closed ? " matchCard--closed" : ""}${!teamsKnown ? " matchCard--tbd" : ""}`}
+                  className={cardClass}
                   id={`match-${match.id}`}
                   key={match.id}
                 >
@@ -290,11 +300,15 @@ function PredictionsContent() {
 
                   {/* ── Resultado (si existe) ────────────── */}
                   {hasResult ? (
-                    <div className="matchResultBadge">
+                    <div className={`matchResultBadge${isCorrect === true ? " matchResultBadge--correct" : isCorrect === false ? " matchResultBadge--wrong" : ""}`}>
+                      <span className="matchResultLabel">Resultado final</span>
                       {match.winnerTeam
-                        ? <><span className="matchResultLabel">Avanza</span><span className="matchResultScore">{teamFlagEmoji(match.winnerTeam)} {match.winnerTeam}</span></>
+                        ? <span className="matchResultScore">{teamFlagEmoji(match.winnerTeam)} {match.winnerTeam} <span className="matchResultLabel">avanza</span></span>
                         : <span className="matchResultScore">{match.homeGoals90 ?? "?"} <span className="matchResultSep">–</span> {match.awayGoals90 ?? "?"}</span>
                       }
+                      {isCorrect === true && <span className="pickCorrectTag">✓ Acertaste</span>}
+                      {isCorrect === false && <span className="pickWrongTag">✗ No acertaste</span>}
+                      {isCorrect === null || (hasResult && isCorrect === undefined) ? <span className="matchResultLabel">Pendiente de calcular</span> : null}
                     </div>
                   ) : null}
 

@@ -1161,9 +1161,17 @@ details[open] .rulesSummary::after { transform: rotate(180deg); }
   border-radius: var(--radius-sm);
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 10px 16px;
+  gap: 4px;
+  padding: 12px 16px;
   text-align: center;
+}
+.matchResultBadge--correct {
+  background: rgba(8, 127, 91, 0.07);
+  border-color: rgba(8, 127, 91, 0.22);
+}
+.matchResultBadge--wrong {
+  background: rgba(180, 35, 24, 0.06);
+  border-color: rgba(180, 35, 24, 0.18);
 }
 
 .matchResultLabel {
@@ -1227,6 +1235,34 @@ details[open] .rulesSummary::after { transform: rotate(180deg); }
   font-size: 0.78rem;
   font-weight: 800;
   white-space: nowrap;
+}
+
+/* ── Match card con resultado: correcto ─────────── */
+.matchCard--correct {
+  opacity: 1 !important;
+}
+.matchCard--correct::before {
+  background: var(--grass-500) !important;
+}
+.matchCard--correct .choiceButton.active {
+  background: rgba(8, 127, 91, 0.15) !important;
+  border-color: var(--grass-500) !important;
+  box-shadow: 0 0 0 3px rgba(8, 127, 91, 0.14) !important;
+  opacity: 1 !important;
+}
+
+/* ── Match card con resultado: incorrecto ────────── */
+.matchCard--wrong {
+  opacity: 1 !important;
+}
+.matchCard--wrong::before {
+  background: var(--danger) !important;
+}
+.matchCard--wrong .choiceButton.active {
+  background: rgba(180, 35, 24, 0.1) !important;
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.12) !important;
+  opacity: 1 !important;
 }
 
 /* ── TBD match card ──────────────────────────────── */
@@ -1556,6 +1592,136 @@ details[open] .rulesSummary::after { transform: rotate(180deg); }
     font-size: var(--text-sm);
     font-weight: 900;
   }
+}
+
+/* ── Results page ────────────────────────────────────────────────────────── */
+.resultsStatRow {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.resultsStat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  padding: 16px 12px;
+}
+.resultsStatSep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--line);
+}
+.resultsStatValue {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--stadium-900);
+}
+.resultsStatValue--pct {
+  color: var(--grass-600);
+}
+.resultsStatLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.searchBar {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.searchIcon {
+  position: absolute;
+  left: 14px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.searchInput {
+  width: 100%;
+  padding: 10px 14px 10px 40px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.searchInput:focus {
+  border-color: var(--grass-500);
+  box-shadow: 0 0 0 3px rgba(34, 138, 109, 0.1);
+}
+
+/* Results table */
+.resultsTableWrap { padding: 0; overflow-x: auto; }
+.resultsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.resultsTable th {
+  background: rgba(10, 36, 27, 0.04);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 10px 16px;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+}
+.resultsTable td {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  vertical-align: middle;
+}
+.resultsTable tr:last-child td { border-bottom: none; }
+.resultRow--correct td:first-child { border-left: 3px solid var(--grass-500); }
+.resultRow--wrong   td:first-child { border-left: 3px solid var(--danger); }
+.resultRowPhase {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+/* Results mobile cards — hidden on desktop */
+.resultsCardList { display: none; }
+
+.resultMobileCard {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.resultMobileCard--correct { border-left-color: var(--grass-500); background: rgba(8,127,91,0.04); }
+.resultMobileCard--wrong   { border-left-color: var(--danger);    background: rgba(180,35,24,0.04); }
+.resultMobileCard__header  { display: flex; justify-content: space-between; align-items: center; }
+.resultMobileCard__teams strong { font-size: 1rem; line-height: 1.3; }
+.resultMobileCard__row     { display: flex; gap: 16px; justify-content: space-between; }
+
+@media (max-width: 640px) {
+  .resultsTableWrap { display: none; }
+  .resultsCardList  { display: flex; flex-direction: column; gap: 10px; }
+  .resultsStatRow   { flex-wrap: wrap; }
+  .resultsStat      { min-width: 80px; }
 }
 
 /* ── Google Sign-In button ───────────────────────────────────────────────── */

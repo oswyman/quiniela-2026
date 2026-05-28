@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, LayoutDashboard, Settings, Target, Users2 } from "lucide-react";
+import { BarChart3, CheckSquare, LayoutDashboard, Settings, Target, Users2 } from "lucide-react";
 
 export function GroupNav({ groupId }: { groupId: string }) {
   const pathname = usePathname();
@@ -16,6 +16,7 @@ export function GroupNav({ groupId }: { groupId: string }) {
     { href: `/groups/${groupId}`,                         label: "Resumen",         icon: <LayoutDashboard size={14} aria-hidden /> },
     { href: `/groups/${groupId}/predictions`,             label: "Mis pronósticos", icon: <Target size={14} aria-hidden /> },
     { href: `/groups/${groupId}/predictions/group`,       label: "Grupo",           icon: <Users2 size={14} aria-hidden /> },
+    { href: `/groups/${groupId}/results`,                  label: "Resultados",      icon: <CheckSquare size={14} aria-hidden /> },
     { href: `/groups/${groupId}/ranking`,                 label: "Ranking",         icon: <BarChart3 size={14} aria-hidden /> },
     { href: `/groups/${groupId}/admin`,                   label: "Admin",           icon: <Settings size={14} aria-hidden /> },
   ];
