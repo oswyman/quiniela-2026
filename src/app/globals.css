@@ -1237,6 +1237,50 @@ details[open] .rulesSummary::after { transform: rotate(180deg); }
   white-space: nowrap;
 }
 
+/* ── EN VIVO badge & dot ────────────────────────── */
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.85); }
+}
+
+.liveDot {
+  background: #22c55e;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  height: 7px;
+  width: 7px;
+  animation: livePulse 1.4s ease-in-out infinite;
+}
+
+.liveBadge {
+  align-items: center;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: var(--radius-sm);
+  color: #16a34a;
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 800;
+  gap: 5px;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  text-transform: uppercase;
+}
+
+/* ── Match card en vivo ──────────────────────────── */
+.matchCard--live {
+  opacity: 1 !important;
+}
+.matchCard--live::before {
+  background: linear-gradient(180deg, #22c55e, var(--gold-500)) !important;
+  animation: livePulse 1.4s ease-in-out infinite;
+}
+.matchResultBadge--live {
+  background: rgba(34, 197, 94, 0.07);
+  border-color: rgba(34, 197, 94, 0.25);
+}
+
 /* ── Match card con resultado: correcto ─────────── */
 .matchCard--correct {
   opacity: 1 !important;
@@ -1688,6 +1732,8 @@ details[open] .rulesSummary::after { transform: rotate(180deg); }
 .resultsTable tr:last-child td { border-bottom: none; }
 .resultRow--correct td:first-child { border-left: 3px solid var(--grass-500); }
 .resultRow--wrong   td:first-child { border-left: 3px solid var(--danger); }
+.resultRow--live    td:first-child { border-left: 3px solid #22c55e; }
+.resultRow--live    td { background: rgba(34, 197, 94, 0.04); }
 .resultRowPhase {
   display: block;
   font-size: 0.7rem;
@@ -1713,6 +1759,7 @@ details[open] .rulesSummary::after { transform: rotate(180deg); }
 }
 .resultMobileCard--correct { border-left-color: var(--grass-500); background: rgba(8,127,91,0.04); }
 .resultMobileCard--wrong   { border-left-color: var(--danger);    background: rgba(180,35,24,0.04); }
+.resultMobileCard--live    { border-left-color: #22c55e;          background: rgba(34,197,94,0.05); }
 .resultMobileCard__header  { display: flex; justify-content: space-between; align-items: center; }
 .resultMobileCard__teams strong { font-size: 1rem; line-height: 1.3; }
 .resultMobileCard__row     { display: flex; gap: 16px; justify-content: space-between; }

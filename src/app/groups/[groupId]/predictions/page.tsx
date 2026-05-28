@@ -77,14 +77,18 @@ function PredictionsContent() {
   // Incluye partidos de grupos + knockout publicados aunque no tengan equipos aún
   const visibleMatches = useMemo(() => matches.filter(isVisibleForParticipants), [matches]);
 
-  // Fases únicas en orden de aparición
+  // Fases únicas en orden canónico (torneos tienen orden fijo)
   const phases = useMemo(() => {
-    const seen: string[] = [];
-    for (const m of visibleMatches) {
-      const p = m.phase || "Sin fase";
-      if (!seen.includes(p)) seen.push(p);
-    }
-    return seen;
+    const seen = new Set<string>();
+    for (const m of visibleMatches) seen.add(m.phase || "Sin fase");
+    return [...seen].sort((a, b) => {
+      const ia = PHASE_ORDER.indexOf(a);
+      const ib = PHASE_ORDER.indexOf(b);
+      if (ia !== -1 && ib !== -1) return ia - ib;
+      if (ia !== -1) return -1;
+      if (ib !== -1) return 1;
+      return 0;
+    });
   }, [visibleMatches]);
 
   // Inicializar tab activa en la primera fase con pendientes, si no en la primera
@@ -257,6 +261,7 @@ function PredictionsContent() {
               const homeTeam = getDisplayTeam(match, "home");
               const awayTeam = getDisplayTeam(match, "away");
               const teamsKnown = match.isResolved !== false;
+              const isLive = match.status === "live";
               const hasResult = match.status === "finished";
               const isCorrect = prediction?.isCorrect;
               const options = getPickOptions(match, pickType, homeTeam, awayTeam);
@@ -264,8 +269,9 @@ function PredictionsContent() {
               // Card state classes
               const cardClass = [
                 "panel stack matchCard",
-                closed ? "matchCard--closed" : "",
+                closed && !isLive ? "matchCard--closed" : "",
                 !teamsKnown ? "matchCard--tbd" : "",
+                isLive ? "matchCard--live" : "",
                 hasResult && isCorrect === true ? "matchCard--correct" : "",
                 hasResult && isCorrect === false ? "matchCard--wrong" : "",
               ].filter(Boolean).join(" ");
@@ -278,7 +284,9 @@ function PredictionsContent() {
                 >
                   {/* ── Cabecera: estado y tipo ─────────── */}
                   <div className="cluster">
-                    {closed ? (
+                    {isLive ? (
+                      <span className="liveBadge"><span className="liveDot" aria-hidden />EN VIVO</span>
+                    ) : closed ? (
                       <span className="closedBadge"><Lock size={12} aria-hidden /> Cerrado</span>
                     ) : !teamsKnown ? (
                       <span className="pill pill--tbd"><Clock size={12} aria-hidden /> Equipos por definir</span>
@@ -298,17 +306,17 @@ function PredictionsContent() {
                     <p className="matchVenue muted">{formatMatchTime(match, timeMode, userTimeZone)} · {match.venue ?? "Sede por confirmar"}</p>
                   </div>
 
-                  {/* ── Resultado (si existe) ────────────── */}
-                  {hasResult ? (
-                    <div className={`matchResultBadge${isCorrect === true ? " matchResultBadge--correct" : isCorrect === false ? " matchResultBadge--wrong" : ""}`}>
-                      <span className="matchResultLabel">Resultado final</span>
+                  {/* ── Resultado / marcador en vivo ────── */}
+                  {(hasResult || isLive) && (match.homeGoals90 !== null && match.homeGoals90 !== undefined) ? (
+                    <div className={`matchResultBadge${isLive ? " matchResultBadge--live" : isCorrect === true ? " matchResultBadge--correct" : isCorrect === false ? " matchResultBadge--wrong" : ""}`}>
+                      <span className="matchResultLabel">{isLive ? "Marcador" : "Resultado final"}</span>
                       {match.winnerTeam
                         ? <span className="matchResultScore">{teamFlagEmoji(match.winnerTeam)} {match.winnerTeam} <span className="matchResultLabel">avanza</span></span>
-                        : <span className="matchResultScore">{match.homeGoals90 ?? "?"} <span className="matchResultSep">–</span> {match.awayGoals90 ?? "?"}</span>
+                        : <span className="matchResultScore">{match.homeGoals90} <span className="matchResultSep">–</span> {match.awayGoals90 ?? "?"}</span>
                       }
-                      {isCorrect === true && <span className="pickCorrectTag">✓ Acertaste</span>}
-                      {isCorrect === false && <span className="pickWrongTag">✗ No acertaste</span>}
-                      {isCorrect === null || (hasResult && isCorrect === undefined) ? <span className="matchResultLabel">Pendiente de calcular</span> : null}
+                      {!isLive && isCorrect === true && <span className="pickCorrectTag">✓ Acertaste</span>}
+                      {!isLive && isCorrect === false && <span className="pickWrongTag">✗ No acertaste</span>}
+                      {!isLive && (isCorrect === null || isCorrect === undefined) && <span className="matchResultLabel">Pendiente de calcular</span>}
                     </div>
                   ) : null}
 
@@ -362,12 +370,24 @@ function PredictionsContent() {
   );
 }
 
-function isVisibleForParticipants(match: Match) {
-  const pickType = inferPickType(match);
-  if (pickType === "GROUP_OUTCOME") return true;
-  // Knockout: mostrar si está publicado (aunque no tenga equipos aún)
-  return Boolean(match.isPublishedToParticipants);
+function isVisibleForParticipants(_match: Match) {
+  // Todas las fases son visibles siempre.
+  // Las tarjetas TBD (teamsKnown=false) muestran botones deshabilitados
+  // hasta que el admin confirme el bracket.
+  return true;
 }
+
+// Orden canónico de fases para las pestañas
+const PHASE_ORDER = [
+  "Fase de grupos",
+  "Ronda de 32",
+  "Dieciseisavos de final",
+  "Octavos de final",
+  "Cuartos de final",
+  "Semifinal",
+  "Tercer lugar",
+  "Final",
+];
 
 function getPickOptions(match: Match, pickType: PredictionPickType, homeTeam: string, awayTeam: string) {
   if (pickType === "ADVANCING_TEAM") {
