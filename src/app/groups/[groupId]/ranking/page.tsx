@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Download } from "lucide-react";
 import { AuthGate } from "@/components/AuthGate";
 import { EmptyState } from "@/components/EmptyState";
 import { GroupNav } from "@/components/GroupNav";
 import { PageTitle } from "@/components/PageTitle";
+import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
 import { getGroup, listMembers, listPrizes, listScores } from "@/lib/firebase/firestore";
 import { formatMoney } from "@/lib/format";
@@ -22,10 +23,7 @@ export default function RankingPage() {
   );
 }
 
-function positionMedal(position: number) {
-  if (position === 1) return "🥇";
-  if (position === 2) return "🥈";
-  if (position === 3) return "🥉";
+function positionLabel(position: number) {
   return String(position);
 }
 
@@ -49,25 +47,51 @@ function RankingContent() {
   const [members, setMembers] = useState<Member[]>([]);
   const [prizes, setPrizes] = useState<Array<{ uid: string; estimatedPrize: number; ruleApplied: string; tieApplied: boolean }>>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
+
+  const retry = useCallback(() => {
+    setError("");
+    setLoading(true);
+    setRetryCount((c) => c + 1);
+  }, []);
 
   useEffect(() => {
     async function load() {
-      const [nextGroup, nextScores, nextPrizes, nextMembers] = await Promise.all([
-        getGroup(params.groupId),
-        listScores(params.groupId),
-        listPrizes(params.groupId),
-        listMembers(params.groupId)
-      ]);
-      setGroup(nextGroup);
-      setScores(nextScores);
-      setPrizes(nextPrizes as Array<{ uid: string; estimatedPrize: number; ruleApplied: string; tieApplied: boolean }>);
-      setMembers(nextMembers);
-      setLoading(false);
+      try {
+        const [nextGroup, nextScores, nextPrizes, nextMembers] = await Promise.all([
+          getGroup(params.groupId),
+          listScores(params.groupId),
+          listPrizes(params.groupId),
+          listMembers(params.groupId)
+        ]);
+        setGroup(nextGroup);
+        setScores(nextScores);
+        setPrizes(nextPrizes as Array<{ uid: string; estimatedPrize: number; ruleApplied: string; tieApplied: boolean }>);
+        setMembers(nextMembers);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "No se pudo cargar el ranking.");
+      } finally {
+        setLoading(false);
+      }
     }
     load();
-  }, [params.groupId]);
+  }, [params.groupId, retryCount]);
 
-  if (loading) return <main className="container shell"><div className="panel">Cargando ranking...</div></main>;
+  if (loading) return (
+    <main className="container shell">
+      <div className="panel" role="status" aria-live="polite">
+        <p className="muted" style={{ margin: 0 }}>Cargando ranking...</p>
+      </div>
+    </main>
+  );
+
+  if (error) return (
+    <main className="container shell">
+      <StatusMessage type="error" onRetry={retry}>{error}</StatusMessage>
+    </main>
+  );
+
   const ranked = rankScores(scores);
 
   function downloadCsv() {
@@ -86,26 +110,16 @@ function RankingContent() {
   return (
     <main className="container shell stack-lg">
       <div className="toolbar">
-        <PageTitle title="Ranking" subtitle="Ordenado por aciertos. Si dos participantes tienen la misma cantidad, comparten posición." />
+        <PageTitle title="Ranking" subtitle="Ordenado por aciertos. Empates comparten posición." />
         <GroupNav groupId={params.groupId} />
       </div>
-      <section className="grid">
-        <article className="panel stack">
-          <h2>Cómo se calculan los aciertos</h2>
-          <p className="muted">Cada partido atinado vale 1 acierto. Fase de grupos: cuenta local gana, empate o visitante gana (resultado a 90 min). Eliminación directa: cuenta el equipo que avanza. Los pronósticos fuera de tiempo valen 0.</p>
-        </article>
-        <article className="panel stack">
-          <h2>Distribución de premios estimados</h2>
-          <p className="muted">2 activos: 1.° 100 %. · 3 activos: 1.° 70 %, 2.° 30 %. · 4 o más: 1.° 60 %, 2.° 30 %, 3.° 10 %. Empates en zona de premio se dividen entre los empatados. La Cancha no procesa ni custodia dinero.</p>
-        </article>
-      </section>
 
       {/* Tabla desktop */}
       <div className="tableWrap panel">
         <table className="rankingTable">
           <thead>
             <tr>
-              <th className="cell-nowrap">Posición</th>
+              <th className="cell-nowrap">Pos.</th>
               <th>Participante</th>
               <th className="cell-nowrap">Aciertos</th>
               <th className="cell-nowrap">Grupos</th>
@@ -120,7 +134,7 @@ function RankingContent() {
               const isMe = user?.uid === score.uid;
               return (
                 <tr className={rowClass(score.position, isMe)} key={score.uid}>
-                  <td className="cell-nowrap">{positionMedal(score.position)}</td>
+                  <td className="cell-nowrap">{positionLabel(score.position)}</td>
                   <td style={{ wordBreak: "break-word" }}>
                     {score.displayName ?? score.uid}
                     {isMe ? <span className="muted" style={{ fontSize: "0.78rem", marginLeft: 6 }}>tú</span> : null}
@@ -148,7 +162,7 @@ function RankingContent() {
             const isMe = user?.uid === score.uid;
             return (
               <div className={cardClass(score.position, isMe)} key={score.uid}>
-                <span className="rankingCard__pos">{positionMedal(score.position)}</span>
+                <span className="rankingCard__pos">{positionLabel(score.position)}</span>
                 <span className="rankingCard__name">
                   {score.displayName ?? score.uid}
                   {isMe ? <span className="muted" style={{ fontSize: "0.78rem", marginLeft: 6 }}>tú</span> : null}
@@ -165,23 +179,40 @@ function RankingContent() {
         </div>
       ) : null}
 
+      {/* Premios detalle */}
       {prizes.length > 0 ? (
         <section className="panel stack">
           <h2>Detalle de premios estimados</h2>
           {prizes.map((prize) => <p key={prize.uid}>{prize.ruleApplied}{prize.tieApplied ? " · Empate en zona de premio: monto dividido entre empatados." : ""}</p>)}
         </section>
-      ) : <section className="panel"><h2>Premios pendientes</h2><p className="muted">Cuando haya resultados cargados, el administrador puede recalcular aciertos y se mostrarán los premios estimados aquí.</p></section>}
-
-      {ranked.length > 0 ? (
-        <section className="panel stack">
-          <div className="cluster">
-            <button className="button secondary" onClick={downloadCsv} type="button">
-              <Download size={16} aria-hidden />
-              Descargar ranking CSV
-            </button>
-          </div>
-          <p className="fineprint">Descarga informativa — los datos son de solo lectura. No se pueden modificar resultados desde el archivo.</p>
+      ) : (
+        <section className="panel">
+          <h2>Premios pendientes</h2>
+          <p className="muted">Cuando haya resultados cargados, el administrador puede recalcular aciertos y se mostrarán los premios estimados aquí.</p>
         </section>
+      )}
+
+      {/* Info secundaria — al final, no bloquea la tabla */}
+      <section className="grid">
+        <article className="panel stack">
+          <h2>Cómo se calculan los aciertos</h2>
+          <p className="muted">Cada partido atinado vale 1 acierto. Fase de grupos: cuenta local gana, empate o visitante gana (resultado a 90 min). Eliminación directa: cuenta el equipo que avanza. Los pronósticos fuera de tiempo valen 0.</p>
+        </article>
+        <article className="panel stack">
+          <h2>Distribución de premios estimados</h2>
+          <p className="muted">2 activos: 1.° 100 %. · 3 activos: 1.° 70 %, 2.° 30 %. · 4 o más: 1.° 60 %, 2.° 30 %, 3.° 10 %. Empates en zona de premio se dividen entre los empatados. La Cancha no procesa ni custodia dinero.</p>
+        </article>
+      </section>
+
+      {/* Descarga */}
+      {ranked.length > 0 ? (
+        <div className="cluster">
+          <button className="button secondary" onClick={downloadCsv} type="button">
+            <Download size={16} aria-hidden />
+            Descargar ranking CSV
+          </button>
+          <p className="fineprint" style={{ margin: 0 }}>Descarga informativa — datos de solo lectura.</p>
+        </div>
       ) : null}
     </main>
   );

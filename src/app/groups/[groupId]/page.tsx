@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
@@ -38,11 +38,18 @@ function GroupContent() {
   const [prizes, setPrizes] = useState<Array<{ uid: string; estimatedPrize: number; ruleApplied: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
   const [timeMode, setTimeMode] = useState<MatchTimeMode>("cdmx");
   const [userTimeZone, setUserTimeZone] = useState("America/Mexico_City");
 
   useEffect(() => {
     setUserTimeZone(getUserTimeZone());
+  }, []);
+
+  const retry = useCallback(() => {
+    setError("");
+    setLoading(true);
+    setRetryCount((c) => c + 1);
   }, []);
 
   useEffect(() => {
@@ -69,7 +76,7 @@ function GroupContent() {
       }
     }
     load();
-  }, [params.groupId]);
+  }, [params.groupId, retryCount]);
 
   const activeMembers = members.filter((member) => member.status === "active");
   const paidMembers = members.filter((member) => member.paymentStatus === "paid");
@@ -79,74 +86,135 @@ function GroupContent() {
   const pendingPredictions = matches.filter((match) => match.status === "scheduled" && !predictionMatchIds.has(match.id)).length;
   const nextPredictionClose = nextMatch ? predictionClosesAt(toDate(nextMatch.kickoffAt)) : null;
   const myScore = scores.find((score) => score.uid === user?.uid);
+  const myPrize = prizes.find((p) => p.uid === user?.uid);
 
-  if (loading) return <main className="container shell"><div className="panel">Cargando panel del grupo...</div></main>;
-  if (error) return <main className="container"><StatusMessage type="error">{error}</StatusMessage></main>;
-  if (!group) return <main className="container"><EmptyState title="Grupo no encontrado" body="Verifica la invitación o vuelve al dashboard." href="/dashboard" action="Dashboard" /></main>;
+  if (loading) return (
+    <main className="container shell">
+      <div className="panel" role="status" aria-live="polite">
+        <p className="muted" style={{ margin: 0 }}>Cargando grupo...</p>
+      </div>
+    </main>
+  );
+
+  if (error) return (
+    <main className="container shell">
+      <StatusMessage type="error" onRetry={retry}>{error}</StatusMessage>
+    </main>
+  );
+
+  if (!group) return (
+    <main className="container">
+      <EmptyState title="Grupo no encontrado" body="Verifica la invitación o vuelve al dashboard." href="/dashboard" action="Dashboard" />
+    </main>
+  );
 
   const pool = activeMembers.length * Number(group.contributionAmount || 0);
 
   return (
     <>
-    <main className="container shell stack-lg">
-      <div className="toolbar">
-        <PageTitle title={group.name} subtitle={`${formatMoney(group.contributionAmount, group.currency)} por participante · Responsable: ${group.moneyResponsibleName} · Quiniela por aciertos`} />
-        <div className="cluster">
-          <Link className="button gold" href={`/groups/${group.id}/predictions`}>Pronosticar</Link>
-          <GroupNav groupId={group.id} />
-        </div>
-      </div>
-      <div className="grid">
-        <MetricCard label="Participantes activos" value={`${activeMembers.length}/${group.minParticipants}+`} detail="Mínimo para operar el grupo" />
-        <MetricCard label="Pagos marcados" value={`${paidMembers.length}/${activeMembers.length}`} detail="Control manual, sin procesar pagos" />
-        <MetricCard label="Bolsa estimada" value={formatMoney(pool, group.currency)} detail="La app no custodia dinero" />
-        <MetricCard label="Próximo cierre" value={nextPredictionClose ? shortCountdownToDate(nextPredictionClose) : "Sin partidos"} detail={nextMatch ? `${getMatchTitle(nextMatch)} — cierra 90 min antes del kickoff` : "Sin fixtures cargados"} />
-        <MetricCard label="Sin pronosticar" value={pendingPredictions} detail="Partidos programados donde aún no tienes elección" />
-        <MetricCard label="Mis aciertos" value={myScore?.totalCorrect ?? myScore?.totalPoints ?? 0} detail="Actualizado al recalcular ranking" />
-      </div>
-      <section className="twoCol">
-        <RulesPanel group={group} />
-        <aside className="panel stack">
-          <h2>Cómo funciona este grupo</h2>
-          <p><strong>Formato:</strong> 1 acierto por partido atinado — sin marcadores.</p>
-          <p className="muted">Fase de grupos: local gana, empate o visitante gana (a 90 min). Eliminación directa: elige el equipo que avanza.</p>
-          <p><strong>Cierre de pronósticos:</strong> 90 minutos antes del kickoff de cada partido. Pasado ese límite, tu elección queda bloqueada.</p>
-          <p><strong>Visibilidad:</strong> {group.predictionVisibility === "AFTER_CLOSE" ? "los pronósticos de otros son visibles solo después de que el partido cierra." : "los pronósticos de todos son visibles antes del cierre — puede generar ventaja estratégica."}</p>
-          <p><strong>Responsable administrativo:</strong> {group.moneyResponsibleEmail}</p>
-        </aside>
-      </section>
-      <div className="grid">
-        <section className="panel stack">
-          <h2>Próximos partidos</h2>
-          <div className="tabs" aria-label="Preferencia de horario de partidos">
-            {(["cdmx", "local", "venue"] as MatchTimeMode[]).map((mode) => (
-              <button className={timeMode === mode ? "tabButton active" : "tabButton"} key={mode} onClick={() => setTimeMode(mode)} type="button">
-                {matchTimeLabel(mode)}
-              </button>
-            ))}
+      <main className="container shell stack-lg">
+        <div className="toolbar">
+          <PageTitle title={group.name} />
+          <div className="cluster">
+            <Link className="button gold" href={`/groups/${group.id}/predictions`}>Pronosticar</Link>
+            <GroupNav groupId={group.id} />
           </div>
-          {matches.length === 0 ? <p className="muted">Aún no hay fixtures cargados.</p> : matches.slice(0, 5).map((match) => <p key={match.id}>{getMatchTitle(match)}<br /><span className="muted">{formatMatchTime(match, timeMode, userTimeZone)} · {match.venue ?? "Sede por confirmar"}</span></p>)}
+        </div>
+
+        <div className="grid">
+          <MetricCard label="Participantes activos" value={`${activeMembers.length}/${group.minParticipants}+`} detail="Mínimo para operar el grupo" />
+          <MetricCard label="Pagos marcados" value={`${paidMembers.length}/${activeMembers.length}`} detail="Control manual, sin procesar pagos" />
+          <MetricCard label="Bolsa estimada" value={formatMoney(pool, group.currency)} detail="La app no custodia dinero" />
+          <MetricCard label="Próximo cierre" value={nextPredictionClose ? shortCountdownToDate(nextPredictionClose) : "Sin partidos"} detail={nextMatch ? `${getMatchTitle(nextMatch)} — cierra 90 min antes del kickoff` : "Sin fixtures cargados"} />
+          <MetricCard label="Sin pronosticar" value={pendingPredictions} detail="Partidos programados donde aún no tienes elección" />
+          <MetricCard label="Mis aciertos" value={myScore?.totalCorrect ?? myScore?.totalPoints ?? 0} detail="Actualizado al recalcular ranking" />
+        </div>
+
+        <section className="twoCol">
+          <RulesPanel group={group} />
+          <aside className="panel stack">
+            <h2>Tu posición</h2>
+            {myScore ? (
+              <>
+                <p style={{ margin: 0 }}>
+                  <strong style={{ fontFamily: "var(--font-display)", fontSize: "2rem", lineHeight: 1 }}>{myScore.totalCorrect ?? myScore.totalPoints}</strong>
+                  <span className="muted" style={{ marginLeft: 8 }}>aciertos acumulados</span>
+                </p>
+                {myPrize ? (
+                  <p style={{ margin: 0 }}>Premio estimado: <strong className="rankingPrize">{formatMoney(myPrize.estimatedPrize, group.currency)}</strong></p>
+                ) : (
+                  <p className="muted" style={{ margin: 0 }}>Premio pendiente de calcular.</p>
+                )}
+                <Link className="button secondary" href={`/groups/${group.id}/ranking`} style={{ alignSelf: "flex-start" }}>Ver ranking completo</Link>
+              </>
+            ) : (
+              <p className="muted">Aún no tienes aciertos registrados. Pronostica para aparecer en el ranking.</p>
+            )}
+          </aside>
         </section>
-        <section className="panel stack">
-          <h2>Top ranking</h2>
-          {scores.length === 0 ? <p className="muted">Sin aciertos calculados todavía.</p> : scores.slice(0, 5).map((score, index) => {
-            const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `${index + 1}.`;
-            return <p key={score.uid}>{medal} {score.displayName ?? score.uid}: <strong>{score.totalCorrect ?? score.totalPoints} aciertos</strong></p>;
-          })}
-        </section>
-        <section className="panel stack">
-          <h2>Premios estimados</h2>
-          {prizes.length === 0 ? <p className="muted">Recalcula ranking cuando haya resultados.</p> : prizes.map((prize) => {
-            const name = scores.find((s) => s.uid === prize.uid)?.displayName ?? members.find((m) => m.uid === prize.uid)?.displayName ?? prize.uid;
-            return <p key={prize.uid}><strong>{name}</strong>: {formatMoney(prize.estimatedPrize, group.currency)}</p>;
-          })}
-        </section>
-      </div>
-    </main>
-    <Link className="stickyPredictButton" href={`/groups/${group.id}/predictions`}>
-      Pronosticar ahora
-      {pendingPredictions > 0 ? <span className="badge">{pendingPredictions}</span> : null}
-    </Link>
+
+        <div className="grid">
+          <section className="panel stack">
+            <h2>Próximos partidos</h2>
+            <div className="tabs" aria-label="Preferencia de horario de partidos">
+              {(["cdmx", "local", "venue"] as MatchTimeMode[]).map((mode) => (
+                <button className={timeMode === mode ? "tabButton active" : "tabButton"} key={mode} onClick={() => setTimeMode(mode)} type="button">
+                  {matchTimeLabel(mode)}
+                </button>
+              ))}
+            </div>
+            {matches.length === 0 ? (
+              <p className="muted">Aún no hay fixtures cargados.</p>
+            ) : (
+              <div className="stack">
+                {matches.slice(0, 5).map((match) => (
+                  <div key={match.id}>
+                    <p style={{ margin: 0, fontWeight: 700 }}>{getMatchTitle(match)}</p>
+                    <p className="muted" style={{ margin: 0, fontSize: "0.875rem" }}>{formatMatchTime(match, timeMode, userTimeZone)} · {match.venue ?? "Sede por confirmar"}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="panel stack">
+            <h2>Top ranking</h2>
+            {scores.length === 0 ? (
+              <p className="muted">Sin aciertos calculados todavía.</p>
+            ) : (
+              scores.slice(0, 5).map((score, index) => (
+                <p key={score.uid} style={{ margin: 0 }}>
+                  <strong style={{ fontFamily: "var(--font-display)", marginRight: 6 }}>{index + 1}.</strong>
+                  {score.displayName ?? score.uid}
+                  <span className="muted" style={{ marginLeft: 6 }}>{score.totalCorrect ?? score.totalPoints} aciertos</span>
+                </p>
+              ))
+            )}
+          </section>
+
+          <section className="panel stack">
+            <h2>Premios estimados</h2>
+            {prizes.length === 0 ? (
+              <p className="muted">Recalcula ranking cuando haya resultados.</p>
+            ) : (
+              prizes.map((prize) => {
+                const name = scores.find((s) => s.uid === prize.uid)?.displayName ?? members.find((m) => m.uid === prize.uid)?.displayName ?? prize.uid;
+                return (
+                  <p key={prize.uid} style={{ margin: 0 }}>
+                    <strong>{name}</strong>
+                    <span className="muted" style={{ marginLeft: 6 }}>{formatMoney(prize.estimatedPrize, group.currency)}</span>
+                  </p>
+                );
+              })
+            )}
+          </section>
+        </div>
+      </main>
+
+      <Link className="stickyPredictButton" href={`/groups/${group.id}/predictions`}>
+        Pronosticar ahora
+        {pendingPredictions > 0 ? <span className="badge">{pendingPredictions}</span> : null}
+      </Link>
     </>
   );
 }

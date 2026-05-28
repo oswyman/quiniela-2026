@@ -822,6 +822,10 @@ th { color: var(--muted); font-size: var(--text-xs); letter-spacing: 0.05em; tex
 .rankingRow--top3 td { background: rgba(180, 120, 60, 0.05); }
 .rankingRow--me   td { background: rgba(25, 115, 90, 0.05); }
 .rankingRow--me   td:first-child { box-shadow: inset 3px 0 0 var(--grass-500); }
+.rankingRow--top1 td:first-child { color: var(--gold-600); }
+.rankingRow--top2 td:first-child { color: #7e8a91; }
+.rankingRow--top3 td:first-child { color: #9c6b3c; }
+.rankingCard--top1 .rankingCard__pos { color: var(--gold-600); }
 
 /* ── Ranking mobile card variants ───────────────── */
 .rankingCard--top1 { border-color: rgba(212, 166, 66, 0.4); background: rgba(255, 253, 247, 0.97); }
