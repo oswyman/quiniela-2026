@@ -39,6 +39,7 @@ function PredictionsContent() {
   const [savingMatchId, setSavingMatchId] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
   const [timeMode, setTimeMode] = useState<MatchTimeMode>("cdmx");
   const [userTimeZone, setUserTimeZone] = useState("America/Mexico_City");
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -72,10 +73,16 @@ function PredictionsContent() {
       }
     }
     load();
-  }, [params.groupId]);
+  }, [params.groupId, retryCount]);
 
   const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const retryLoad = useCallback(() => {
+    setError("");
+    setLoading(true);
+    setRetryCount((c) => c + 1);
   }, []);
 
   function pushToast(item: Omit<ToastItem, "id">) {
@@ -136,7 +143,7 @@ function PredictionsContent() {
     }
   }
 
-  if (loading) return <main className="container shell"><div className="panel">Cargando partidos y pronósticos...</div></main>;
+  if (loading) return <main className="container shell"><div className="panel" role="status" aria-live="polite"><p className="muted" style={{ margin: 0 }}>Cargando partidos...</p></div></main>;
   if (!group) return <main className="container shell"><EmptyState title="Grupo no encontrado" body="Vuelve al dashboard para seleccionar un grupo activo." href="/dashboard" action="Dashboard" /></main>;
 
   return (
@@ -157,13 +164,15 @@ function PredictionsContent() {
         ) : null}
       </details>
 
-      {error ? <StatusMessage type="error">{error}</StatusMessage> : null}
+      {error ? <StatusMessage type="error" onRetry={retryLoad}>{error}</StatusMessage> : null}
 
-      <section className="metricsGrid">
-        <div className="stat"><strong>{groupStageCount}</strong><span>partidos de grupos</span></div>
-        <div className="stat"><strong>{knockoutCount}</strong><span>eliminatorios publicados</span></div>
-        <div className="stat"><strong>{predictions.length}</strong><span>elecciones guardadas</span></div>
-      </section>
+      <p className="matchStats">
+        <span><strong>{groupStageCount}</strong> partidos de grupos</span>
+        <span className="matchStatsDivider" aria-hidden="true">·</span>
+        <span><strong>{knockoutCount}</strong> eliminatorios publicados</span>
+        <span className="matchStatsDivider" aria-hidden="true">·</span>
+        <span><strong>{predictions.length}</strong> {predictions.length === 1 ? "elección guardada" : "elecciones guardadas"}</span>
+      </p>
 
       <div className="tabs" aria-label="Preferencia de horario">
         {(["cdmx", "local", "venue"] as MatchTimeMode[]).map((mode) => (
@@ -244,7 +253,7 @@ function PredictionsContent() {
                     : "Pendiente de elegir."}
                 </p>
               )}
-              {closed ? <Link href={`/groups/${params.groupId}/ranking`}>Ver ranking</Link> : null}
+              {closed ? <Link className="button secondary" style={{ alignSelf: "flex-start" }} href={`/groups/${params.groupId}/ranking`}>Ver ranking</Link> : null}
           </motion.article>
           );
         })}

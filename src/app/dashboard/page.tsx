@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { AuthGate } from "@/components/AuthGate";
 import { DashboardSkeleton } from "@/components/DashboardSkeleton";
@@ -30,6 +30,13 @@ function DashboardContent() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
+
+  const retry = useCallback(() => {
+    setError("");
+    setLoading(true);
+    setRetryCount((c) => c + 1);
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -45,23 +52,23 @@ function DashboardContent() {
       }
     }
     load();
-  }, [user]);
+  }, [user, retryCount]);
 
   const totalPool = groups.reduce((sum, group) => sum + Number(group.contributionAmount || 0), 0);
   const canCreate = canCreateGroup(profile);
-  const nextGroup = groups[0];
+  const nextGroup = groups.find((g) => g.status === "active") ?? groups[0];
 
   return (
     <main className="container shell stack-lg">
       <div className="toolbar">
-        <PageTitle title={`Hola, ${profile?.displayName || user?.displayName || user?.email || "participante"}`} subtitle="Tus grupos privados, roles y estado operativo de cada quiniela." />
+        <PageTitle title={`Hola, ${profile?.displayName || user?.displayName || user?.email || "participante"}`} />
         <div className="cluster">
           {nextGroup ? <Link className="button gold" href={`/groups/${nextGroup.id}/predictions`}>Pronosticar ahora</Link> : null}
           {canCreate ? <Link className="button secondary" href="/groups/new">Crear grupo</Link> : null}
           {profile?.roleGlobal === "platform_admin" ? <Link className="button secondary" href="/admin">Admin plataforma</Link> : null}
         </div>
       </div>
-      {error ? <StatusMessage type="error">{error}</StatusMessage> : null}
+      {error ? <StatusMessage type="error" onRetry={retry}>{error}</StatusMessage> : null}
       <div className="grid">
         <MetricCard label="Grupos activos" value={loading ? "..." : groups.length} detail="Donde participas o administras" />
         <MetricCard label="Aportaciones base" value={formatMoney(totalPool || 0, "MXN")} detail="Suma administrativa visible para ti" />
@@ -71,7 +78,7 @@ function DashboardContent() {
       {!loading && groups.length === 0 ? (
         <EmptyState
           title="Todavía no hay grupos"
-          body={canCreate ? "Crea tu primer grupo e invita participantes por correo." : "Abre tu liga de invitación con el correo invitado para entrar a una quiniela."}
+          body={canCreate ? "Crea tu primer grupo e invita a tus participantes por correo." : "Cuando alguien te invite, recibirás un correo con acceso al grupo."}
           href={canCreate ? "/groups/new" : undefined}
           action={canCreate ? "Crear grupo" : undefined}
         />
@@ -93,9 +100,8 @@ function DashboardContent() {
                 {group.status === "active" ? "Activo" : group.status === "draft" ? "Borrador" : group.status === "closed" ? "Cerrado" : group.status === "cancelled" ? "Cancelado" : group.status}
               </span>
             </div>
-            <h2>{group.name}</h2>
-            <p className="muted">Visibilidad: {group.predictionVisibility === "AFTER_CLOSE" ? "Después del cierre" : "Antes del cierre"}</p>
-            <p>{formatMoney(group.contributionAmount, group.currency)} por participante</p>
+            <h2 className="groupCardName">{group.name}</h2>
+            <p className="muted">{formatMoney(group.contributionAmount, group.currency)} por participante</p>
             <div className="cluster">
               <Link className="button gold" href={`/groups/${group.id}/predictions`}>Pronosticar</Link>
               <Link className="button secondary" href={`/groups/${group.id}`}>Ver grupo</Link>

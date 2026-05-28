@@ -277,6 +277,30 @@ p { line-height: 1.58; }
 .success { background: #ecfdf5; border: 1px solid #9ee6c7; color: var(--success); }
 .error { background: #fff1f0; border: 1px solid #f5b5ae; color: var(--danger); }
 
+.statusMessage {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.statusRetry {
+  background: none;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  color: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  min-height: auto;
+  padding: 5px 14px;
+  white-space: nowrap;
+}
+.statusRetry:hover { opacity: 0.75; }
+
 .legalNotice {
   align-items: flex-start;
   background: #fff8e8;
@@ -306,8 +330,6 @@ p { line-height: 1.58; }
 .metric {
   background:
     linear-gradient(180deg, rgba(255, 253, 247, 0.96), rgba(248, 243, 231, 0.86));
-  border-left: 4px solid var(--gold-500);
-  min-height: 128px;
 }
 .stat strong,
 .metric strong {
@@ -316,7 +338,6 @@ p { line-height: 1.58; }
   font-family: var(--font-display), system-ui, sans-serif;
   font-size: 2rem;
   line-height: 1;
-  margin-top: 8px;
 }
 
 .tabs {
@@ -408,14 +429,21 @@ p { line-height: 1.58; }
   align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: clamp(1.3rem, 4vw, 1.9rem);
+  font-weight: 800;
+  gap: 10px;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  margin: 0;
 }
 
 .teamsTitle span:nth-child(2) {
   color: var(--muted);
   font-family: var(--font-sans), sans-serif;
-  font-size: 0.82rem;
-  font-weight: 900;
+  font-size: 0.6em;
+  font-weight: 800;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -571,6 +599,7 @@ details[open] .rulesSummary { margin-bottom: 8px; }
 table { border-collapse: collapse; width: 100%; }
 th, td {
   border-bottom: 1px solid rgba(222, 211, 188, 0.8);
+  font-variant-numeric: tabular-nums;
   padding: 14px 16px;
   text-align: left;
   white-space: normal;
@@ -611,6 +640,8 @@ th { color: var(--muted); font-size: var(--text-xs); letter-spacing: 0.05em; tex
   .hero { min-height: auto; padding: 54px 0 34px; }
   .heroStats { grid-template-columns: 1fr; }
   .twoCol, .formGrid, .scoreInputs, .filterBar, .resultGrid, .metricsGrid { grid-template-columns: 1fr; }
+  .landingStep { grid-template-columns: 48px 1fr; gap: 14px; padding: 20px 0; }
+  .landingPrinciple { grid-template-columns: 1fr; gap: 10px; }
   .statsStrip { grid-template-columns: 1fr; gap: 16px; }
   .bentoGrid { grid-template-columns: 1fr; }
   .bentoWide, .bentoMid { grid-column: span 1; }
@@ -930,6 +961,74 @@ code {
 }
 details[open] .rulesSummary::after { transform: rotate(180deg); }
 
+/* ── Landing steps (cómo funciona) ──────────────── */
+.landingSteps {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 0;
+}
+
+.landingStep {
+  align-items: baseline;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 20px;
+  grid-template-columns: 72px 1fr;
+  padding: 28px 0;
+}
+
+.stepNum {
+  color: var(--gold-600);
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding-top: 3px;
+}
+
+.landingStep strong {
+  color: var(--ink);
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.3;
+  margin-bottom: 6px;
+}
+
+.landingStep p {
+  margin: 0;
+}
+
+/* ── Landing principles ──────────────────────────── */
+.landingPrinciples {
+  display: grid;
+  gap: 0;
+}
+
+.landingPrinciple {
+  align-items: baseline;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 24px;
+  grid-template-columns: 1fr 1fr;
+  padding: 28px 0;
+}
+
+.landingPrinciple:first-child {
+  border-top: 1px solid var(--line);
+}
+
+.landingPrinciple h2 {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 1.75rem;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.landingPrinciple p {
+  margin: 0;
+}
+
 /* ── Venue truncado — solo la línea de sede/hora ─── */
 .matchVenue {
   overflow: hidden;
@@ -937,9 +1036,12 @@ details[open] .rulesSummary::after { transform: rotate(180deg); }
   white-space: nowrap;
 }
 
-/* ── Pill de deadline: sin max-width, que haga wrap natural */
-/* en clusters estrechos pasa a segunda línea sin truncarse */
+/* ── Pill de deadline: urgencia visual en gold ───── */
 .pill--deadline {
+  background: rgba(185, 131, 34, 0.1);
+  border-color: rgba(185, 131, 34, 0.32);
+  color: var(--gold-600);
+  font-weight: 900;
   white-space: nowrap;
 }
 
@@ -1008,6 +1110,76 @@ details[open] .rulesSummary::after { transform: rotate(180deg); }
 .metric strong,
 .stat strong {
   overflow-wrap: anywhere;
+}
+
+/* ── MetricCard horizontal ───────────────────────── */
+.metricItem {
+  align-items: center;
+  display: flex;
+  gap: 20px;
+  padding: 16px 20px;
+}
+
+.metricValue {
+  color: var(--stadium-900);
+  flex-shrink: 0;
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 2.2rem;
+  font-weight: 800;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.metricMeta {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.metricLabel {
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.metricDetail {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+/* ── Match stats strip ───────────────────────────── */
+.matchStats {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.875rem;
+  gap: 10px;
+  margin: 0;
+}
+
+.matchStats strong {
+  color: var(--ink);
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.matchStatsDivider {
+  color: var(--line);
+  user-select: none;
+}
+
+/* ── Group card name ─────────────────────────────── */
+.groupCardName {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  margin: 4px 0 0;
 }
 
 /* ── Pronósticos del grupo ───────────────────────── */
