@@ -37,17 +37,23 @@ function GroupAdminContent() {
   const [loading, setLoading] = useState(true);
 
   async function reload() {
-    const [nextGroup, nextMember, nextMembers, nextInvites] = await Promise.all([
+    const [nextGroup, nextMember, nextMembers] = await Promise.all([
       getGroup(params.groupId),
       user ? getMyMember(params.groupId, user.uid) : Promise.resolve(null),
-      listMembers(params.groupId),
-      listOpenInvites(params.groupId)
+      listMembers(params.groupId)
     ]);
     setGroup(nextGroup);
     setMyMember(nextMember);
     setMembers(nextMembers);
-    setOpenInvites(nextInvites);
     setProviderStatus(await getProviderStatus());
+    // Load open invites separately — security rules may restrict this read;
+    // failing silently is acceptable (invites created this session are in state)
+    try {
+      const nextInvites = await listOpenInvites(params.groupId);
+      setOpenInvites(nextInvites);
+    } catch {
+      // ignore — invites created this session are already in local state
+    }
   }
 
   useEffect(() => {
@@ -61,11 +67,18 @@ function GroupAdminContent() {
     setGeneratingLink(true);
     try {
       const result = await createOpenInvite(params.groupId);
-      await reload();
-      const link = `${window.location.origin}/join/${result.data.code}`;
-      await navigator.clipboard.writeText(link);
-      setCopiedCode(result.data.code ?? "");
-      setMessage("Link generado y copiado al portapapeles.");
+      const newInvite = result.data as Invite;
+      // Add to local state immediately — no Firestore re-read needed
+      setOpenInvites((prev) => [...prev, newInvite]);
+      const link = `${window.location.origin}/join/${newInvite.code ?? ""}`;
+      try {
+        await navigator.clipboard.writeText(link);
+        setCopiedCode(newInvite.code ?? "");
+        setMessage("Link generado y copiado al portapapeles.");
+      } catch {
+        // Clipboard unavailable (e.g. non-HTTPS dev) — just show the link
+        setMessage(`Link generado: ${link}`);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo generar el link.");
     } finally {
@@ -87,7 +100,7 @@ function GroupAdminContent() {
     try {
       await revokeOpenInvite(params.groupId, code);
       setMessage("Link desactivado.");
-      await reload();
+      setOpenInvites((prev) => prev.filter((inv) => inv.code !== code));
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo desactivar el link.");
     }
