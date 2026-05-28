@@ -22,6 +22,9 @@
   --shadow-sm: 0 1px 0 rgba(6, 23, 17, 0.06);
   --shadow-md: 0 18px 46px rgba(6, 23, 17, 0.12);
   --shadow-lg: 0 28px 80px rgba(6, 23, 17, 0.2);
+  /* Easing curves */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --radius-sm: 8px;
   --radius-md: 14px;
   --radius-lg: 22px;
@@ -121,12 +124,20 @@ p { line-height: 1.58; }
 }
 
 .cardInteractive {
-  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  transition: border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out), transform 160ms var(--ease-out);
 }
-.cardInteractive:hover {
-  border-color: rgba(185, 131, 34, 0.62);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+
+@media (hover: hover) and (pointer: fine) {
+  .cardInteractive:hover {
+    border-color: rgba(185, 131, 34, 0.62);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+  }
+}
+
+.cardInteractive:active {
+  box-shadow: var(--shadow-sm);
+  transform: scale(0.99);
 }
 
 .hero {
@@ -226,9 +237,12 @@ p { line-height: 1.58; }
   justify-content: center;
   min-height: 46px;
   padding: 11px 18px;
-  transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease;
+  transition: transform 150ms var(--ease-out), box-shadow 150ms var(--ease-out), background 150ms var(--ease-out);
 }
-.button:hover { background: var(--stadium-700); box-shadow: var(--shadow-md); transform: translateY(-1px); }
+@media (hover: hover) and (pointer: fine) {
+  .button:hover { background: var(--stadium-700); box-shadow: var(--shadow-md); transform: translateY(-1px); }
+}
+.button:active:not(:disabled) { box-shadow: none; transform: scale(0.97); }
 .button.secondary { background: rgba(255, 253, 247, 0.8); color: var(--stadium-900); }
 .button.gold { background: var(--gold-500); border-color: var(--gold-500); color: #211704; }
 .button.danger { background: var(--danger); border-color: var(--danger); }
@@ -323,8 +337,17 @@ p { line-height: 1.58; }
   color: var(--ink-soft);
   font-weight: 850;
   padding: 9px 14px;
+  transition: background 120ms var(--ease-out), color 120ms var(--ease-out);
 }
-.tabs a:hover { background: rgba(25, 115, 90, 0.08); color: var(--stadium-900); }
+@media (hover: hover) and (pointer: fine) {
+  .tabs a:hover { background: rgba(25, 115, 90, 0.08); color: var(--stadium-900); }
+}
+.tabs a[aria-current="page"],
+.tabs a.active {
+  background: var(--stadium-800);
+  color: #fff;
+  font-weight: 900;
+}
 .adminTabs {
   border-radius: var(--radius-md);
   width: 100%;
@@ -338,11 +361,18 @@ p { line-height: 1.58; }
   font: inherit;
   font-weight: 850;
   padding: 9px 14px;
+  transition: background 120ms var(--ease-out), color 120ms var(--ease-out);
 }
-.tabButton:hover,
+@media (hover: hover) and (pointer: fine) {
+  .tabButton:hover {
+    background: rgba(25, 115, 90, 0.08);
+    color: var(--stadium-900);
+  }
+}
 .tabButton.active {
-  background: rgba(25, 115, 90, 0.1);
-  color: var(--stadium-900);
+  background: var(--stadium-800);
+  color: #fff;
+  font-weight: 900;
 }
 
 .matchCard {
@@ -398,7 +428,7 @@ p { line-height: 1.58; }
   min-height: 84px;
   padding: 14px;
   text-align: left;
-  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease, background 160ms ease;
+  transition: border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out), transform 160ms var(--ease-out), background 160ms var(--ease-out);
 }
 
 .choiceButton span {
@@ -416,12 +446,24 @@ p { line-height: 1.58; }
   word-break: break-word;
 }
 
-.choiceButton:hover,
+@media (hover: hover) and (pointer: fine) {
+  .choiceButton:hover {
+    background: #fffaf0;
+    border-color: rgba(185, 131, 34, 0.52);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
+  }
+}
+
 .choiceButton.active {
   background: #fffaf0;
   border-color: rgba(185, 131, 34, 0.52);
   box-shadow: var(--shadow-sm);
-  transform: translateY(-1px);
+}
+
+.choiceButton:active:not(:disabled) {
+  box-shadow: none;
+  transform: scale(0.97);
 }
 
 .choiceButton.active {
@@ -602,8 +644,13 @@ th { color: var(--muted); font-size: var(--text-xs); letter-spacing: 0.05em; tex
 
 /* ── Toast ──────────────────────────────────────── */
 @keyframes toastSlideIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes toastSlideOut {
+  from { opacity: 1; transform: translateY(0) scale(1); max-height: 200px; margin-bottom: 0; }
+  to   { opacity: 0; transform: translateY(6px) scale(0.97); max-height: 0; margin-bottom: -10px; }
 }
 
 @keyframes toastProgress {
@@ -624,7 +671,7 @@ th { color: var(--muted); font-size: var(--text-xs); letter-spacing: 0.05em; tex
 
 .toast {
   align-items: flex-start;
-  animation: toastSlideIn 220ms ease;
+  animation: toastSlideIn 220ms var(--ease-out);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   display: flex;
@@ -635,6 +682,11 @@ th { color: var(--muted); font-size: var(--text-xs); letter-spacing: 0.05em; tex
   padding: 14px 14px 18px;
   pointer-events: all;
   position: relative;
+}
+
+.toast--exiting {
+  animation: toastSlideOut 180ms var(--ease-out) forwards;
+  pointer-events: none;
 }
 
 .toast--success {
@@ -766,7 +818,7 @@ code {
   padding: var(--space-2) var(--space-4);
   position: absolute;
   top: -40px;
-  transition: top 0.2s;
+  transition: top 0.2s var(--ease-out);
   z-index: 999;
 }
 .skipLink:focus { top: 0; }
@@ -777,7 +829,7 @@ code {
   display: inline-block;
   font-size: 0.7em;
   margin-left: var(--space-2);
-  transition: transform 200ms ease;
+  transition: transform 200ms var(--ease-out);
 }
 details[open] .rulesSummary::after { transform: rotate(180deg); }
 

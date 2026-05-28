@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { CheckCircle, XCircle, Clock, X } from "lucide-react";
 
 export type ToastType = "success" | "error" | "warning";
@@ -23,6 +23,8 @@ const ICONS = {
   warning: Clock
 };
 
+const EXIT_DURATION = 180;
+
 export function Toast({ toasts, onDismiss }: Props) {
   if (toasts.length === 0) return null;
   return (
@@ -36,17 +38,26 @@ export function Toast({ toasts, onDismiss }: Props) {
 
 function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: string) => void }) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [exiting, setExiting] = useState(false);
   const Icon = ICONS[toast.type];
 
+  const dismiss = useCallback(() => {
+    setExiting(true);
+    setTimeout(() => onDismiss(toast.id), EXIT_DURATION);
+  }, [toast.id, onDismiss]);
+
   useEffect(() => {
-    timerRef.current = setTimeout(() => onDismiss(toast.id), 5000);
+    timerRef.current = setTimeout(dismiss, 5000);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [toast.id, onDismiss]);
+  }, [dismiss]);
 
   return (
-    <div className={`toast toast--${toast.type}`} role="alert">
+    <div
+      className={`toast toast--${toast.type}${exiting ? " toast--exiting" : ""}`}
+      role="alert"
+    >
       <div className="toastIcon">
         <Icon size={18} aria-hidden />
       </div>
@@ -56,7 +67,7 @@ function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: str
       </div>
       <button
         className="toastClose"
-        onClick={() => onDismiss(toast.id)}
+        onClick={dismiss}
         type="button"
         aria-label="Cerrar notificación"
       >
