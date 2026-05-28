@@ -96,9 +96,26 @@ export async function listPredictions(groupId: string) {
   return snap.docs.map((item) => ({ id: item.id, ...item.data() }) as Prediction);
 }
 
+// Errores transitorios que ameritan un reintento (cold start, token refresh, red)
+const TRANSIENT_FUNCTION_CODES = new Set([
+  "functions/unavailable",
+  "functions/internal",
+  "functions/deadline-exceeded",
+  "functions/unknown",
+]);
+
 export async function savePrediction(groupId: string, matchId: string, pickType: PredictionPickType, pick: string) {
   const callable = httpsCallable<{ groupId: string; matchId: string; pickType: PredictionPickType; pick: string }, { predictionId: string }>(functions, "submitPrediction");
-  await callable({ groupId, matchId, pickType, pick });
+  try {
+    await callable({ groupId, matchId, pickType, pick });
+  } catch (err) {
+    // Si es un error de lógica (permission-denied, invalid-argument, etc.) lo lanzamos de inmediato
+    const code = (err as { code?: string })?.code ?? "";
+    if (!TRANSIENT_FUNCTION_CODES.has(code)) throw err;
+    // Cold start o problema de red — esperar 900 ms y reintentar una vez
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    await callable({ groupId, matchId, pickType, pick });
+  }
 }
 
 export async function listScores(groupId: string) {

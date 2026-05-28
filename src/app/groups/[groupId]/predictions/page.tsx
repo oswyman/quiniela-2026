@@ -198,7 +198,13 @@ function PredictionsContent() {
       listPredictions(params.groupId).then(setPredictions).catch(() => null);
     } catch (err) {
       setPredictions(prevPredictions);
-      const msg = err instanceof Error ? err.message : "No se pudo guardar el pronóstico.";
+      const code = (err as { code?: string })?.code ?? "";
+      const msg =
+        code === "functions/permission-denied" ? "No tienes permiso para pronosticar en este grupo." :
+        code === "functions/failed-precondition" ? "El pronóstico ya cerró para este partido." :
+        code === "functions/unauthenticated" ? "Sesión expirada — vuelve a iniciar sesión." :
+        err instanceof Error ? err.message :
+        "No se pudo guardar el pronóstico. Intenta de nuevo.";
       pushToast({ type: "error", title: "No se pudo guardar", body: msg });
     } finally {
       setSavingMatchId("");
