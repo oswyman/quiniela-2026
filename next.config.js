@@ -5,13 +5,16 @@ const nextConfig = {
   reactStrictMode: true,
   async headers() {
     const scriptSrc = isDev
-      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' *.googleapis.com *.gstatic.com"
-      : "script-src 'self' 'unsafe-inline' *.googleapis.com *.gstatic.com";
+      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' *.googleapis.com *.gstatic.com accounts.google.com"
+      : "script-src 'self' 'unsafe-inline' *.googleapis.com *.gstatic.com accounts.google.com";
 
     // In dev, also include emulator hosts in connect-src
     const connectSrc = isDev
-      ? "connect-src 'self' *.firebaseio.com *.googleapis.com *.cloudfunctions.net wss://*.firebaseio.com http://localhost:* ws://localhost:*"
-      : "connect-src 'self' *.firebaseio.com *.googleapis.com *.cloudfunctions.net wss://*.firebaseio.com";
+      ? "connect-src 'self' *.firebaseio.com *.googleapis.com *.cloudfunctions.net wss://*.firebaseio.com accounts.google.com http://localhost:* ws://localhost:*"
+      : "connect-src 'self' *.firebaseio.com *.googleapis.com *.cloudfunctions.net wss://*.firebaseio.com accounts.google.com";
+
+    // Google Sign-In popup requires frames from accounts.google.com and firebaseapp.com
+    const frameSrc = "frame-src accounts.google.com *.firebaseapp.com";
 
     return [
       {
@@ -24,6 +27,7 @@ const nextConfig = {
               scriptSrc,
               "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
               connectSrc,
+              frameSrc,
               "img-src 'self' data: https:",
               "font-src 'self' fonts.gstatic.com data:",
               "frame-ancestors 'none'",
