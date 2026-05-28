@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Lock } from "lucide-react";
@@ -21,6 +21,8 @@ import { teamFlagEmoji } from "@/lib/teamFlags";
 import { CDMX_TIMEZONE, getUserTimeZone } from "@/lib/timezone";
 import type { Group, Match, Prediction } from "@/types";
 
+type MatchFilter = "all" | "pending";
+
 export default function PredictionsPage() {
   return (
     <AuthGate>
@@ -37,19 +39,19 @@ function PredictionsContent() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [savingMatchId, setSavingMatchId] = useState("");
-  const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
   const [loading, setLoading] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
   const [timeMode, setTimeMode] = useState<MatchTimeMode>("cdmx");
   const [userTimeZone, setUserTimeZone] = useState("America/Mexico_City");
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [matchFilter, setMatchFilter] = useState<MatchFilter>("all");
   const [, setTick] = useState(0);
 
   useEffect(() => {
     setUserTimeZone(getUserTimeZone());
   }, []);
 
-  // Re-render countdowns cada minuto
   useEffect(() => {
     const interval = setInterval(() => setTick((t) => t + 1), 60_000);
     return () => clearInterval(interval);
@@ -67,7 +69,7 @@ function PredictionsContent() {
         setMatches(nextMatches);
         setPredictions(nextPredictions);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "No se pudieron cargar los partidos.");
+        setLoadError(err instanceof Error ? err.message : "No se pudieron cargar los partidos.");
       } finally {
         setLoading(false);
       }
@@ -80,7 +82,7 @@ function PredictionsContent() {
   }, []);
 
   const retryLoad = useCallback(() => {
-    setError("");
+    setLoadError("");
     setLoading(true);
     setRetryCount((c) => c + 1);
   }, []);
@@ -91,12 +93,37 @@ function PredictionsContent() {
 
   const byMatch = useMemo(() => new Map(predictions.map((p) => [p.matchId, p])), [predictions]);
   const visibleMatches = useMemo(() => matches.filter(isVisibleForParticipants), [matches]);
-  const groupStageCount = visibleMatches.filter((m) => inferPickType(m) === "GROUP_OUTCOME").length;
-  const knockoutCount = visibleMatches.length - groupStageCount;
+
+  const filteredMatches = useMemo(() => {
+    if (matchFilter === "pending") {
+      return visibleMatches.filter((m) => {
+        const kickoffDate = toDate(m.kickoffAt);
+        return !isMatchClosed(kickoffDate) && !byMatch.get(m.id);
+      });
+    }
+    return visibleMatches;
+  }, [visibleMatches, matchFilter, byMatch]);
+
+  // Agrupar por fase manteniendo el orden original
+  const groupedByPhase = useMemo(() => {
+    const groups = new Map<string, Match[]>();
+    for (const match of filteredMatches) {
+      const phase = match.phase || "Sin fase";
+      if (!groups.has(phase)) groups.set(phase, []);
+      groups.get(phase)!.push(match);
+    }
+    return groups;
+  }, [filteredMatches]);
+
+  const totalVisible = visibleMatches.length;
+  const totalDone = visibleMatches.filter((m) => byMatch.get(m.id)).length;
+  const totalPending = visibleMatches.filter((m) => {
+    const kickoffDate = toDate(m.kickoffAt);
+    return !isMatchClosed(kickoffDate) && !byMatch.get(m.id);
+  }).length;
 
   async function submitPrediction(match: Match, pickType: PredictionPickType, pick: string) {
     if (!user) return;
-    setError("");
 
     const kickoffDate = toDate(match.kickoffAt);
     if (isMatchClosed(kickoffDate)) {
@@ -108,7 +135,6 @@ function PredictionsContent() {
       return;
     }
 
-    // Optimistic update — marcar la selección inmediatamente
     const prevPredictions = predictions;
     setPredictions((prev) => {
       const existing = prev.find((p) => p.matchId === match.id);
@@ -130,21 +156,31 @@ function PredictionsContent() {
         body: `Puedes cambiarlo hasta ${deadline}`
       });
 
-      // Sync en background sin bloquear la UI
       listPredictions(params.groupId).then(setPredictions).catch(() => null);
     } catch (err) {
       // Revertir optimistic update
       setPredictions(prevPredictions);
       const msg = err instanceof Error ? err.message : "No se pudo guardar el pronóstico.";
+      // El error de guardado va solo al toast — no al StatusMessage de carga
       pushToast({ type: "error", title: "No se pudo guardar", body: msg });
-      setError(msg);
     } finally {
       setSavingMatchId("");
     }
   }
 
-  if (loading) return <main className="container shell"><div className="panel" role="status" aria-live="polite"><p className="muted" style={{ margin: 0 }}>Cargando partidos...</p></div></main>;
-  if (!group) return <main className="container shell"><EmptyState title="Grupo no encontrado" body="Vuelve al dashboard para seleccionar un grupo activo." href="/dashboard" action="Dashboard" /></main>;
+  if (loading) return (
+    <main className="container shell">
+      <div className="panel" role="status" aria-live="polite">
+        <p className="muted" style={{ margin: 0 }}>Cargando partidos...</p>
+      </div>
+    </main>
+  );
+
+  if (!group) return (
+    <main className="container shell">
+      <EmptyState title="Grupo no encontrado" body="Vuelve al dashboard para seleccionar un grupo activo." href="/dashboard" action="Dashboard" />
+    </main>
+  );
 
   return (
     <main className="container shell stack-lg">
@@ -164,22 +200,35 @@ function PredictionsContent() {
         ) : null}
       </details>
 
-      {error ? <StatusMessage type="error" onRetry={retryLoad}>{error}</StatusMessage> : null}
+      {loadError ? <StatusMessage type="error" onRetry={retryLoad}>{loadError}</StatusMessage> : null}
 
-      <p className="matchStats">
-        <span><strong>{groupStageCount}</strong> partidos de grupos</span>
-        <span className="matchStatsDivider" aria-hidden="true">·</span>
-        <span><strong>{knockoutCount}</strong> eliminatorios publicados</span>
-        <span className="matchStatsDivider" aria-hidden="true">·</span>
-        <span><strong>{predictions.length}</strong> {predictions.length === 1 ? "elección guardada" : "elecciones guardadas"}</span>
-      </p>
-
-      <div className="tabs" aria-label="Preferencia de horario">
-        {(["cdmx", "local", "venue"] as MatchTimeMode[]).map((mode) => (
-          <button className={timeMode === mode ? "tabButton active" : "tabButton"} key={mode} onClick={() => setTimeMode(mode)} type="button">
-            {matchTimeLabel(mode)}
-          </button>
-        ))}
+      {/* Progreso + filtros */}
+      <div className="predictionsToolbar">
+        <p className="matchStats">
+          <span><strong>{totalDone}</strong>/{totalVisible} pronósticos</span>
+          {totalPending > 0 ? (
+            <>
+              <span className="matchStatsDivider" aria-hidden="true">·</span>
+              <span className="pill pill--deadline" style={{ fontSize: "0.8rem", padding: "4px 10px" }}>{totalPending} sin elegir</span>
+            </>
+          ) : null}
+        </p>
+        <div className="cluster">
+          <div className="tabs" aria-label="Filtrar partidos">
+            <button className={matchFilter === "all" ? "tabButton active" : "tabButton"} onClick={() => setMatchFilter("all")} type="button">Todos</button>
+            <button className={matchFilter === "pending" ? "tabButton active" : "tabButton"} onClick={() => setMatchFilter("pending")} type="button">
+              Solo pendientes
+              {totalPending > 0 ? <span className="badge">{totalPending}</span> : null}
+            </button>
+          </div>
+          <div className="tabs" aria-label="Preferencia de horario">
+            {(["cdmx", "local", "venue"] as MatchTimeMode[]).map((mode) => (
+              <button className={timeMode === mode ? "tabButton active" : "tabButton"} key={mode} onClick={() => setTimeMode(mode)} type="button">
+                {matchTimeLabel(mode)}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {matches.length === 0 ? (
@@ -190,71 +239,90 @@ function PredictionsContent() {
         <EmptyState title="Aún no hay partidos disponibles" body="La fase de grupos debe estar cargada, o el superadmin debe publicar la ronda de 32 tras revisar cruces, horarios y sedes." />
       ) : null}
 
-      <div className="predictionsGrid">
-        {visibleMatches.map((match) => {
-          const prediction = byMatch.get(match.id);
-          const kickoffDate = toDate(match.kickoffAt);
-          const closed = isMatchClosed(kickoffDate);
-          const closesAt = predictionClosesAt(kickoffDate);
-          const pickType = inferPickType(match);
-          const homeTeam = getDisplayTeam(match, "home");
-          const awayTeam = getDisplayTeam(match, "away");
-          const options = getPickOptions(match, pickType, homeTeam, awayTeam);
+      {matchFilter === "pending" && filteredMatches.length === 0 ? (
+        <EmptyState title="Todo pronósticado" body="Ya elegiste en todos los partidos abiertos. Vuelve antes del siguiente kickoff si quieres cambiar alguno." />
+      ) : null}
+
+      {/* Partidos agrupados por fase */}
+      <div className="stack-lg">
+        {[...groupedByPhase.entries()].map(([phase, phaseMatches]) => {
+          const phaseDone = phaseMatches.filter((m) => byMatch.get(m.id)).length;
           return (
-            <motion.article
-            className={`panel stack matchCard${closed ? " matchCard--closed" : ""}`}
-            key={match.id}
-            initial={reduce ? false : { opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.08 }}
-            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-          >
-              <div className="cluster">
-                <span className="pill">{match.phase}</span>
-                <span className="pill">{pickType === "GROUP_OUTCOME" ? "Resultado a 90 min" : "Elige clasificado"}</span>
-                {closed ? (
-                  <span className="closedBadge"><Lock size={12} aria-hidden /> Cerrado</span>
-                ) : (
-                  <span className="pill pill--deadline">Cierra {formatDeadlineCDMX(closesAt)}</span>
-                )}
+            <section key={phase}>
+              <div className="predictionPhaseHeader">
+                <span className="predictionPhaseTitle">{phase}</span>
+                <span className="muted fineprint">{phaseDone}/{phaseMatches.length}</span>
               </div>
-              <div>
-                <h2 className="teamsTitle">
-                  <span>{teamFlagEmoji(homeTeam)} {homeTeam}</span>
-                  <span style={{ color: "var(--muted)", fontSize: "0.82rem", fontWeight: 900, textTransform: "uppercase" }}>vs</span>
-                  <span>{teamFlagEmoji(awayTeam)} {awayTeam}</span>
-                </h2>
-                <p className="matchVenue muted">{formatMatchTime(match, timeMode, userTimeZone)} · {match.venue ?? "Sede por confirmar"}</p>
+              <div className="predictionsGrid">
+                {phaseMatches.map((match) => {
+                  const prediction = byMatch.get(match.id);
+                  const kickoffDate = toDate(match.kickoffAt);
+                  const closed = isMatchClosed(kickoffDate);
+                  const closesAt = predictionClosesAt(kickoffDate);
+                  const pickType = inferPickType(match);
+                  const homeTeam = getDisplayTeam(match, "home");
+                  const awayTeam = getDisplayTeam(match, "away");
+                  const options = getPickOptions(match, pickType, homeTeam, awayTeam);
+                  return (
+                    <motion.article
+                      className={`panel stack matchCard${closed ? " matchCard--closed" : ""}`}
+                      key={match.id}
+                      initial={reduce ? false : { opacity: 0, y: 16 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, amount: 0.05 }}
+                      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                      <div className="cluster">
+                        {closed ? (
+                          <span className="closedBadge"><Lock size={12} aria-hidden /> Cerrado</span>
+                        ) : (
+                          <span className="pill pill--deadline">Cierra {formatDeadlineCDMX(closesAt)}</span>
+                        )}
+                        <span className="pill">{pickType === "GROUP_OUTCOME" ? "Resultado a 90 min" : "Elige clasificado"}</span>
+                      </div>
+                      <div>
+                        <h2 className="teamsTitle">
+                          <span>{teamFlagEmoji(homeTeam)} {homeTeam}</span>
+                          <span style={{ color: "var(--muted)", fontSize: "0.6em", fontWeight: 800, textTransform: "uppercase" }}>vs</span>
+                          <span>{teamFlagEmoji(awayTeam)} {awayTeam}</span>
+                        </h2>
+                        <p className="matchVenue muted">{formatMatchTime(match, timeMode, userTimeZone)} · {match.venue ?? "Sede por confirmar"}</p>
+                      </div>
+                      <div className="choiceGrid" role="group" aria-label={`Elección para ${homeTeam} vs ${awayTeam}`}>
+                        {options.map((option) => (
+                          <button
+                            className={prediction?.pick === option.value ? "choiceButton active" : "choiceButton"}
+                            disabled={closed || savingMatchId === match.id}
+                            key={option.value}
+                            onClick={() => submitPrediction(match, pickType, option.value)}
+                            type="button"
+                          >
+                            <span>{option.label}</span>
+                            <strong>{option.caption}</strong>
+                          </button>
+                        ))}
+                      </div>
+                      {closed ? (
+                        <p className="muted">
+                          {prediction
+                            ? `Tu elección: ${labelPick(prediction, homeTeam, awayTeam)} · ${prediction.scoringReason || "Resultado pendiente"}`
+                            : "No registraste una elección antes del cierre."}
+                        </p>
+                      ) : (
+                        <p className="muted">
+                          {prediction
+                            ? `Guardado: ${labelPick(prediction, homeTeam, awayTeam)} · ${prediction.scoringReason || "Pendiente de resultado"}`
+                            : "Pendiente de elegir."}
+                        </p>
+                      )}
+                      {closed ? (
+                        <Link className="button secondary" style={{ alignSelf: "flex-start" }} href={`/groups/${params.groupId}/ranking`}>Ver ranking</Link>
+                      ) : null}
+                    </motion.article>
+                  );
+                })}
               </div>
-              <div className="choiceGrid" role="group" aria-label={`Elección para ${homeTeam} vs ${awayTeam}`}>
-                {options.map((option) => (
-                  <button
-                    className={prediction?.pick === option.value ? "choiceButton active" : "choiceButton"}
-                    disabled={closed || savingMatchId === match.id}
-                    key={option.value}
-                    onClick={() => submitPrediction(match, pickType, option.value)}
-                    type="button"
-                  >
-                    <span>{option.label}</span>
-                    <strong>{option.caption}</strong>
-                  </button>
-                ))}
-              </div>
-              {closed ? (
-                <p className="muted">
-                  {prediction
-                    ? `Tu elección: ${labelPick(prediction, homeTeam, awayTeam)} · ${prediction.scoringReason || "Resultado pendiente"}`
-                    : "No registraste una elección antes del cierre."}
-                </p>
-              ) : (
-                <p className="muted">
-                  {prediction
-                    ? `Guardado: ${labelPick(prediction, homeTeam, awayTeam)} · ${prediction.scoringReason || "Pendiente de resultado"}`
-                    : "Pendiente de elegir."}
-                </p>
-              )}
-              {closed ? <Link className="button secondary" style={{ alignSelf: "flex-start" }} href={`/groups/${params.groupId}/ranking`}>Ver ranking</Link> : null}
-          </motion.article>
+            </section>
           );
         })}
       </div>

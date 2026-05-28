@@ -642,6 +642,7 @@ th { color: var(--muted); font-size: var(--text-xs); letter-spacing: 0.05em; tex
   .twoCol, .formGrid, .scoreInputs, .filterBar, .resultGrid, .metricsGrid { grid-template-columns: 1fr; }
   .landingStep { grid-template-columns: 48px 1fr; gap: 14px; padding: 20px 0; }
   .landingPrinciple { grid-template-columns: 1fr; gap: 10px; }
+  .predictionsToolbar { flex-direction: column; align-items: flex-start; }
   .statsStrip { grid-template-columns: 1fr; gap: 16px; }
   .bentoGrid { grid-template-columns: 1fr; }
   .bentoWide, .bentoMid { grid-column: span 1; }
@@ -1047,6 +1048,35 @@ details[open] .rulesSummary::after { transform: rotate(180deg); }
   color: var(--gold-600);
   font-weight: 900;
   white-space: nowrap;
+}
+
+/* ── Predictions toolbar (progreso + filtros) ────── */
+.predictionsToolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+/* ── Prediction phase header ─────────────────────── */
+.predictionPhaseHeader {
+  align-items: baseline;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+}
+
+.predictionPhaseTitle {
+  color: var(--ink-soft);
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 /* ── Grid específico para cards de predicción ────── */
