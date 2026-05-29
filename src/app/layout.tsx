@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Barlow, Barlow_Condensed } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
+import { SiteFooter } from "@/components/SiteFooter";
 
 const display = Barlow_Condensed({
   subsets: ["latin"],
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Header />
         <div id="main-content" tabIndex={-1} style={{ outline: "none" }} />
         {children}
+        <SiteFooter />
       </body>
     </html>
   );
