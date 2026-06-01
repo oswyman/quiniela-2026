@@ -71,8 +71,12 @@ function GroupPredictionsContent() {
       if (!idx.has(p.matchId)) idx.set(p.matchId, new Map());
       idx.get(p.matchId)!.set(p.uid, p);
     }
+    // DEBUG TEMPORAL — eliminar después
+    console.log("[DEBUG] predictions cargadas:", predictions.length, predictions.map(p => ({ uid: p.uid, matchId: p.matchId, pick: p.pick })));
+    console.log("[DEBUG] members:", members.map(m => ({ uid: m.uid, name: m.displayName })));
+    console.log("[DEBUG] user.uid:", user?.uid);
     return idx;
-  }, [predictions]);
+  }, [predictions, members, user]);
 
   function isCellVisible(match: Match, memberUid: string): boolean {
     if (memberUid === user?.uid) return true; // propio siempre visible
