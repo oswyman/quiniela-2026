@@ -91,7 +91,7 @@ export const createOpenInvite = onCall<{ groupId: string }>(async (request) => {
 
   const db = getFirestore();
   const inviteCode = code();
-  const invite = {
+  const inviteDoc = {
     code: inviteCode,
     groupId,
     inviteeEmail: "",
@@ -100,23 +100,35 @@ export const createOpenInvite = onCall<{ groupId: string }>(async (request) => {
     type: "open" as const,
     createdBy: request.auth.uid,
     createdAt: FieldValue.serverTimestamp(),
-    expiresAt: null,       // sin expiración
-    maxUses: 9999,         // ilimitado en la práctica
+    expiresAt: null,
+    maxUses: 9999,
     usedCount: 0,
     status: "active" as const
   };
 
-  await db.doc(`groups/${groupId}/invites/${inviteCode}`).set(invite);
+  await db.doc(`groups/${groupId}/invites/${inviteCode}`).set(inviteDoc);
   await writeAuditLog({
     actorUid: request.auth.uid,
     groupId,
     action: "createOpenInvite",
     entityType: "invite",
     entityId: inviteCode,
-    after: invite
+    after: inviteDoc
   });
 
-  return invite;
+  // Return a serializable object — FieldValue sentinels cannot be sent to clients
+  return {
+    code: inviteCode,
+    groupId,
+    inviteeEmail: "",
+    role: "participant" as const,
+    type: "open" as const,
+    createdBy: request.auth.uid,
+    expiresAt: null,
+    maxUses: 9999,
+    usedCount: 0,
+    status: "active" as const
+  };
 });
 
 export const revokeOpenInvite = onCall<{ groupId: string; inviteCode: string }>(async (request) => {
@@ -161,6 +173,7 @@ export const previewInvite = onCall<{ inviteCode: string }>(async (request) => {
 });
 
 export const acceptInvite = onCall(async (request) => {
+  try {
   if (!request.auth) throw new HttpsError("unauthenticated", "Inicia sesión.");
   const found = await findInvite(String(request.data.inviteCode ?? ""));
   if (!found) throw new HttpsError("not-found", "Invitación no encontrada.");
@@ -259,16 +272,25 @@ export const acceptInvite = onCall(async (request) => {
     }
   });
 
-  await writeAuditLog({
-    actorUid: request.auth.uid,
-    groupId: inviteData.groupId,
-    action: "acceptInvite",
-    entityType: "invite",
-    entityId: inviteData.code,
-    after: { inviteeEmail: authEmail, role: inviteData.role, type: inviteData.type }
-  });
+  try {
+    await writeAuditLog({
+      actorUid: request.auth.uid,
+      groupId: inviteData.groupId,
+      action: "acceptInvite",
+      entityType: "invite",
+      entityId: inviteData.code,
+      after: { inviteeEmail: authEmail, role: inviteData.role, type: inviteData.type }
+    });
+  } catch {
+    // audit log failure must not prevent a successful join
+  }
 
   return { groupId: inviteData.groupId ?? null, roleGlobal };
+  } catch (err) {
+    if (err instanceof HttpsError) throw err;
+    console.error("[acceptInvite] Unhandled error:", err);
+    throw new HttpsError("internal", err instanceof Error ? err.message : "Error interno al aceptar invitación.");
+  }
 });
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

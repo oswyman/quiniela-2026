@@ -1,4 +1,4 @@
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { getFirestore, FieldValue, Timestamp } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { writeAuditLog } from "./audit";
 import { deadlineFromKickoff, getTournamentConfig, isAfterTimestamp, resolveFirstKickoff } from "./tournament";
@@ -193,7 +193,7 @@ export const updateTournamentConfig = onCall<TournamentConfigInput>(async (reque
   if (Number.isNaN(firstKickoffDate.getTime())) throw new HttpsError("invalid-argument", "Fecha de primer partido inválida.");
 
   const patch = {
-    firstKickoffAt: firstKickoffDate,
+    firstKickoffAt: Timestamp.fromDate(firstKickoffDate),
     registrationCutoffMinutes: Number(request.data.registrationCutoffMinutes ?? 90),
     resultsMode: request.data.resultsMode ?? "manual",
     updatedAt: FieldValue.serverTimestamp()
