@@ -8,9 +8,10 @@ import { MetricCard } from "@/components/MetricCard";
 import { PageTitle } from "@/components/PageTitle";
 import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
-import { createOpenInvite, deleteGroup, getGroup, getMyMember, getProviderStatus, listMembers, listOpenInvites, recalculateGroupScores, revokeOpenInvite, syncFixturesFromProvider, syncLiveResultsFromProvider, updateGroup, updatePaymentStatus } from "@/lib/firebase/firestore";
+import { createOpenInvite, deleteGroup, getGroup, getMyMember, getProviderStatus, getUserProfile, listMembers, listOpenInvites, recalculateGroupScores, revokeOpenInvite, syncFixturesFromProvider, syncLiveResultsFromProvider, updateGroup, updateMemberRole, updatePaymentStatus } from "@/lib/firebase/firestore";
 import { formatDate, formatMoney } from "@/lib/format";
-import type { Group, Invite, Member, ProviderStatus } from "@/types";
+import { isPlatformAdmin } from "@/lib/permissions";
+import type { Group, Invite, Member, ProviderStatus, UserProfile } from "@/types";
 
 export default function GroupAdminPage() {
   return (
@@ -35,13 +36,16 @@ function GroupAdminContent() {
   const [copiedCode, setCopiedCode] = useState("");
   const [savingConfig, setSavingConfig] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
 
   async function reload() {
-    const [nextGroup, nextMember, nextMembers] = await Promise.all([
+    const [nextGroup, nextMember, nextMembers, nextProfile] = await Promise.all([
       getGroup(params.groupId),
       user ? getMyMember(params.groupId, user.uid) : Promise.resolve(null),
-      listMembers(params.groupId)
+      listMembers(params.groupId),
+      user ? getUserProfile(user.uid) : Promise.resolve(null),
     ]);
+    setProfile(nextProfile);
     setGroup(nextGroup);
     setMyMember(nextMember);
     setMembers(nextMembers);
@@ -177,9 +181,23 @@ function GroupAdminContent() {
     await reload();
   }
 
+  async function onRoleChange(uid: string, role: "participant" | "group_admin") {
+    setError("");
+    setMessage("");
+    try {
+      await updateMemberRole(params.groupId, uid, role);
+      setMessage(`Rol actualizado correctamente.`);
+      await reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo cambiar el rol.");
+    }
+  }
+
+  const isSuperAdmin = isPlatformAdmin(profile);
+
   if (loading) return <main className="container shell"><div className="panel">Cargando administración...</div></main>;
   if (!group) return <main className="container shell"><div className="panel">Grupo no encontrado.</div></main>;
-  if (myMember?.role !== "group_admin") return <main className="container shell"><StatusMessage type="error">Solo el administrador del grupo puede entrar aquí.</StatusMessage></main>;
+  if (myMember?.role !== "group_admin" && !isSuperAdmin) return <main className="container shell"><StatusMessage type="error">Solo el administrador del grupo puede entrar aquí.</StatusMessage></main>;
 
   const paidMembers = members.filter((member) => member.paymentStatus === "paid").length;
   const pool = members.filter((member) => member.status === "active").length * Number(group.contributionAmount || 0);
@@ -249,7 +267,19 @@ function GroupAdminContent() {
               <tr key={member.uid}>
                 <td style={{ minWidth: 120 }}>{member.displayName}</td>
                 <td className="cell-nowrap">{member.email}</td>
-                <td className="cell-nowrap">{member.role}</td>
+                <td className="cell-nowrap">
+                  {isSuperAdmin ? (
+                    <select
+                      value={member.role}
+                      onChange={(e) => onRoleChange(member.uid, e.target.value as "participant" | "group_admin")}
+                    >
+                      <option value="participant">participant</option>
+                      <option value="group_admin">group_admin</option>
+                    </select>
+                  ) : (
+                    member.role
+                  )}
+                </td>
                 <td className="cell-nowrap">
                   <select value={member.paymentStatus} onChange={(event) => onPaymentChange(member.uid, event.target.value as Member["paymentStatus"])}>
                     <option value="pending">Pendiente</option>

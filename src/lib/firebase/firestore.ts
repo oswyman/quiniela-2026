@@ -150,6 +150,11 @@ export async function listPrizes(groupId: string) {
   return snap.docs.map((item) => item.data());
 }
 
+export async function updateMemberRole(groupId: string, uid: string, role: "participant" | "group_admin") {
+  const callable = httpsCallable<{ groupId: string; uid: string; role: string }, { ok: boolean }>(functions, "updateMemberRole");
+  return callable({ groupId, uid, role });
+}
+
 export async function updatePaymentStatus(groupId: string, uid: string, paymentStatus: Member["paymentStatus"]) {
   await updateDoc(doc(db, "groups", groupId, "members", uid), { paymentStatus });
   await updateDoc(doc(db, "groupMembers", `${groupId}_${uid}`), { paymentStatus });

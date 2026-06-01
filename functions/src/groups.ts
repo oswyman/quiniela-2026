@@ -187,6 +187,37 @@ export const deleteGroup = onCall<{ groupId: string }>(async (request) => {
   return { ok: true };
 });
 
+export const updateMemberRole = onCall<{ groupId: string; uid: string; role: "participant" | "group_admin" }>(async (request) => {
+  if (!request.auth || !(await isPlatformAdmin(request.auth.uid))) throw new HttpsError("permission-denied", "Solo platform_admin puede cambiar roles.");
+
+  const { groupId, uid, role } = request.data;
+  if (!groupId || !uid) throw new HttpsError("invalid-argument", "Faltan groupId o uid.");
+  if (!["participant", "group_admin"].includes(role)) throw new HttpsError("invalid-argument", "Rol inválido. Usa participant o group_admin.");
+
+  const db = getFirestore();
+  const memberRef = db.doc(`groups/${groupId}/members/${uid}`);
+  const memberSnap = await memberRef.get();
+  if (!memberSnap.exists) throw new HttpsError("not-found", "El usuario no es miembro de este grupo.");
+
+  const before = memberSnap.data() ?? null;
+  const batch = db.batch();
+  batch.update(memberRef, { role });
+  batch.update(db.doc(`groupMembers/${groupId}_${uid}`), { role });
+  await batch.commit();
+
+  await writeAuditLog({
+    actorUid: request.auth.uid,
+    groupId,
+    action: "updateMemberRole",
+    entityType: "member",
+    entityId: uid,
+    before,
+    after: { ...before, role }
+  });
+
+  return { ok: true };
+});
+
 export const updateTournamentConfig = onCall<TournamentConfigInput>(async (request) => {
   if (!request.auth || !(await isPlatformAdmin(request.auth.uid))) throw new HttpsError("permission-denied", "Solo platform_admin.");
   const firstKickoffDate = new Date(request.data.firstKickoffAt);
