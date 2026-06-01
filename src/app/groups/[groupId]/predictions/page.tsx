@@ -165,7 +165,7 @@ function PredictionsContent() {
       const msg =
         code === "functions/permission-denied" ? "No tienes permiso para pronosticar en este grupo." :
         code === "functions/failed-precondition" ? "El pronóstico ya cerró para este partido." :
-        code === "functions/unauthenticated" ? "Sesión expirada — vuelve a iniciar sesión." :
+        code === "functions/unauthenticated" ? "Sesión expirada. Vuelve a iniciar sesión." :
         err instanceof Error ? err.message :
         "No se pudo guardar. Intenta de nuevo.";
       pushToast({ type: "error", title: "No se pudo guardar", body: msg });
@@ -206,10 +206,10 @@ function PredictionsContent() {
 
       <details className="panel stack rulesPanel">
         <summary className="rulesSummary">¿Cómo funciona? <span className="muted">(toca para ver las reglas)</span></summary>
-        <p>Cada partido atinado suma <strong>1 acierto</strong>. Fase de grupos: elige Local gana, Empate o Visitante gana — resultado a 90 min. Desde ronda de 32, elige el equipo que avanza.</p>
+        <p>Cada partido atinado suma <strong>1 acierto</strong>. Fase de grupos: elige Local gana, Empate o Visitante gana (resultado a 90 min). Desde ronda de 32, elige el equipo que avanza.</p>
         <p>Puedes cambiar tu elección hasta <strong>90 minutos antes del kickoff</strong>. Después queda bloqueado.</p>
         {group.predictionVisibility === "BEFORE_CLOSE" ? (
-          <p className="muted">Este grupo tiene visibilidad antes del cierre — otros pueden ver tus elecciones antes de que el partido cierre.</p>
+          <p className="muted">Este grupo tiene visibilidad antes del cierre. Otros pueden ver tus elecciones antes de que el partido cierre.</p>
         ) : null}
       </details>
 
@@ -316,7 +316,7 @@ function PredictionsContent() {
                       <span className="matchResultLabel">{isLive ? "Marcador" : "Resultado final"}</span>
                       {match.winnerTeam
                         ? <span className="matchResultScore">{teamFlagEmoji(match.winnerTeam)} {match.winnerTeam} <span className="matchResultLabel">avanza</span></span>
-                        : <span className="matchResultScore">{match.homeGoals90} <span className="matchResultSep">–</span> {match.awayGoals90 ?? "?"}</span>
+                        : <span className="matchResultScore">{match.homeGoals90} <span className="matchResultSep">-</span> {match.awayGoals90 ?? "?"}</span>
                       }
                       {!isLive && isCorrect === true && <span className="pickCorrectTag">✓ Acertaste</span>}
                       {!isLive && isCorrect === false && <span className="pickWrongTag">✗ No acertaste</span>}

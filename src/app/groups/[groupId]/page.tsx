@@ -125,7 +125,7 @@ function GroupContent() {
           <MetricCard label="Participantes activos" value={`${activeMembers.length}/${group.minParticipants}+`} detail="Mínimo para operar el grupo" />
           <MetricCard label="Pagos marcados" value={`${paidMembers.length}/${activeMembers.length}`} detail="Control manual, sin procesar pagos" />
           <MetricCard label="Bolsa estimada" value={formatMoney(pool, group.currency)} detail="La app no custodia dinero" />
-          <MetricCard label="Próximo cierre" value={nextPredictionClose ? shortCountdownToDate(nextPredictionClose) : "Sin partidos"} detail={nextMatch ? `${getMatchTitle(nextMatch)} — cierra 90 min antes del kickoff` : "Sin fixtures cargados"} />
+          <MetricCard label="Próximo cierre" value={nextPredictionClose ? shortCountdownToDate(nextPredictionClose) : "Sin partidos"} detail={nextMatch ? `${getMatchTitle(nextMatch)}. Cierra 90 min antes del kickoff` : "Sin fixtures cargados"} />
           <MetricCard label="Sin pronosticar" value={pendingPredictions} detail="Partidos programados donde aún no tienes elección" />
           <MetricCard label="Mis aciertos" value={myScore?.totalCorrect ?? myScore?.totalPoints ?? 0} detail="Actualizado al recalcular ranking" />
         </div>
@@ -172,7 +172,7 @@ function GroupContent() {
                           <span className="resultCardTeam">{home}</span>
                           {match.winnerTeam
                             ? <span className="resultCardScore">Avanza</span>
-                            : <span className="resultCardScore">{match.homeGoals90 ?? "?"} – {match.awayGoals90 ?? "?"}</span>
+                            : <span className="resultCardScore">{match.homeGoals90 ?? "?"} - {match.awayGoals90 ?? "?"}</span>
                           }
                           <span className="resultCardTeam">{away}</span>
                         </div>

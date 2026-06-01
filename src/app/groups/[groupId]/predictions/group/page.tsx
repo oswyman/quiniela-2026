@@ -82,7 +82,7 @@ function GroupPredictionsContent() {
   }
 
   function pickLabel(prediction: Prediction | undefined, match: Match): string {
-    if (!prediction?.pick) return "—";
+    if (!prediction?.pick) return "-";
     const home = getDisplayTeam(match, "home");
     const away = getDisplayTeam(match, "away");
     if (prediction.pick === "HOME") return `${teamFlagEmoji(home)} ${home}`;
@@ -108,7 +108,7 @@ function GroupPredictionsContent() {
       return `Avanza: ${match.winnerTeam}`;
     }
     if (typeof match.homeGoals90 === "number" && typeof match.awayGoals90 === "number") {
-      return `${home} ${match.homeGoals90} – ${match.awayGoals90} ${away}`;
+      return `${home} ${match.homeGoals90} - ${match.awayGoals90} ${away}`;
     }
     return "Resultado cargado";
   }
@@ -186,7 +186,7 @@ function GroupPredictionsContent() {
                       <td className="cell-nowrap">
                         {result
                           ? <span style={{ color: "var(--stadium-700)", fontWeight: 500 }}>{result}</span>
-                          : <span className="muted">—</span>}
+                          : <span className="muted">-</span>}
                       </td>
                       {members.map((m) => {
                         const pred = byUid?.get(m.uid);
@@ -206,8 +206,8 @@ function GroupPredictionsContent() {
                             {visible
                               ? pred?.pick
                                 ? <>{pickLabel(pred, match)}{correct}</>
-                                : <span className="muted">—</span>
-                              : <span className="muted" title="Se revela al cierre">···</span>}
+                                : <span className="muted">-</span>
+                              : <span className="muted" title="Se revela al cierre">...</span>}
                           </td>
                         );
                       })}
@@ -262,8 +262,8 @@ function GroupPredictionsContent() {
                             {visible
                               ? pred?.pick
                                 ? <>{pickLabel(pred, match)}{correct}</>
-                                : <span className="muted">—</span>
-                              : <span className="muted">···</span>}
+                                : <span className="muted">-</span>
+                              : <span className="muted">...</span>}
                           </span>
                         </li>
                       );

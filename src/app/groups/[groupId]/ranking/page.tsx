@@ -211,7 +211,7 @@ function RankingContent() {
             <Download size={16} aria-hidden />
             Descargar ranking CSV
           </button>
-          <p className="fineprint" style={{ margin: 0 }}>Descarga informativa — datos de solo lectura.</p>
+          <p className="fineprint" style={{ margin: 0 }}>Descarga informativa. Datos de solo lectura.</p>
         </div>
       ) : null}
     </main>

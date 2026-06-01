@@ -98,7 +98,7 @@ function DashboardContent() {
                     <span className="resultCardTeam">{home}</span>
                     {match.winnerTeam
                       ? <span className="resultCardScore">Avanza</span>
-                      : <span className="resultCardScore">{match.homeGoals90 ?? "?"} – {match.awayGoals90 ?? "?"}</span>
+                      : <span className="resultCardScore">{match.homeGoals90 ?? "?"} - {match.awayGoals90 ?? "?"}</span>
                     }
                     <span className="resultCardTeam">{away}</span>
                   </div>

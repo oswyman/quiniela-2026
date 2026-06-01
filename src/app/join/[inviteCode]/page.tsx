@@ -174,7 +174,7 @@ export default function JoinPage() {
                   <button className="button" disabled={loading} type="submit">
                     {loading ? "Creando cuenta..." : "Crear cuenta y unirte"}
                   </button>
-                  <Link href={`/login?redirect=/join/${params.inviteCode}`}>Ya tengo cuenta — iniciar sesión</Link>
+                  <Link href={`/login?redirect=/join/${params.inviteCode}`}>Ya tengo cuenta. Iniciar sesión</Link>
                 </form>
               </div>
             )}

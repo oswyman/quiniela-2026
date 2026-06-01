@@ -138,7 +138,7 @@ function PlatformAdminContent() {
         winnerTeam: String(form.get("winnerTeam") || "")
       });
       await Promise.all(groups.map((group) => recalculateGroupScores(group.id).catch(() => null)));
-      pushToast({ type: "success", title: "Resultado guardado", body: `${getMatchTitle(match)} — rankings recalculados.` });
+      pushToast({ type: "success", title: "Resultado guardado", body: `${getMatchTitle(match)}. Rankings recalculados.` });
       setMessage("Resultado guardado, llaves actualizadas y rankings recalculados.");
       await load();
     } catch (err) {

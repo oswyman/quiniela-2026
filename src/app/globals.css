@@ -16,6 +16,9 @@
   --ink-soft: #3f4944;
   --muted: #6e7772;
   --line: #ded3bc;
+  --border: var(--line);
+  --surface: rgba(255, 253, 247, 0.94);
+  --surface-2: rgba(248, 243, 231, 0.72);
   --success: #087f5b;
   --warn: #8c5a00;
   --danger: #b42318;
@@ -27,6 +30,7 @@
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --radius-sm: 8px;
   --radius-md: 14px;
+  --radius: var(--radius-md);
   --radius-lg: 22px;
   /* Escala tipográfica */
   --text-xs: 0.75rem;
@@ -651,6 +655,13 @@ th { color: var(--muted); font-size: var(--text-xs); letter-spacing: 0.05em; tex
   .panel, .card { padding: 16px; }
   .toolbar { align-items: stretch; flex-direction: column; }
   .button { width: 100%; }
+  .cluster .button,
+  .toolbar .button,
+  .inviteLinkRow .button,
+  .matchCard .button,
+  .tabs .button {
+    width: auto;
+  }
   .tabs { border-radius: var(--radius-md); position: relative; width: 100%; }
   .tabs::after {
     background: linear-gradient(90deg, transparent, var(--ivory-100));

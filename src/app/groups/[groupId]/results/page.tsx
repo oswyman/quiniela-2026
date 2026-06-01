@@ -138,7 +138,7 @@ function ResultsContent() {
         <input
           className="searchInput"
           type="search"
-          placeholder="Buscar por equipo o fecha (ej. México, 11 jun)…"
+          placeholder="Buscar por equipo o fecha (ej. México, 11 jun)..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -161,7 +161,7 @@ function ResultsContent() {
               <h2 style={{ margin: 0, fontSize: "1rem", display: "flex", alignItems: "center", gap: 8 }}>
                 <span className="liveBadge"><span className="liveDot" aria-hidden />EN VIVO</span>
               </h2>
-              <div className="resultsCardList" style={{ display: "flex" }}>
+              <div className="resultsCardList">
                 {liveMatches.map((match) => {
                   const pred = byMatch.get(match.id);
                   return (
@@ -197,7 +197,7 @@ function ResultsContent() {
                           <td><span className="resultRowPhase">{match.phase}</span><strong>{getMatchTitle(match)}</strong></td>
                           <td><span className="liveBadge"><span className="liveDot" />EN VIVO</span></td>
                           <td><ResultCell match={match} live /></td>
-                          <td>{pred ? labelPick(pred, match) : <span className="muted">—</span>}</td>
+                          <td>{pred ? labelPick(pred, match) : <span className="muted">-</span>}</td>
                         </tr>
                       );
                     })}
@@ -234,12 +234,12 @@ function ResultsContent() {
                           <td className="cell-nowrap muted" style={{ fontSize: "0.85rem" }}>{formatDate(toDate(match.kickoffAt))}</td>
                           <td className="cell-nowrap"><ResultCell match={match} /></td>
                           <td className="cell-nowrap" style={{ fontSize: "0.9rem" }}>
-                            {pred ? labelPick(pred, match) : <span className="muted">—</span>}
+                            {pred ? labelPick(pred, match) : <span className="muted">-</span>}
                           </td>
                           <td style={{ textAlign: "center", fontSize: "1.1rem" }}>
                             {pred?.isCorrect === true && <span className="pickCorrectTag">✓</span>}
                             {pred?.isCorrect === false && <span className="pickWrongTag">✗</span>}
-                            {(!pred || pred.isCorrect === null || pred.isCorrect === undefined) && <span className="muted" style={{ fontSize: "0.75rem" }}>—</span>}
+                            {(!pred || pred.isCorrect === null || pred.isCorrect === undefined) && <span className="muted" style={{ fontSize: "0.75rem" }}>-</span>}
                           </td>
                         </tr>
                       );
@@ -273,7 +273,7 @@ function ResultsContent() {
                         <div style={{ textAlign: "right", fontSize: "1.3rem", alignSelf: "center" }}>
                           {correct && <span className="pickCorrectTag">✓</span>}
                           {wrong && <span className="pickWrongTag">✗</span>}
-                          {!pred && <span className="muted">—</span>}
+                          {!pred && <span className="muted">-</span>}
                         </div>
                       </div>
                     </div>
@@ -295,20 +295,20 @@ function ResultCell({ match, live }: { match: Match; live?: boolean }) {
   if (match.homeGoals90 !== undefined && match.homeGoals90 !== null) {
     return (
       <span style={{ fontFamily: "var(--font-display)", fontWeight: 800 }}>
-        {match.homeGoals90} – {match.awayGoals90 ?? "?"}
+        {match.homeGoals90} - {match.awayGoals90 ?? "?"}
         {live ? <span className="muted" style={{ fontFamily: "inherit", fontSize: "0.8em", marginLeft: 4 }}>(en curso)</span> : null}
       </span>
     );
   }
-  return <span className="muted">{live ? "0 – 0" : "—"}</span>;
+  return <span className="muted">{live ? "0 - 0" : "-"}</span>;
 }
 
 function labelPick(pred: Prediction, match: Match) {
-  if (pred.pickType === "ADVANCING_TEAM") return `${teamFlagEmoji(pred.pick ?? "")} ${pred.pick ?? "—"}`;
+  if (pred.pickType === "ADVANCING_TEAM") return `${teamFlagEmoji(pred.pick ?? "")} ${pred.pick ?? "-"}`;
   if (pred.pick === "HOME") return `${teamFlagEmoji(match.homeTeam ?? "")} ${match.homeTeam ?? "Local"}`;
   if (pred.pick === "AWAY") return `${teamFlagEmoji(match.awayTeam ?? "")} ${match.awayTeam ?? "Visitante"}`;
   if (pred.pick === "DRAW") return "Empate";
-  return pred.pick ?? "—";
+  return pred.pick ?? "-";
 }
 
 function formatDate(date: Date) {

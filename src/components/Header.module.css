@@ -20,6 +20,7 @@
   border-bottom: 1px solid rgba(212, 166, 66, 0.26);
   color: #fff;
   display: flex;
+  gap: 18px;
   justify-content: space-between;
   min-height: 74px;
   padding: 0 24px;
@@ -37,8 +38,10 @@
 
 .brand {
   color: #fff;
+  flex: 0 1 auto;
   font-weight: 900;
   line-height: 1;
+  min-width: 0;
 }
 
 .mark {
@@ -69,15 +72,19 @@
 
 .nav {
   color: #e7ece8;
-  flex-wrap: wrap;
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
   justify-content: flex-end;
+  min-width: 0;
 }
 
 .nav a {
   border-radius: 999px;
+  flex-shrink: 0;
   font-weight: 700;
   padding: 8px 12px;
   transition: background 120ms cubic-bezier(0.23, 1, 0.32, 1);
+  white-space: nowrap;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -110,8 +117,10 @@
 .sessionCluster {
   align-items: center;
   display: inline-flex;
+  flex: 0 1 min(360px, 42vw);
   gap: 8px;
   max-width: min(360px, 42vw);
+  min-width: 0;
 }
 
 .userBadge {
@@ -140,6 +149,7 @@
   }
 
   .nav {
+    flex-wrap: wrap;
     justify-content: flex-start;
     width: 100%;
   }

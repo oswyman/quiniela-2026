@@ -1,7 +1,15 @@
-export function PageTitle({ title, subtitle }: { title: string; subtitle?: string }) {
+export function PageTitle({
+  title,
+  subtitle,
+  eyebrow,
+}: {
+  title: string;
+  subtitle?: string;
+  eyebrow?: string;
+}) {
   return (
     <div className="pageTitle">
-      <p className="eyebrow">La Cancha · Mundial 2026</p>
+      {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
       <h1>{title}</h1>
       {subtitle ? <p>{subtitle}</p> : null}
     </div>

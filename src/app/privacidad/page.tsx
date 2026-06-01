@@ -74,13 +74,13 @@ export default function PrivacidadPage() {
           </p>
           <ul>
             <li>
-              <strong>Google LLC / Firebase</strong> — infraestructura de autenticación, base de
+              <strong>Google LLC / Firebase</strong>: infraestructura de autenticación, base de
               datos y funciones de servidor. Sus servidores pueden estar ubicados fuera de México.
               Google está adherido al Marco de Privacidad de Datos UE-EE.UU. y cuenta con
               cláusulas contractuales estándar.
             </li>
             <li>
-              <strong>Vercel Inc.</strong> — hospedaje del sitio web y entrega de contenido.
+              <strong>Vercel Inc.</strong>: hospedaje del sitio web y entrega de contenido.
             </li>
           </ul>
           <p>

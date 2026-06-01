@@ -51,7 +51,7 @@ export default function HomePage() {
         <div className="landingPrinciples">
           <div className="landingPrinciple">
             <h2>El pozo es de tu grupo.</h2>
-            <p className="muted">Sin wallet, procesador ni custodia de fondos. La plataforma lleva el marcador — el dinero lo administra quien confíen entre ustedes.</p>
+            <p className="muted">Sin wallet, procesador ni custodia de fondos. La plataforma lleva el marcador. El dinero lo administra quien confíen entre ustedes.</p>
           </div>
           <div className="landingPrinciple">
             <h2>Solo tus invitados entran.</h2>
