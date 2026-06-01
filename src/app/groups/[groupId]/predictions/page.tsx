@@ -72,7 +72,11 @@ function PredictionsContent() {
     load();
   }, [params.groupId, retryCount]);
 
-  const byMatch = useMemo(() => new Map(predictions.map((p) => [p.matchId, p])), [predictions]);
+  // Solo los propios pronósticos — filtrar por uid evita mostrar picks de otros usuarios antes del cierre
+  const byMatch = useMemo(
+    () => new Map(predictions.filter((p) => p.uid === user?.uid).map((p) => [p.matchId, p])),
+    [predictions, user]
+  );
 
   // Incluye partidos de grupos + knockout publicados aunque no tengan equipos aún
   const visibleMatches = useMemo(() => matches.filter(isVisibleForParticipants), [matches]);
