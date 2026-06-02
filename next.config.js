@@ -3,6 +3,11 @@ const isDev = process.env.NODE_ENV === "development";
 
 const nextConfig = {
   reactStrictMode: true,
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "images.unsplash.com" },
+    ],
+  },
   async headers() {
     const scriptSrc = isDev
       ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' *.googleapis.com *.gstatic.com accounts.google.com apis.google.com vercel.live *.vercel.live"

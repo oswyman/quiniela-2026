@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Barlow, Barlow_Condensed } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { SiteFooter } from "@/components/SiteFooter";
+import { AnalyticsProvider } from "@/components/AnalyticsProvider";
 
 const display = Barlow_Condensed({
   subsets: ["latin"],
@@ -13,12 +14,17 @@ const display = Barlow_Condensed({
 const sans = Barlow({
   subsets: ["latin"],
   variable: "--font-sans",
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
   title: "La Cancha | Quinielas privadas Mundial 2026",
-  description: "Plataforma premium para organizar quinielas privadas del Mundial FIFA 2026"
+  description: "Plataforma premium para organizar quinielas privadas del Mundial FIFA 2026",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -29,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div id="main-content" tabIndex={-1} style={{ outline: "none" }} />
         {children}
         <SiteFooter />
+        <AnalyticsProvider />
       </body>
     </html>
   );

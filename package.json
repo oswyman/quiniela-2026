@@ -14,6 +14,7 @@
     "emulator:dev": "dotenv -e .env.local.emulator -- next dev"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "firebase": "^10.14.1",
     "lucide-react": "^0.468.0",
     "motion": "^12.40.0",

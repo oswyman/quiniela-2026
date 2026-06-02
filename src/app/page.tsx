@@ -1,11 +1,20 @@
+import Image from "next/image";
 import Link from "next/link";
 import { LegalNotice } from "@/components/LegalNotice";
 
 export default function HomePage() {
   return (
-    <main>
+    <main className="landingPage">
       {/* Hero */}
       <section className="hero">
+        <Image
+          src="https://images.unsplash.com/photo-1522778526097-ce0a22ceb253?auto=format&fit=crop&w=1800&q=82"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          style={{ objectFit: "cover", objectPosition: "center" }}
+        />
         <div className="container stack-lg">
           <p className="eyebrow">Mundial FIFA 2026</p>
           <h1>La mesa seria para tu quiniela mundialista.</h1>
@@ -48,16 +57,16 @@ export default function HomePage() {
 
       {/* Principios */}
       <section className="container section">
-        <div className="landingPrinciples">
-          <div className="landingPrinciple">
+        <div className="bentoGrid">
+          <div className="card bentoWide featureCard--dark stack">
             <h2>El pozo es de tu grupo.</h2>
             <p className="muted">Sin wallet, procesador ni custodia de fondos. La plataforma lleva el marcador. El dinero lo administra quien confíen entre ustedes.</p>
           </div>
-          <div className="landingPrinciple">
+          <div className="card bentoWide stack">
             <h2>Solo tus invitados entran.</h2>
             <p className="muted">El administrador invita por correo, uno a uno. Sin registro abierto ni acceso de terceros. La Cancha no es pública.</p>
           </div>
-          <div className="landingPrinciple">
+          <div className="card fullSpan featureCard--green stack">
             <h2>Auditable desde el inicio.</h2>
             <p className="muted">Invitaciones, cierres, resultados y recálculos quedan registrados. Si alguien pregunta cómo se calculó el ranking, hay respuesta.</p>
           </div>

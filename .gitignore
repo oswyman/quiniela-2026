@@ -13,3 +13,4 @@ functions/node_modules
 firebase-debug.log
 firestore-debug.log
 emulator-data/
+.env.local.test

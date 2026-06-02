@@ -62,7 +62,7 @@ function LoginContent() {
         <PageTitle title="Entrar a La Cancha" subtitle="Inicia sesión con tu cuenta o abre el link de invitación que te compartió el administrador." />
         <form className="panel stack" onSubmit={onSubmit}>
           <button
-            className="button googleButton"
+            className="googleButton"
             disabled={loading}
             onClick={onGoogleSignIn}
             type="button"

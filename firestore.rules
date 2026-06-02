@@ -69,7 +69,16 @@ service cloud.firestore {
       }
 
       match /predictions/{predictionId} {
-        allow read: if isMember(groupId) || isPlatformAdmin();
+        // Propia predicción: siempre visible.
+        // Predicción ajena: solo si el grupo tiene BEFORE_CLOSE,
+        // o si el partido ya cerró (finished / live / cancelled).
+        // Enforcea en DB lo que isCellVisible() ya filtra en UI.
+        allow read: if isPlatformAdmin() ||
+          (isMember(groupId) && (
+            resource.data.uid == request.auth.uid ||
+            get(/databases/$(database)/documents/groups/$(groupId)).data.predictionVisibility == "BEFORE_CLOSE" ||
+            get(/databases/$(database)/documents/matches/$(resource.data.matchId)).data.status in ["finished", "live", "cancelled"]
+          ));
         allow create, update, delete: if false;
       }
 
