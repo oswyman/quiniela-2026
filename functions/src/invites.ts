@@ -277,44 +277,50 @@ async function createInviteRecord(input: {
   const db = getFirestore();
   const inviteCode = code();
   const path = input.groupId ? `groups/${input.groupId}/invites/${inviteCode}` : `adminInvites/${inviteCode}`;
-  const invite = {
+  const expiresAt = Timestamp.fromMillis(Date.now() + 1000 * 60 * 60 * 24 * 14);
+  const displayName = input.displayName?.trim() ?? "";
+
+  // Firestore write doc — FieldValue sentinels only valid at top-level fields
+  await db.doc(path).set({
     code: inviteCode,
     groupId: input.groupId ?? null,
     inviteeEmail: input.inviteeEmail,
-    displayName: input.displayName?.trim() ?? "",
+    displayName,
     role: input.role,
     type: input.type,
     createdBy: input.actorUid,
     createdAt: FieldValue.serverTimestamp(),
-    expiresAt: Timestamp.fromMillis(Date.now() + 1000 * 60 * 60 * 24 * 14),
+    expiresAt,
+    maxUses: 1,
+    usedCount: 0,
+    status: "active"
+  });
+
+  // Serializable snapshot — safe to nest in audit log and return to client
+  const snapshot = {
+    code: inviteCode,
+    groupId: input.groupId ?? null,
+    inviteeEmail: input.inviteeEmail,
+    displayName,
+    role: input.role,
+    type: input.type,
+    createdBy: input.actorUid,
+    expiresAt: expiresAt.toMillis(),
     maxUses: 1,
     usedCount: 0,
     status: "active"
   };
 
-  await db.doc(path).set(invite);
   await writeAuditLog({
     actorUid: input.actorUid,
     groupId: input.groupId,
     action: input.type === "group_admin" ? "createAdminInvite" : "createParticipantInvite",
     entityType: "invite",
     entityId: inviteCode,
-    after: invite
+    after: snapshot
   });
 
-  return {
-    code: inviteCode,
-    groupId: input.groupId ?? null,
-    inviteeEmail: input.inviteeEmail,
-    displayName: input.displayName?.trim() ?? "",
-    role: input.role,
-    type: input.type,
-    createdBy: input.actorUid,
-    expiresAt: invite.expiresAt.toMillis(),
-    maxUses: 1,
-    usedCount: 0,
-    status: "active"
-  };
+  return snapshot;
 }
 
 async function findInvite(inviteCode: string) {
