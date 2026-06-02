@@ -4,6 +4,7 @@ import "./globals.css";
 import { Header } from "@/components/Header";
 import { SiteFooter } from "@/components/SiteFooter";
 import { AnalyticsProvider } from "@/components/AnalyticsProvider";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 
 const display = Barlow_Condensed({
   subsets: ["latin"],
@@ -20,11 +21,18 @@ const sans = Barlow({
 export const metadata: Metadata = {
   title: "La Cancha | Quinielas privadas Mundial 2026",
   description: "Plataforma premium para organizar quinielas privadas del Mundial FIFA 2026",
+  appleWebApp: {
+    capable: true,
+    title: "La Cancha",
+    statusBarStyle: "black-translucent",
+  },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  themeColor: "#10392d",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -36,6 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <SiteFooter />
         <AnalyticsProvider />
+        <ServiceWorkerRegistration />
       </body>
     </html>
   );
