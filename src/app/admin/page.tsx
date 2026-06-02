@@ -103,7 +103,8 @@ function PlatformAdminContent() {
 
   async function onCreateAdminInvite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const targetForm = event.currentTarget;
+    const form = new FormData(targetForm);
     setError("");
     setMessage("");
     setAdminInviteLink("");
@@ -112,7 +113,7 @@ function PlatformAdminContent() {
       const result = await createAdminInvite(String(form.get("email") ?? ""), String(form.get("displayName") ?? ""));
       const link = `${window.location.origin}/join/${result.data.code}`;
       setAdminInviteLink(link);
-      event.currentTarget.reset();
+      targetForm.reset();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo crear la invitación.");
     } finally {
