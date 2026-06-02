@@ -302,7 +302,19 @@ async function createInviteRecord(input: {
     after: invite
   });
 
-  return invite;
+  return {
+    code: inviteCode,
+    groupId: input.groupId ?? null,
+    inviteeEmail: input.inviteeEmail,
+    displayName: input.displayName?.trim() ?? "",
+    role: input.role,
+    type: input.type,
+    createdBy: input.actorUid,
+    expiresAt: invite.expiresAt.toMillis(),
+    maxUses: 1,
+    usedCount: 0,
+    status: "active"
+  };
 }
 
 async function findInvite(inviteCode: string) {

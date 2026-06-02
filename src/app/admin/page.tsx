@@ -42,6 +42,7 @@ function PlatformAdminContent() {
   const [activeTab, setActiveTab] = useState<AdminTab>("operation");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [adminInviteLink, setAdminInviteLink] = useState("");
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const dismissToast = useCallback((id: string) => setToasts((prev) => prev.filter((t) => t.id !== id)), []);
   function pushToast(item: Omit<ToastItem, "id">) { setToasts((prev) => [...prev, { ...item, id: createToastId() }]); }
@@ -105,10 +106,12 @@ function PlatformAdminContent() {
     const form = new FormData(event.currentTarget);
     setError("");
     setMessage("");
+    setAdminInviteLink("");
     setBusy("adminInvite");
     try {
       const result = await createAdminInvite(String(form.get("email") ?? ""), String(form.get("displayName") ?? ""));
-      setMessage(`Invitación de admin creada: ${window.location.origin}/join/${result.data.code}`);
+      const link = `${window.location.origin}/join/${result.data.code}`;
+      setAdminInviteLink(link);
       event.currentTarget.reset();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo crear la invitación.");
@@ -476,8 +479,28 @@ function PlatformAdminContent() {
             <form className="formGrid" onSubmit={onCreateAdminInvite}>
               <div className="field"><label htmlFor="displayName">Nombre</label><input id="displayName" name="displayName" required /></div>
               <div className="field"><label htmlFor="email">Email</label><input id="email" name="email" type="email" required /></div>
-              <button className="button" disabled={busy === "adminInvite"} type="submit">Crear invitación admin</button>
+              <button className="button" disabled={busy === "adminInvite"} type="submit">{busy === "adminInvite" ? "Creando…" : "Crear invitación admin"}</button>
             </form>
+            {adminInviteLink ? (
+              <div style={{ marginTop: "1rem", padding: "0.75rem 1rem", background: "var(--surface-2, #f4f4f4)", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <p style={{ fontSize: "0.8rem", fontWeight: 600, margin: 0 }}>Link de invitación generado</p>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                  <code style={{ flex: 1, fontSize: "0.75rem", wordBreak: "break-all", background: "var(--surface-1, #fff)", padding: "0.4rem 0.6rem", borderRadius: "4px", border: "1px solid var(--border, #ddd)" }}>{adminInviteLink}</code>
+                  <button
+                    className="button secondary"
+                    type="button"
+                    style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+                    onClick={() => {
+                      navigator.clipboard.writeText(adminInviteLink);
+                      pushToast({ type: "success", title: "Link copiado", body: "El link de invitación está en tu portapapeles." });
+                    }}
+                  >
+                    Copiar link
+                  </button>
+                </div>
+                <p style={{ fontSize: "0.75rem", color: "var(--text-2, #666)", margin: 0 }}>Válido por 14 días · Envíalo al nuevo administrador</p>
+              </div>
+            ) : null}
           </article>
           <article className="panel stack">
             <h2>Usuarios</h2>
