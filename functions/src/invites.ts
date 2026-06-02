@@ -48,18 +48,6 @@ export const createParticipantInvite = onCall<InviteInput>(async (request) => {
   const groupSnap = await getFirestore().doc(`groups/${groupId}`).get();
   const group = groupSnap.data();
   if (!group) throw new HttpsError("not-found", "Grupo no encontrado.");
-  const registrationDeadlineAt = await resolveRegistrationDeadline(group);
-  if (isAfterTimestamp(registrationDeadlineAt)) {
-    await writeAuditLog({
-      actorUid: request.auth.uid,
-      groupId,
-      action: "lateInviteRejected",
-      entityType: "invite",
-      entityId: inviteeEmail,
-      after: { inviteeEmail }
-    });
-    throw new HttpsError("failed-precondition", "El registro cerró 90 minutos antes del primer partido del Mundial.");
-  }
 
   return createInviteRecord({
     actorUid: request.auth.uid,
@@ -84,10 +72,6 @@ export const createOpenInvite = onCall<{ groupId: string }>(async (request) => {
   const groupSnap = await getFirestore().doc(`groups/${groupId}`).get();
   const group = groupSnap.data();
   if (!group) throw new HttpsError("not-found", "Grupo no encontrado.");
-  const registrationDeadlineAt = await resolveRegistrationDeadline(group);
-  if (isAfterTimestamp(registrationDeadlineAt)) {
-    throw new HttpsError("failed-precondition", "El registro cerró 90 minutos antes del primer partido del Mundial.");
-  }
 
   const db = getFirestore();
   const inviteCode = code();
@@ -196,20 +180,7 @@ export const acceptInvite = onCall(async (request) => {
 
   if (inviteData.groupId) {
     const groupSnap = await db.doc(`groups/${inviteData.groupId}`).get();
-    const group = groupSnap.data();
-    if (!group) throw new HttpsError("not-found", "Grupo no encontrado.");
-    const registrationDeadlineAt = await resolveRegistrationDeadline(group);
-    if (isAfterTimestamp(registrationDeadlineAt)) {
-      await writeAuditLog({
-        actorUid: request.auth.uid,
-        groupId: inviteData.groupId,
-        action: "lateInviteAcceptRejected",
-        entityType: "invite",
-        entityId: inviteData.code,
-        after: { inviteeEmail: inviteData.inviteeEmail }
-      });
-      throw new HttpsError("failed-precondition", "El registro del grupo ya cerró.");
-    }
+    if (!groupSnap.exists) throw new HttpsError("not-found", "Grupo no encontrado.");
   }
 
   const userRef = db.doc(`users/${request.auth.uid}`);

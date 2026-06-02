@@ -182,8 +182,8 @@ export default function JoinPage() {
         ) : null}
       </section>
       <aside className="panel stack">
-        <h2>Regla comercial</h2>
-        <p className="muted">Los grupos cierran registro 90 minutos antes del primer partido del Mundial. Los pronósticos cierran antes del kickoff de cada partido.</p>
+        <h2>Cómo funcionan los pronósticos</h2>
+        <p className="muted">Puedes unirte a un grupo en cualquier momento del torneo. Los partidos que ya cerraron no se pueden pronosticar; cada partido cierra 90 minutos antes de su kickoff.</p>
       </aside>
     </main>
   );

@@ -80,6 +80,7 @@ function GroupContent() {
 
   const activeMembers = members.filter((member) => member.status === "active");
   const paidMembers = members.filter((member) => member.paymentStatus === "paid");
+  const myMember = members.find((m) => m.uid === user?.uid) ?? null;
   const nextMatch = useMemo(() => matches.find((match) => match.status === "scheduled") ?? matches[0], [matches]);
   const myPredictions = predictions.filter((prediction) => prediction.uid === user?.uid);
   const predictionMatchIds = new Set(myPredictions.map((prediction) => prediction.matchId));
@@ -129,6 +130,8 @@ function GroupContent() {
           <MetricCard label="Sin pronosticar" value={pendingPredictions} detail="Partidos programados donde aún no tienes elección" />
           <MetricCard label="Mis aciertos" value={myScore?.totalCorrect ?? myScore?.totalPoints ?? 0} detail="Actualizado al recalcular ranking" />
         </div>
+
+        <MembersPanel members={members} myMember={myMember} currency={group.currency} contributionAmount={group.contributionAmount} />
 
         <section className="twoCol">
           <RulesPanel group={group} />
@@ -252,5 +255,99 @@ function GroupContent() {
         {pendingPredictions > 0 ? <span className="badge">{pendingPredictions}</span> : null}
       </Link>
     </>
+  );
+}
+
+// ── Participantes ────────────────────────────────────────────────────────────
+
+type MembersPanelProps = {
+  members: Member[];
+  myMember: Member | null;
+  currency: string;
+  contributionAmount: number;
+};
+
+function MembersPanel({ members, myMember, currency, contributionAmount }: MembersPanelProps) {
+  const isAdmin = myMember?.role === "group_admin";
+  const active = members.filter((m) => m.status === "active");
+  // Admins first, then participants, alphabetically within each group
+  const sorted = [
+    ...active.filter((m) => m.role === "group_admin").sort((a, b) => a.displayName.localeCompare(b.displayName, "es")),
+    ...active.filter((m) => m.role !== "group_admin").sort((a, b) => a.displayName.localeCompare(b.displayName, "es")),
+  ];
+
+  if (sorted.length === 0) return null;
+
+  return (
+    <section className="panel stack">
+      <div style={{ alignItems: "baseline", display: "flex", gap: 10, justifyContent: "space-between" }}>
+        <h2 style={{ margin: 0 }}>Participantes</h2>
+        <span className="muted" style={{ fontSize: "0.875rem" }}>{sorted.length} {sorted.length === 1 ? "persona" : "personas"}</span>
+      </div>
+      <ul style={{ display: "grid", gap: 8, listStyle: "none", margin: 0, padding: 0 }}>
+        {sorted.map((member) => (
+          <li
+            key={member.uid}
+            style={{
+              alignItems: "center",
+              display: "flex",
+              gap: 12,
+              padding: "6px 0",
+              borderBottom: "1px solid var(--line)",
+            }}
+          >
+            <MemberAvatar name={member.displayName} isMe={member.uid === myMember?.uid} />
+            <span style={{ flex: 1, fontWeight: member.uid === myMember?.uid ? 800 : 600, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {member.displayName}
+              {member.uid === myMember?.uid ? <span className="muted" style={{ fontWeight: 400, marginLeft: 6 }}>(tú)</span> : null}
+            </span>
+            <div style={{ alignItems: "center", display: "flex", flexShrink: 0, gap: 6 }}>
+              {member.role === "group_admin" && (
+                <span className="pill pill--admin" style={{ fontSize: "0.72rem" }}>Admin</span>
+              )}
+              {isAdmin && member.paymentStatus !== "not_applicable" && (
+                <span
+                  className={`pill ${member.paymentStatus === "paid" ? "pill--active" : "pill--deadline"}`}
+                  style={{ fontSize: "0.72rem" }}
+                >
+                  {member.paymentStatus === "paid" ? `Pagó ${formatMoney(contributionAmount, currency)}` : "Pendiente"}
+                </span>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function MemberAvatar({ name, isMe }: { name: string; isMe: boolean }) {
+  const initials = name
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+
+  return (
+    <span
+      aria-hidden
+      style={{
+        alignItems: "center",
+        background: isMe ? "var(--grass-600)" : "var(--ivory-200)",
+        borderRadius: "50%",
+        color: isMe ? "var(--ivory-50)" : "var(--ink-soft)",
+        display: "inline-flex",
+        flexShrink: 0,
+        fontFamily: "var(--font-display)",
+        fontSize: "0.72rem",
+        fontWeight: 800,
+        height: 32,
+        justifyContent: "center",
+        letterSpacing: "0.02em",
+        width: 32,
+      }}
+    >
+      {initials || "?"}
+    </span>
   );
 }
