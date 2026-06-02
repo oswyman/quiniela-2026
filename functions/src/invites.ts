@@ -313,7 +313,6 @@ async function createInviteRecord(input: {
 
   await writeAuditLog({
     actorUid: input.actorUid,
-    groupId: input.groupId,
     action: input.type === "group_admin" ? "createAdminInvite" : "createParticipantInvite",
     entityType: "invite",
     entityId: inviteCode,

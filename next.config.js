@@ -15,11 +15,11 @@ const nextConfig = {
 
     // In dev, also include emulator hosts in connect-src
     const connectSrc = isDev
-      ? "connect-src 'self' *.firebaseio.com *.googleapis.com *.cloudfunctions.net wss://*.firebaseio.com accounts.google.com apis.google.com *.vercel.live http://localhost:* ws://localhost:*"
-      : "connect-src 'self' *.firebaseio.com *.googleapis.com *.cloudfunctions.net wss://*.firebaseio.com accounts.google.com apis.google.com *.vercel.live";
+      ? "connect-src 'self' *.firebaseio.com *.googleapis.com *.cloudfunctions.net wss://*.firebaseio.com accounts.google.com apis.google.com vercel.live *.vercel.live http://localhost:* ws://localhost:*"
+      : "connect-src 'self' *.firebaseio.com *.googleapis.com *.cloudfunctions.net wss://*.firebaseio.com accounts.google.com apis.google.com vercel.live *.vercel.live";
 
     // Google Sign-In popup requires frames from accounts.google.com and firebaseapp.com
-    const frameSrc = "frame-src accounts.google.com apis.google.com *.firebaseapp.com *.vercel.live";
+    const frameSrc = "frame-src accounts.google.com apis.google.com *.firebaseapp.com vercel.live *.vercel.live";
 
     return [
       {
