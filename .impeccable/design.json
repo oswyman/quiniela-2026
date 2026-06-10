@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-10T22:00:00Z",
+  "title": "Design System: La Cancha",
+  "extensions": {
+    "colorMeta": {
+      "stadium-green": { "role": "primary", "displayName": "Stadium Green", "canonical": "#10392d", "tonalRamp": ["#061711", "#0a241b", "#10392d", "#155844", "#19735a", "#228a6d", "#4fc39a", "#d9f2e8"] },
+      "trophy-gold": { "role": "secondary", "displayName": "Trophy Gold", "canonical": "#d4a642", "tonalRamp": ["#3a2a06", "#94660d", "#b98322", "#d4a642", "#e0b95e", "#f6df9c", "#fbf0d2", "#fefaf0"] },
+      "ivory-warm": { "role": "neutral", "displayName": "Ivory Warm", "canonical": "#fffdf7", "tonalRamp": ["#151917", "#3f4944", "#5d6862", "#b9ab8c", "#d2c5a8", "#eee4d1", "#f8f3e7", "#fffdf7"] },
+      "success": { "role": "state", "displayName": "Acierto", "canonical": "#087f5b" },
+      "warn": { "role": "state", "displayName": "Cierre inminente", "canonical": "#8c5a00" },
+      "danger": { "role": "state", "displayName": "Fallo", "canonical": "#b42318" },
+      "live-green": { "role": "state", "displayName": "En vivo", "canonical": "#16a34a" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Barlow Condensed 800", "purpose": "Equipos en match cards, podio, hero. Solo momentos de partido." },
+      "body": { "displayName": "Barlow", "purpose": "Toda la tarea: texto, botones, datos." },
+      "label": { "displayName": "Label uppercase", "purpose": "Encabezados de tabla, eyebrows, pills. 0.75rem, 800, 0.05em, mayúsculas." }
+    },
+    "shadows": [
+      { "name": "shadow-sm", "value": "0 1px 0 rgba(6,23,17,0.06)", "purpose": "Reposo de cards: prácticamente un borde inferior." },
+      { "name": "shadow-md", "value": "0 18px 46px rgba(6,23,17,0.12)", "purpose": "Hover de cards interactivas; nunca en reposo." },
+      { "name": "shadow-lg", "value": "0 28px 80px rgba(6,23,17,0.2)", "purpose": "Solo overlays: toasts, banners." }
+    ],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(0.23, 1, 0.32, 1)", "purpose": "Easing por defecto de toda transición de estado (150-250ms)." },
+      { "name": "ease-in-out", "value": "cubic-bezier(0.77, 0, 0.175, 1)", "purpose": "Transiciones simétricas (acordeones, tabs)." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "640px" },
+      { "name": "main", "value": "820px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Acción principal: píldora rellena de accent, 48px mínimo.",
+      "html": "<button class=\"ds-btn-primary\">Guardar pronóstico</button>",
+      "css": ".ds-btn-primary { background: #10392d; color: #fff; border: 1px solid #10392d; border-radius: 999px; min-height: 48px; padding: 12px 20px; font-family: Barlow, sans-serif; font-weight: 800; font-size: 1rem; cursor: pointer; transition: transform 150ms cubic-bezier(0.23,1,0.32,1), box-shadow 150ms cubic-bezier(0.23,1,0.32,1); } .ds-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 18px 46px rgba(6,23,17,0.12); } .ds-btn-primary:active { transform: scale(0.97); box-shadow: none; } .ds-btn-primary:focus-visible { outline: 3px solid rgba(34,138,109,0.18); }"
+    },
+    {
+      "name": "Gold CTA",
+      "kind": "button",
+      "refersTo": "button-gold",
+      "description": "CTA de momento (entrar, premio): dorado trofeo con texto oscuro.",
+      "html": "<button class=\"ds-btn-gold\">Entrar a La Cancha</button>",
+      "css": ".ds-btn-gold { background: #d4a642; color: #211704; border: 1px solid #d4a642; border-radius: 999px; min-height: 48px; padding: 12px 20px; font-family: Barlow, sans-serif; font-weight: 800; font-size: 1rem; cursor: pointer; transition: transform 150ms cubic-bezier(0.23,1,0.32,1), box-shadow 150ms cubic-bezier(0.23,1,0.32,1); } .ds-btn-gold:hover { transform: translateY(-1px); box-shadow: 0 18px 46px rgba(6,23,17,0.12); } .ds-btn-gold:active { transform: scale(0.97); }"
+    },
+    {
+      "name": "Choice Button (activo)",
+      "kind": "custom",
+      "refersTo": "choice-button-active",
+      "description": "Selección de pronóstico: relleno sólido inconfundible, label arriba y equipo abajo.",
+      "html": "<button class=\"ds-choice ds-choice--active\"><span>Gana</span><strong>🇲🇽 México</strong></button>",
+      "css": ".ds-choice { display: grid; gap: 4px; background: #fffdf7; border: 1px solid #b9ab8c; border-radius: 14px; min-height: 80px; padding: 16px; text-align: left; font-family: Barlow, sans-serif; cursor: pointer; transition: border-color 160ms cubic-bezier(0.23,1,0.32,1), background 160ms cubic-bezier(0.23,1,0.32,1); } .ds-choice span { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; color: #3f4944; } .ds-choice strong { font-size: 1rem; color: #0a241b; } .ds-choice:hover { background: #fffaf0; border-color: rgba(185,131,34,0.52); } .ds-choice--active { background: #10392d; border-color: #10392d; box-shadow: 0 0 0 3px rgba(34,138,109,0.18); } .ds-choice--active span { color: #fff; opacity: 0.78; } .ds-choice--active strong { color: #fff; }"
+    },
+    {
+      "name": "Pill de countdown",
+      "kind": "chip",
+      "description": "Tensión de cierre <24h: ámbar con números tabulares.",
+      "html": "<span class=\"ds-pill-closing\">⏱ Cierra en 2h 14m</span>",
+      "css": ".ds-pill-closing { display: inline-flex; align-items: center; gap: 4px; background: #fff8df; border: 1px solid #edd384; border-radius: 999px; color: #8c5a00; font-family: Barlow, sans-serif; font-size: 0.82rem; font-weight: 800; font-variant-numeric: tabular-nums; padding: 8px 10px; white-space: nowrap; }"
+    },
+    {
+      "name": "Match Card",
+      "kind": "card",
+      "description": "Componente firma: marcador con equipos enfrentados en grid simétrico.",
+      "html": "<article class=\"ds-match\"><div class=\"ds-match__pills\"><span class=\"ds-pill-closing\">⏱ Cierra en 2h 14m</span></div><h2 class=\"ds-match__teams\"><span>🇲🇽 México</span><span class=\"ds-match__vs\">vs</span><span>🇿🇦 Sudáfrica</span></h2><p class=\"ds-match__venue\">11 jun, 13:00 CDMX · Estadio Azteca</p></article>",
+      "css": ".ds-match { background: rgba(255,253,247,0.94); border: 1px solid #d2c5a8; border-radius: 14px; box-shadow: 0 1px 0 rgba(6,23,17,0.06); padding: 20px; display: grid; gap: 12px; font-family: Barlow, sans-serif; } .ds-match__pills { display: flex; gap: 8px; flex-wrap: wrap; } .ds-match__teams { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; margin: 0; font-family: 'Barlow Condensed', system-ui, sans-serif; font-size: clamp(1.45rem, 4.5vw, 2.1rem); font-weight: 800; line-height: 1.05; letter-spacing: -0.01em; color: #0a241b; } .ds-match__teams span:first-child { text-align: right; } .ds-match__teams span:last-child { text-align: left; } .ds-match__vs { color: #5d6862; font-family: Barlow, sans-serif; font-size: 0.6em; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; text-align: center; } .ds-match__venue { margin: 0; color: #5d6862; font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }"
+    },
+    {
+      "name": "Podium Spot",
+      "kind": "custom",
+      "description": "Cabecera de podio del ranking: posición display, oro para el 1°.",
+      "html": "<div class=\"ds-podium\"><span class=\"ds-podium__pos\">1</span><span class=\"ds-podium__name\">Oswaldo</span><span class=\"ds-podium__pts\">14 aciertos</span></div>",
+      "css": ".ds-podium { display: grid; gap: 4px; justify-items: center; background: rgba(212,166,66,0.1); border: 1px solid rgba(185,131,34,0.45); border-radius: 14px; padding: 18px 12px; text-align: center; font-family: Barlow, sans-serif; } .ds-podium__pos { font-family: 'Barlow Condensed', system-ui, sans-serif; font-size: 2.6rem; font-weight: 800; line-height: 1; color: #94660d; } .ds-podium__name { font-weight: 800; color: #151917; } .ds-podium__pts { color: #5d6862; font-size: 0.75rem; font-variant-numeric: tabular-nums; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "La Mesa del Estadio",
+    "overview": "La seriedad de una mesa de apuestas entre amigos con la energía contenida de un estadio antes del kickoff. Verdes profundos de estadio nocturno, verde césped y dorado de trofeo sobre marfiles cálidos. La tensión del torneo se comunica con datos (countdowns, marcadores, posiciones), nunca con decoración. Registro product: la UI sirve a la tarea y desaparece en ella.",
+    "keyCharacteristics": [
+      "Tokens semánticos de dos capas en globals.css (primitivos + por tema)",
+      "Light marfil cálido por defecto; dark verde-noche WCAG AA",
+      "Barlow Condensed 800 solo para momentos de partido",
+      "Componentes sólidos y directos: pesos 800, píldoras rellenas",
+      "Mobile-first: pronósticos desde el teléfono minutos antes del cierre"
+    ],
+    "rules": [
+      { "name": "The No-Pure Rule", "body": "Prohibido #000 y #fff. Todo neutro lleva tinte cálido hacia el verde/marfil de la marca.", "section": "colors" },
+      { "name": "The Gold-Is-Reward Rule", "body": "El dorado señala recompensa y urgencia, jamás navegación ni decoración de fondo.", "section": "colors" },
+      { "name": "The Scoreboard Rule", "body": "Barlow Condensed aparece solo donde hay emoción de partido. Labels, botones y datos usan Barlow.", "section": "typography" },
+      { "name": "The Flat-At-Rest Rule", "body": "Las superficies están planas en reposo. La sombra media aparece solo con hover/interacción.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do usar los tokens semánticos de globals.css para todo color nuevo (definir en light, dark explícito y dark media-query)",
+      "Do comunicar urgencia con datos: countdown ámbar con tabular-nums, no animaciones",
+      "Do mantener mínimo táctil de 44px (botones estándar 48px) y contraste AA en ambos temas",
+      "Do usar skeletons para toda carga, nunca 'Cargando...' plano",
+      "Do estados completos: default, hover, focus-visible, active, disabled"
+    ],
+    "donts": [
+      "Don't usar barras laterales de color (border-left/right >1px) como acento",
+      "Don't gradientes neón ni UI de casino",
+      "Don't parecer SaaS genérico cream/blue ni dashboard de métricas empresariales",
+      "Don't tarjetas idénticas en grid con icon + heading + texto",
+      "Don't #000/#fff, gradient text, ni glassmorphism decorativo",
+      "Don't animar propiedades de layout; respetar prefers-reduced-motion",
+      "Don't Barlow Condensed en labels, botones o datos"
+    ]
+  }
+}
