@@ -71,7 +71,7 @@ export function CookieBanner({ onConsent }: { onConsent: (state: "accepted" | "r
             fontSize: "0.85rem",
             fontWeight: 700,
             padding: "8px 18px",
-            minHeight: 40,
+            minHeight: 44,
           }}
         >
           Rechazar
@@ -89,7 +89,7 @@ export function CookieBanner({ onConsent }: { onConsent: (state: "accepted" | "r
             fontSize: "0.85rem",
             fontWeight: 800,
             padding: "8px 18px",
-            minHeight: 40,
+            minHeight: 44,
           }}
         >
           Aceptar

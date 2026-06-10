@@ -126,6 +126,16 @@ function PredictionsContent() {
 
   const totalPending = [...phasePending.values()].reduce((s, n) => s + n, 0);
 
+  // Fases completas: sin pendientes y con al menos un pick propio (evita marcar fases TBD vacías)
+  const phaseComplete = useMemo(() => {
+    const map = new Map<string, boolean>();
+    for (const m of visibleMatches) {
+      const p = m.phase || "Sin fase";
+      if (byMatch.get(m.id)) map.set(p, true);
+    }
+    return map;
+  }, [visibleMatches, byMatch]);
+
   const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
@@ -175,8 +185,24 @@ function PredictionsContent() {
   }
 
   if (loading) return (
-    <main className="container shell">
-      <div className="panel" role="status" aria-live="polite"><p className="muted" style={{ margin: 0 }}>Cargando partidos...</p></div>
+    <main className="container shell stack-lg" role="status" aria-live="polite" aria-label="Cargando partidos">
+      <div className="predictionsGrid">
+        {[0, 1, 2].map((i) => (
+          <div className="panel stack matchCard" key={i} aria-hidden>
+            <div className="cluster">
+              <span className="skeleton skeletonPill" />
+              <span className="skeleton skeletonPill" />
+            </div>
+            <span className="skeleton skeletonTitle" />
+            <span className="skeleton skeletonLineShort" />
+            <div className="choiceGrid">
+              <span className="skeleton skeletonChoice" />
+              <span className="skeleton skeletonChoice" />
+              <span className="skeleton skeletonChoice" />
+            </div>
+          </div>
+        ))}
+      </div>
     </main>
   );
 
@@ -246,7 +272,11 @@ function PredictionsContent() {
                   type="button"
                 >
                   {phase}
-                  {pending > 0 ? <span className="phaseTabBadge">{pending}</span> : null}
+                  {pending > 0 ? (
+                    <span className="phaseTabBadge">{pending}</span>
+                  ) : phaseComplete.get(phase) ? (
+                    <span className="phaseTabCheck" aria-label="Fase completa">✓</span>
+                  ) : null}
                 </button>
               );
             })}
@@ -255,7 +285,7 @@ function PredictionsContent() {
           {/* ── Cards de la fase activa ─────────────────── */}
           <div className="predictionsGrid">
             {tabMatches.length === 0 ? (
-              <EmptyState title="Sin partidos en esta fase" body="Aún no hay fixtures cargados para esta fase." />
+              <EmptyState title="Sin partidos en esta fase" body="Los partidos de esta fase aún no se publican. Vuelve cuando avance el torneo." />
             ) : tabMatches.map((match) => {
               const prediction = byMatch.get(match.id);
               const kickoffDate = toDate(match.kickoffAt);
@@ -294,6 +324,8 @@ function PredictionsContent() {
                       <span className="closedBadge"><Lock size={12} aria-hidden /> Cerrado</span>
                     ) : !teamsKnown ? (
                       <span className="pill pill--tbd"><Clock size={12} aria-hidden /> Equipos por definir</span>
+                    ) : closesAt.getTime() - Date.now() <= DAY_MS ? (
+                      <span className="pill pill--closing"><Clock size={12} aria-hidden /> Cierra en {formatCountdown(closesAt.getTime() - Date.now())}</span>
                     ) : (
                       <span className="pill pill--deadline">Cierra {formatDeadlineCDMX(closesAt)}</span>
                     )}
@@ -304,7 +336,7 @@ function PredictionsContent() {
                   <div>
                     <h2 className="teamsTitle">
                       <span>{teamFlagEmoji(homeTeam)} {homeTeam}</span>
-                      <span style={{ color: "var(--muted)", fontSize: "0.6em", fontWeight: 800, textTransform: "uppercase" }}>vs</span>
+                      <span>vs</span>
                       <span>{teamFlagEmoji(awayTeam)} {awayTeam}</span>
                     </h2>
                     <p className="matchVenue muted">{formatMatchTime(match, timeMode, userTimeZone)} · {match.venue ?? "Sede por confirmar"}</p>
@@ -413,6 +445,16 @@ function labelPick(prediction: Prediction, homeTeam: string, awayTeam: string) {
   if (prediction.pick === "AWAY") return `gana ${awayTeam}`;
   if (prediction.pick === "DRAW") return "empate";
   return prediction.pick ?? "pendiente";
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// "2h 14m" / "38m" — solo se muestra cuando faltan menos de 24h para el cierre
+function formatCountdown(ms: number) {
+  const totalMinutes = Math.max(1, Math.ceil(ms / 60_000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return hours > 0 ? `${hours}h ${minutes.toString().padStart(2, "0")}m` : `${minutes}m`;
 }
 
 function formatDeadlineCDMX(date: Date) {

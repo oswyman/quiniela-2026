@@ -93,6 +93,9 @@ function RankingContent() {
   );
 
   const ranked = rankScores(scores);
+  // Podio solo cuando ya hay aciertos reales; con 0 resultados no hay nada que celebrar
+  const podium = ranked.filter((s) => s.position <= 3).slice(0, 3);
+  const showPodium = podium.length === 3 && (ranked[0].totalCorrect ?? ranked[0].totalPoints) > 0;
 
   function downloadCsv() {
     if (!group) return;
@@ -113,6 +116,22 @@ function RankingContent() {
         <PageTitle title="Ranking" subtitle="Ordenado por aciertos. Empates comparten posición." />
         <GroupNav groupId={params.groupId} />
       </div>
+
+      {/* Podio top 3 */}
+      {showPodium ? (
+        <div className="podium" aria-label="Primeros tres lugares">
+          {podium.map((score) => {
+            const isMe = user?.uid === score.uid;
+            return (
+              <div className={`podiumSpot podiumSpot--${score.position}${isMe ? " podiumSpot--me" : ""}`} key={score.uid}>
+                <span className="podiumPos" aria-hidden>{score.position}</span>
+                <span className="podiumName">{score.displayName ?? score.uid}{isMe ? " (tú)" : ""}</span>
+                <span className="podiumPoints">{score.totalCorrect ?? score.totalPoints} aciertos</span>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
 
       {/* Tabla desktop */}
       <div className="tableWrap panel">

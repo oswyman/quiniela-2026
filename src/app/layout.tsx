@@ -19,8 +19,8 @@ const sans = Barlow({
 });
 
 export const metadata: Metadata = {
-  title: "La Cancha | Quinielas privadas Mundial 2026",
-  description: "Plataforma premium para organizar quinielas privadas del Mundial FIFA 2026",
+  title: "La Cancha | Quinielas privadas · El Torneo 2026",
+  description: "Plataforma para organizar quinielas privadas entre amigos durante El Torneo 2026.",
   appleWebApp: {
     capable: true,
     title: "La Cancha",

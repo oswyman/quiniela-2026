@@ -172,7 +172,7 @@ function PlatformAdminContent() {
     setMessage("");
     try {
       const result = await bulkUpsertManualMatches({
-        sourceName: "FIFA schedule manual",
+        sourceName: "Calendario oficial manual",
         sourceUrl: "https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/match-schedule-fixtures-results-teams-stadiums",
         matches: csvRows.map((row) => ({ ...row, status: "scheduled" }))
       });
@@ -205,7 +205,7 @@ function PlatformAdminContent() {
       const result = await previewRoundOf32Resolution();
       setStandings(result.data.standings);
       setAssignments(result.data.assignments);
-      setMessage(result.data.standings.needsReview ? "Propuesta generada con criterios que requieren revisión FIFA adicional." : "Propuesta de ronda de 32 generada.");
+      setMessage(result.data.standings.needsReview ? "Propuesta generada con criterios que requieren revisión del reglamento oficial." : "Propuesta de ronda de 32 generada.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo generar la propuesta de llaves.");
     } finally {
@@ -368,7 +368,7 @@ function PlatformAdminContent() {
     <main className="container shell stack-lg">
       <Toast toasts={toasts} onDismiss={dismissToast} />
       <div className="toolbar">
-        <PageTitle title="Centro de control" subtitle={`Hola ${profile.displayName || profile.email}. Operación del Mundial 2026, resultados, llaves y auditoría.`} />
+        <PageTitle title="Centro de control" subtitle={`Hola ${profile.displayName || profile.email}. Operación del Torneo 2026, resultados, llaves y auditoría.`} />
         <span className="pill"><ShieldCheck size={15} aria-hidden /> Superadmin</span>
       </div>
       {message ? <StatusMessage type="success">{message}</StatusMessage> : null}
@@ -434,7 +434,7 @@ function PlatformAdminContent() {
           <div className="toolbar">
             <div>
               <h2>Llaves y clasificados</h2>
-              <p className="muted">La app propone top 2 por grupo y ocho mejores terceros. Si hay empates no resolubles por puntos, diferencia y goles, pedirá revisión FIFA adicional.</p>
+              <p className="muted">La app propone top 2 por grupo y ocho mejores terceros. Si hay empates no resolubles por puntos, diferencia y goles, pedirá revisión del reglamento oficial.</p>
             </div>
             <div className="cluster">
               <button className="button secondary" disabled={busy === "previewBracket"} onClick={onPreviewBracket} type="button">Generar propuesta</button>
@@ -564,7 +564,7 @@ function CalendarMaintenance(props: {
   return (
     <article className="panel stack fullSpan">
       <h2>{props.calendarLoaded ? "Mantenimiento de calendario" : "Carga masiva de partidos"}</h2>
-      {props.calendarLoaded ? <StatusMessage>El calendario ya está cargado. Reimporta solo si FIFA actualiza horarios o detectas un error en la fuente.</StatusMessage> : null}
+      {props.calendarLoaded ? <StatusMessage>El calendario ya está cargado. Reimporta solo si el organizador actualiza horarios o detectas un error en la fuente.</StatusMessage> : null}
       <form className="stack" onSubmit={props.onPreviewCsv}>
         <div className="field">
           <label htmlFor="fixturesFile">Subir CSV de partidos</label>

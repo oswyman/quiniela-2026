@@ -16,8 +16,8 @@ export default function HomePage() {
           style={{ objectFit: "cover", objectPosition: "center" }}
         />
         <div className="container stack-lg">
-          <p className="eyebrow">Mundial FIFA 2026</p>
-          <h1>La mesa seria para tu quiniela mundialista.</h1>
+          <p className="eyebrow">El Torneo 2026</p>
+          <h1>La mesa seria para tu quiniela.</h1>
           <p>
             Grupo privado. Pronósticos sellados 90 minutos antes del kickoff.
             El pozo lo administran ustedes, no nosotros.

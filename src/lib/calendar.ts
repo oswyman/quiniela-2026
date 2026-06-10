@@ -6,10 +6,10 @@ export function generateWorldCupIcs(matches: Match[]) {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//La Cancha//Mundial 2026//ES",
+    "PRODID:-//La Cancha//El Torneo 2026//ES",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    "X-WR-CALNAME:Mundial 2026 - La Cancha",
+    "X-WR-CALNAME:El Torneo 2026 - La Cancha",
     "X-WR-TIMEZONE:UTC"
   ];
 
@@ -23,7 +23,7 @@ export function generateWorldCupIcs(matches: Match[]) {
       `Hora CDMX: ${formatMatchTime(match, "cdmx")}`,
       `Hora sede: ${formatMatchTime(match, "venue")}`,
       match.notes ? `Nota: ${match.notes}` : "",
-      match.sourceUrl ? `Fuente FIFA: ${match.sourceUrl}` : "",
+      match.sourceUrl ? `Fuente: ${match.sourceUrl}` : "",
       "Importado desde La Cancha. Google Calendar mostrará el evento en tu zona horaria."
     ].filter(Boolean).join("\\n");
 
@@ -33,7 +33,7 @@ export function generateWorldCupIcs(matches: Match[]) {
       `DTSTAMP:${formatIcsDate(new Date())}`,
       `DTSTART:${formatIcsDate(start)}`,
       `DTEND:${formatIcsDate(end)}`,
-      `SUMMARY:${escapeIcsText(`Mundial 2026: ${getMatchTitle(match)}`)}`,
+      `SUMMARY:${escapeIcsText(`El Torneo 2026: ${getMatchTitle(match)}`)}`,
       `LOCATION:${escapeIcsText(location)}`,
       `DESCRIPTION:${escapeIcsText(description)}`,
       "END:VEVENT"

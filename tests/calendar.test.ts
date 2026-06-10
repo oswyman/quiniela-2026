@@ -23,7 +23,7 @@ describe("Google Calendar export", () => {
     expect(ics).toContain("BEGIN:VEVENT");
     expect(ics).toContain("DTSTART:20260611T190000Z");
     expect(ics).toContain("DTEND:20260611T210000Z");
-    expect(ics).toContain("SUMMARY:Mundial 2026: Mexico vs South Africa");
+    expect(ics).toContain("SUMMARY:El Torneo 2026: Mexico vs South Africa");
     expect(ics).toContain("LOCATION:Estadio Azteca\\, Mexico City");
   });
 });

@@ -125,7 +125,7 @@ function NewGroupForm() {
       <section className="grid">
         <article className="panel">
           <h2>Siguientes pasos</h2>
-          <p className="muted">Después de crear el grupo, invita participantes por correo desde el panel de administración. El registro cierra automáticamente 90 minutos antes del primer partido del Mundial.</p>
+          <p className="muted">Después de crear el grupo, invita participantes por correo desde el panel de administración. El registro cierra automáticamente 90 minutos antes del primer partido del torneo.</p>
         </article>
         <article className="panel">
           <h2>Sin pagos ni custodia</h2>

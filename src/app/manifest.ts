@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "La Cancha — Quinielas Mundial 2026",
+    name: "La Cancha — Quinielas El Torneo 2026",
     short_name: "La Cancha",
-    description: "Quinielas privadas para el Mundial FIFA 2026",
+    description: "Quinielas privadas entre amigos para El Torneo 2026",
     start_url: "/",
     scope: "/",
     display: "standalone",

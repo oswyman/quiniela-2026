@@ -1,7 +1,7 @@
 import { Scale } from "lucide-react";
 
 export const LEGAL_DISCLAIMER =
-  "Esta plataforma es una herramienta administrativa para organizar quinielas privadas. No constituye asesoría legal. Si un grupo usa aportaciones económicas o premios, debe consultar a un abogado y revisar la regulación aplicable en México antes de operar.";
+  "Esta plataforma es una herramienta administrativa para organizar quinielas privadas. No constituye asesoría legal. Si un grupo usa aportaciones económicas o premios, debe consultar a un abogado y revisar la regulación aplicable en México antes de operar. La Cancha no está afiliada, patrocinada ni respaldada por FIFA ni por ningún organizador del torneo; todas las marcas pertenecen a sus titulares.";
 
 export function LegalNotice() {
   return (

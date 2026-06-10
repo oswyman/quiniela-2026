@@ -45,7 +45,7 @@ export function Header() {
         <span className={styles.mark}><FootballMark /></span>
         <span className={styles.brandText}>
           <strong>La Cancha</strong>
-          <span>Quinielas privadas Mundial 2026</span>
+          <span>Quinielas privadas · El Torneo 2026</span>
         </span>
       </Link>
       <nav className={styles.nav}>

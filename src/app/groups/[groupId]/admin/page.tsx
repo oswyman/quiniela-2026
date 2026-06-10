@@ -137,7 +137,7 @@ function GroupAdminContent() {
   }
 
   async function onDeleteGroup() {
-    if (!window.confirm("¿Cancelar este grupo? Solo es posible antes del primer partido del Mundial.")) return;
+    if (!window.confirm("¿Cancelar este grupo? Solo es posible antes del primer partido del torneo.")) return;
     setError("");
     setMessage("");
     try {

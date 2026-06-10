@@ -20,9 +20,13 @@ export default function TerminosPage() {
           <h2>1. Descripción del servicio</h2>
           <p>
             <strong>La Cancha</strong> es una plataforma digital que permite a grupos privados
-            organizar quinielas deportivas relacionadas con el Mundial FIFA 2026. El servicio
-            incluye: creación de grupos por invitación, registro de pronósticos, cálculo
-            automático de puntuaciones y visualización de rankings.
+            organizar quinielas deportivas relacionadas con el torneo internacional de
+            fútbol de 2026. El servicio incluye: creación de grupos por invitación, registro
+            de pronósticos, cálculo automático de puntuaciones y visualización de rankings.
+          </p>
+          <p>
+            La Cancha no está afiliada, patrocinada ni respaldada por FIFA ni por ningún
+            organizador del torneo. Todas las marcas registradas pertenecen a sus titulares.
           </p>
           <p>
             La Cancha es una herramienta administrativa. <strong>No custodia, recibe,
