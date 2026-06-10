@@ -10,6 +10,7 @@ import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
 import { getGroup, listMatches, listPredictions } from "@/lib/firebase/firestore";
 import { getMatchTitle } from "@/lib/matchDisplay";
+import { teamDisplayName } from "@/lib/teamNames";
 import { teamFlagEmoji } from "@/lib/teamFlags";
 import { toDate } from "@/lib/format";
 import type { Group, Match, Prediction } from "@/types";
@@ -290,7 +291,7 @@ function ResultsContent() {
 
 function ResultCell({ match, live }: { match: Match; live?: boolean }) {
   if (!live && match.winnerTeam) {
-    return <span>{teamFlagEmoji(match.winnerTeam)} {match.winnerTeam} avanza</span>;
+    return <span>{teamFlagEmoji(match.winnerTeam)} {teamDisplayName(match.winnerTeam)} avanza</span>;
   }
   if (match.homeGoals90 !== undefined && match.homeGoals90 !== null) {
     return (
@@ -304,9 +305,9 @@ function ResultCell({ match, live }: { match: Match; live?: boolean }) {
 }
 
 function labelPick(pred: Prediction, match: Match) {
-  if (pred.pickType === "ADVANCING_TEAM") return `${teamFlagEmoji(pred.pick ?? "")} ${pred.pick ?? "-"}`;
-  if (pred.pick === "HOME") return `${teamFlagEmoji(match.homeTeam ?? "")} ${match.homeTeam ?? "Local"}`;
-  if (pred.pick === "AWAY") return `${teamFlagEmoji(match.awayTeam ?? "")} ${match.awayTeam ?? "Visitante"}`;
+  if (pred.pickType === "ADVANCING_TEAM") return `${teamFlagEmoji(pred.pick ?? "")} ${pred.pick ? teamDisplayName(pred.pick) : "-"}`;
+  if (pred.pick === "HOME") return `${teamFlagEmoji(match.homeTeam ?? "")} ${match.homeTeam ? teamDisplayName(match.homeTeam) : "Local"}`;
+  if (pred.pick === "AWAY") return `${teamFlagEmoji(match.awayTeam ?? "")} ${match.awayTeam ? teamDisplayName(match.awayTeam) : "Visitante"}`;
   if (pred.pick === "DRAW") return "Empate";
   return pred.pick ?? "-";
 }

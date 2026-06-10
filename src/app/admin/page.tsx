@@ -16,6 +16,7 @@ import { bulkUpsertManualMatches, confirmRoundOf32Resolution, createAdminInvite,
 import { parseFixtureCsv, type FixtureCsvRow } from "@/lib/fixtureCsv";
 import { formatDate } from "@/lib/format";
 import { getMatchTitle } from "@/lib/matchDisplay";
+import { teamDisplayName } from "@/lib/teamNames";
 import { generateResultsCsv } from "@/lib/resultsExport";
 import { formatInTimeZone, getUserTimeZone, CDMX_TIMEZONE } from "@/lib/timezone";
 import type { AuditLog, Group, Match, ProviderStatus, RoundOf32Assignment, TeamStanding, TournamentConfig, UserProfile } from "@/types";
@@ -674,7 +675,7 @@ function ResultCard({ match, busy, onResult }: { match: Match; busy: string; onR
         ) : null}
       </div>
       <div className={isKnockout ? "formGrid" : "formGrid compactResultGrid"}>
-        {isKnockout ? <div className="field"><label>Ganador oficial</label><select name="winnerTeam" defaultValue={match.winnerTeam ?? ""}><option value="">Calcular si no hay empate</option><option value={match.resolvedHomeTeam || match.homeTeam}>{match.resolvedHomeTeam || match.homeTeam}</option><option value={match.resolvedAwayTeam || match.awayTeam}>{match.resolvedAwayTeam || match.awayTeam}</option></select></div> : <input name="winnerTeam" type="hidden" value="" />}
+        {isKnockout ? <div className="field"><label>Ganador oficial</label><select name="winnerTeam" defaultValue={match.winnerTeam ?? ""}><option value="">Calcular si no hay empate</option><option value={match.resolvedHomeTeam || match.homeTeam}>{teamDisplayName(match.resolvedHomeTeam || match.homeTeam)}</option><option value={match.resolvedAwayTeam || match.awayTeam}>{teamDisplayName(match.resolvedAwayTeam || match.awayTeam)}</option></select></div> : <input name="winnerTeam" type="hidden" value="" />}
         <div className="field"><label>Estado</label><select name="status" defaultValue={match.status}><option value="scheduled">Pendiente</option><option value="live">En vivo</option><option value="finished">Finalizado</option><option value="cancelled">Cancelado</option></select></div>
       </div>
       {isKnockout ? <p className="fineprint">Eliminación directa: si el marcador queda empatado, captura penales o ganador oficial.</p> : <p className="fineprint">Grupo: la app calcula local, empate o visitante con el marcador a 90 minutos.</p>}

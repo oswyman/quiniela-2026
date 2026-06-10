@@ -13,6 +13,7 @@ import { useAuthUser } from "@/components/useAuthUser";
 import { getUserProfile, listMyGroups, listRecentResults } from "@/lib/firebase/firestore";
 import { formatMoney } from "@/lib/format";
 import { getMatchTitle } from "@/lib/matchDisplay";
+import { teamDisplayName } from "@/lib/teamNames";
 import type { Match } from "@/types";
 import { canCreateGroup } from "@/lib/permissions";
 import type { Group, UserProfile } from "@/types";
@@ -103,7 +104,7 @@ function DashboardContent() {
                     <span className="resultCardTeam">{away}</span>
                   </div>
                   {match.winnerTeam && (
-                    <p className="muted" style={{ margin: "4px 0 0", fontSize: "0.75rem", textAlign: "center" }}>{match.winnerTeam}</p>
+                    <p className="muted" style={{ margin: "4px 0 0", fontSize: "0.75rem", textAlign: "center" }}>{teamDisplayName(match.winnerTeam)}</p>
                   )}
                 </div>
               );

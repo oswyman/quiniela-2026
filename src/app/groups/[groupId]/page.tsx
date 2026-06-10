@@ -14,6 +14,7 @@ import { useAuthUser } from "@/components/useAuthUser";
 import { formatMoney, shortCountdownToDate, toDate } from "@/lib/format";
 import { getGroup, listMatches, listMembers, listPredictions, listPrizes, listScores } from "@/lib/firebase/firestore";
 import { getMatchTitle } from "@/lib/matchDisplay";
+import { teamDisplayName } from "@/lib/teamNames";
 import { formatMatchTime, matchTimeLabel, type MatchTimeMode } from "@/lib/matchTime";
 import { predictionClosesAt } from "@/lib/scoring";
 import { getUserTimeZone } from "@/lib/timezone";
@@ -180,7 +181,7 @@ function GroupContent() {
                           <span className="resultCardTeam">{away}</span>
                         </div>
                         {match.winnerTeam && (
-                          <p className="muted" style={{ margin: "4px 0 0", fontSize: "0.75rem", textAlign: "center" }}>{match.winnerTeam}</p>
+                          <p className="muted" style={{ margin: "4px 0 0", fontSize: "0.75rem", textAlign: "center" }}>{teamDisplayName(match.winnerTeam)}</p>
                         )}
                       </div>
                     );

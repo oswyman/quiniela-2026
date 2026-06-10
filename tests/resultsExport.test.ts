@@ -29,8 +29,8 @@ describe("generateResultsCsv", () => {
     }]);
 
     expect(csv).toContain("seccion,grupo_quiniela");
-    expect(csv).toContain("partido,,,1,Fase de grupos,A,Mexico,Canada");
-    expect(csv).toContain("pronostico,Padel,Oswy,1,Fase de grupos,A,Mexico,Canada");
+    expect(csv).toContain("partido,,,1,Fase de grupos,A,México,Canadá");
+    expect(csv).toContain("pronostico,Padel,Oswy,1,Fase de grupos,A,México,Canadá");
     expect(csv).toContain("HOME,si,1,1000,paid");
   });
 });

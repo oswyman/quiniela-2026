@@ -12,6 +12,7 @@ import { useAuthUser } from "@/components/useAuthUser";
 import { toDate } from "@/lib/format";
 import { getGroup, listMatches, listMembers, listPredictions } from "@/lib/firebase/firestore";
 import { getDisplayTeam } from "@/lib/matchDisplay";
+import { teamDisplayName } from "@/lib/teamNames";
 import { inferPickType, isMatchClosed } from "@/lib/scoring";
 import { teamFlagEmoji } from "@/lib/teamFlags";
 import { generateGroupPredictionsCsv } from "@/lib/resultsExport";
@@ -88,8 +89,8 @@ function GroupPredictionsContent() {
     if (prediction.pick === "HOME") return `${teamFlagEmoji(home)} ${home}`;
     if (prediction.pick === "DRAW") return "Empate";
     if (prediction.pick === "AWAY") return `${teamFlagEmoji(away)} ${away}`;
-    // ADVANCING_TEAM — el pick es el nombre del equipo
-    return `${teamFlagEmoji(prediction.pick)} ${prediction.pick}`;
+    // ADVANCING_TEAM — el pick es el nombre del equipo (crudo en inglés)
+    return `${teamFlagEmoji(prediction.pick)} ${teamDisplayName(prediction.pick)}`;
   }
 
   function correctnessIcon(prediction: Prediction | undefined, match: Match): string {
@@ -105,7 +106,7 @@ function GroupPredictionsContent() {
     const home = getDisplayTeam(match, "home");
     const away = getDisplayTeam(match, "away");
     if (match.winnerTeam) {
-      return `Avanza: ${match.winnerTeam}`;
+      return `Avanza: ${teamDisplayName(match.winnerTeam)}`;
     }
     if (typeof match.homeGoals90 === "number" && typeof match.awayGoals90 === "number") {
       return `${home} ${match.homeGoals90} - ${match.awayGoals90} ${away}`;

@@ -17,6 +17,7 @@ import { getDisplayTeam } from "@/lib/matchDisplay";
 import { formatMatchTime, matchTimeLabel, type MatchTimeMode } from "@/lib/matchTime";
 import { inferPickType, isMatchClosed, predictionClosesAt, type GroupPick, type PredictionPickType } from "@/lib/scoring";
 import { teamFlagEmoji } from "@/lib/teamFlags";
+import { teamDisplayName } from "@/lib/teamNames";
 import { CDMX_TIMEZONE, getUserTimeZone } from "@/lib/timezone";
 import type { Group, Match, Prediction } from "@/types";
 
@@ -347,7 +348,7 @@ function PredictionsContent() {
                     <div className={`matchResultBadge${isLive ? " matchResultBadge--live" : isCorrect === true ? " matchResultBadge--correct" : isCorrect === false ? " matchResultBadge--wrong" : ""}`}>
                       <span className="matchResultLabel">{isLive ? "Marcador" : "Resultado final"}</span>
                       {match.winnerTeam
-                        ? <span className="matchResultScore">{teamFlagEmoji(match.winnerTeam)} {match.winnerTeam} <span className="matchResultLabel">avanza</span></span>
+                        ? <span className="matchResultScore">{teamFlagEmoji(match.winnerTeam)} {teamDisplayName(match.winnerTeam)} <span className="matchResultLabel">avanza</span></span>
                         : <span className="matchResultScore">{match.homeGoals90} <span className="matchResultSep">-</span> {match.awayGoals90 ?? "?"}</span>
                       }
                       {!isLive && isCorrect === true && <span className="pickCorrectTag">✓ Acertaste</span>}
@@ -440,7 +441,7 @@ function getPickOptions(match: Match, pickType: PredictionPickType, homeTeam: st
 }
 
 function labelPick(prediction: Prediction, homeTeam: string, awayTeam: string) {
-  if (prediction.pickType === "ADVANCING_TEAM") return `avanza ${prediction.pick}`;
+  if (prediction.pickType === "ADVANCING_TEAM") return `avanza ${teamDisplayName(prediction.pick)}`;
   if (prediction.pick === "HOME") return `gana ${homeTeam}`;
   if (prediction.pick === "AWAY") return `gana ${awayTeam}`;
   if (prediction.pick === "DRAW") return "empate";
