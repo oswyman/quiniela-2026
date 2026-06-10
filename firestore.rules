@@ -69,16 +69,14 @@ service cloud.firestore {
       }
 
       match /predictions/{predictionId} {
-        // Propia predicción: siempre visible.
-        // Predicción ajena: solo si el grupo tiene BEFORE_CLOSE,
-        // o si el partido ya cerró (finished / live / cancelled).
-        // Enforcea en DB lo que isCellVisible() ya filtra en UI.
-        allow read: if isPlatformAdmin() ||
-          (isMember(groupId) && (
-            resource.data.uid == request.auth.uid ||
-            get(/databases/$(database)/documents/groups/$(groupId)).data.predictionVisibility == "BEFORE_CLOSE" ||
-            get(/databases/$(database)/documents/matches/$(resource.data.matchId)).data.status in ["finished", "live", "cancelled"]
-          ));
+        // NOTA: la visibilidad por-pronóstico (predictionVisibility) NO se puede
+        // enforcear aquí con condiciones por-documento (resource.data.uid, get())
+        // porque la app consulta la colección completa sin filtro de uid
+        // (listPredictions), y Firestore deniega cualquier query que no pueda
+        // satisfacer estáticamente la regla. La visibilidad se filtra en UI
+        // (isCellVisible). Reintroducir el enforcement en DB requiere rediseñar
+        // las queries (filtrar por uid o denormalizar la visibilidad). Ver incidente 2026-06-09.
+        allow read: if isMember(groupId) || isPlatformAdmin();
         allow create, update, delete: if false;
       }
 
