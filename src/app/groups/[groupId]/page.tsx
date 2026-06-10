@@ -333,9 +333,9 @@ function MemberAvatar({ name, isMe }: { name: string; isMe: boolean }) {
       aria-hidden
       style={{
         alignItems: "center",
-        background: isMe ? "var(--grass-600)" : "var(--ivory-200)",
+        background: isMe ? "var(--grass-600)" : "var(--bg-2)",
         borderRadius: "50%",
-        color: isMe ? "var(--ivory-50)" : "var(--ink-soft)",
+        color: isMe ? "var(--ivory-50)" : "var(--text-display)",
         display: "inline-flex",
         flexShrink: 0,
         fontFamily: "var(--font-display)",

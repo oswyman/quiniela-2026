@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { LogOut, UserRound } from "lucide-react";
 import { useAuthUser } from "./useAuthUser";
+import { ThemeToggle } from "./ThemeToggle";
 import { logout } from "@/lib/firebase/auth";
 import { getUserProfile } from "@/lib/firebase/firestore";
 import { canCreateGroup } from "@/lib/permissions";
@@ -50,6 +51,7 @@ export function Header() {
       <nav className={styles.nav}>
         <Link href="/dashboard">Dashboard</Link>
         {canCreateGroup(profile) ? <Link href="/groups/new">Crear grupo</Link> : null}
+        <ThemeToggle className={styles.iconButton} />
         {user ? (
           <span className={styles.sessionCluster}>
             <span className={styles.userBadge} title={displayName}><UserRound size={15} aria-hidden /> {displayName}</span>

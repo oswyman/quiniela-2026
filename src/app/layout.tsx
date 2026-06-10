@@ -35,10 +35,15 @@ export const viewport: Viewport = {
   themeColor: "#10392d",
 };
 
+// Aplica el tema manual guardado antes del primer paint para evitar flash.
+// Sin valor guardado no se setea data-theme y el CSS sigue al sistema.
+const themeInitScript = `try{var t=localStorage.getItem("la_cancha_theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${display.variable} ${sans.variable}`}>
+    <html lang="es" className={`${display.variable} ${sans.variable}`} suppressHydrationWarning>
       <body>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <Header />
         <div id="main-content" tabIndex={-1} style={{ outline: "none" }} />
         {children}

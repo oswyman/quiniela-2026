@@ -185,7 +185,7 @@ function GroupPredictionsContent() {
                       </td>
                       <td className="cell-nowrap">
                         {result
-                          ? <span style={{ color: "var(--stadium-700)", fontWeight: 500 }}>{result}</span>
+                          ? <span style={{ color: "var(--accent-text)", fontWeight: 500 }}>{result}</span>
                           : <span className="muted">-</span>}
                       </td>
                       {members.map((m) => {
@@ -237,7 +237,7 @@ function GroupPredictionsContent() {
                     {teamFlagEmoji(home)} {home} <span className="muted" style={{ fontWeight: 400 }}>vs</span> {teamFlagEmoji(away)} {away}
                   </p>
                   {result && (
-                    <p style={{ color: "var(--stadium-700)", fontWeight: 500, margin: 0, fontSize: "0.85rem" }}>
+                    <p style={{ color: "var(--accent-text)", fontWeight: 500, margin: 0, fontSize: "0.85rem" }}>
                       {result}
                     </p>
                   )}
@@ -250,12 +250,12 @@ function GroupPredictionsContent() {
 
                       return (
                         <li key={m.uid} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.82rem" }}>
-                          <span style={{ fontWeight: isOwn ? 700 : 400, color: "var(--stadium-800)" }}>
+                          <span style={{ fontWeight: isOwn ? 700 : 400, color: "var(--text-display)" }}>
                             {m.displayName}{isOwn ? " (tú)" : ""}
                           </span>
                           <span
                             style={{
-                              color: correct === " ✓" ? "var(--success)" : correct === " ✗" ? "var(--danger)" : "var(--stadium-600)",
+                              color: correct === " ✓" ? "var(--success)" : correct === " ✗" ? "var(--danger)" : "var(--muted)",
                               fontWeight: isOwn ? 600 : 400,
                             }}
                           >
