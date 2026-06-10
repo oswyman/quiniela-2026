@@ -177,8 +177,15 @@ function GroupAdminContent() {
   }
 
   async function onPaymentChange(uid: string, paymentStatus: Member["paymentStatus"]) {
-    await updatePaymentStatus(params.groupId, uid, paymentStatus);
-    await reload();
+    setError("");
+    setMessage("");
+    try {
+      await updatePaymentStatus(params.groupId, uid, paymentStatus);
+      setMessage(`Estado de pago actualizado correctamente.`);
+      await reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo actualizar el estado de pago.");
+    }
   }
 
   async function onRoleChange(uid: string, role: "participant" | "group_admin") {

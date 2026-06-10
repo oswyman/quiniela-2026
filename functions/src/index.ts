@@ -5,7 +5,7 @@ import { writeAuditLog } from "./audit";
 import { calculatePrizeAllocations, ScoreRow } from "./prizes";
 import { calculatePredictionScore, legacyPredictionToPick } from "./scoring";
 import { acceptInvite, createAdminInvite, createInvite, createOpenInvite, createParticipantInvite, previewInvite, revokeOpenInvite } from "./invites";
-import { createGroup, deleteGroup, updateGroup, updateMemberRole, updateTournamentConfig } from "./groups";
+import { createGroup, deleteGroup, updateGroup, updateMemberRole, updatePaymentStatus, updateTournamentConfig } from "./groups";
 import { bulkUpsertManualMatches, calculateGroupStandings, confirmRoundOf32Resolution, previewRoundOf32Resolution, resolveKnockoutMatches, upsertManualMatch, upsertManualResult } from "./manualResults";
 import { migrateLegacyScorePredictions, submitPrediction } from "./predictions";
 import {
@@ -38,6 +38,7 @@ export {
   submitPrediction,
   updateGroup,
   updateMemberRole,
+  updatePaymentStatus,
   updateTournamentConfig,
   upsertManualMatch,
   upsertManualResult

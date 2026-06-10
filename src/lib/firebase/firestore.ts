@@ -9,7 +9,6 @@ import {
   onSnapshot,
   orderBy,
   query,
-  updateDoc,
   where
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
@@ -156,8 +155,8 @@ export async function updateMemberRole(groupId: string, uid: string, role: "part
 }
 
 export async function updatePaymentStatus(groupId: string, uid: string, paymentStatus: Member["paymentStatus"]) {
-  await updateDoc(doc(db, "groups", groupId, "members", uid), { paymentStatus });
-  await updateDoc(doc(db, "groupMembers", `${groupId}_${uid}`), { paymentStatus });
+  const callable = httpsCallable<{ groupId: string; uid: string; paymentStatus: string }, { ok: boolean }>(functions, "updatePaymentStatus");
+  return callable({ groupId, uid, paymentStatus });
 }
 
 export async function createParticipantInvite(groupId: string, inviteeEmail: string, displayName?: string) {

@@ -218,6 +218,39 @@ export const updateMemberRole = onCall<{ groupId: string; uid: string; role: "pa
   return { ok: true };
 });
 
+export const updatePaymentStatus = onCall<{ groupId: string; uid: string; paymentStatus: "pending" | "paid" | "not_applicable" }>(async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Inicia sesión.");
+  const { groupId, uid, paymentStatus } = request.data;
+  if (!groupId || !uid) throw new HttpsError("invalid-argument", "Faltan groupId o uid.");
+  if (!["pending", "paid", "not_applicable"].includes(paymentStatus)) {
+    throw new HttpsError("invalid-argument", "Estado de pago inválido. Usa pending, paid o not_applicable.");
+  }
+  if (!(await isGroupAdmin(groupId, request.auth.uid))) throw new HttpsError("permission-denied", "Solo el administrador del grupo puede cambiar el estado de pago.");
+
+  const db = getFirestore();
+  const memberRef = db.doc(`groups/${groupId}/members/${uid}`);
+  const memberSnap = await memberRef.get();
+  if (!memberSnap.exists) throw new HttpsError("not-found", "El usuario no es miembro de este grupo.");
+
+  const before = memberSnap.data() ?? null;
+  const batch = db.batch();
+  batch.update(memberRef, { paymentStatus });
+  batch.update(db.doc(`groupMembers/${groupId}_${uid}`), { paymentStatus });
+  await batch.commit();
+
+  await writeAuditLog({
+    actorUid: request.auth.uid,
+    groupId,
+    action: "updatePaymentStatus",
+    entityType: "member",
+    entityId: uid,
+    before,
+    after: { ...before, paymentStatus }
+  });
+
+  return { ok: true };
+});
+
 export const updateTournamentConfig = onCall<TournamentConfigInput>(async (request) => {
   if (!request.auth || !(await isPlatformAdmin(request.auth.uid))) throw new HttpsError("permission-denied", "Solo platform_admin.");
   const firstKickoffDate = new Date(request.data.firstKickoffAt);
