@@ -15,7 +15,8 @@ import { db } from "@/lib/firebase/client";
 import { bulkUpsertManualMatches, confirmRoundOf32Resolution, createAdminInvite, deleteGroup, getProviderStatus, getTournamentConfig, getUserProfile, listAllGroups, listAllUsers, listMatches, listMembers, listPredictions, listPrizes, listScores, migrateLegacyScorePredictions, previewRoundOf32Resolution, recalculateGroupScores, resolveKnockoutMatches, updateTournamentConfig, upsertManualResult } from "@/lib/firebase/firestore";
 import { parseFixtureCsv, type FixtureCsvRow } from "@/lib/fixtureCsv";
 import { formatDate } from "@/lib/format";
-import { getMatchTitle } from "@/lib/matchDisplay";
+import { getDisplayTeam, getMatchTitle } from "@/lib/matchDisplay";
+import { teamFlagEmoji } from "@/lib/teamFlags";
 import { teamDisplayName } from "@/lib/teamNames";
 import { generateResultsCsv } from "@/lib/resultsExport";
 import { formatInTimeZone, getUserTimeZone, CDMX_TIMEZONE } from "@/lib/timezone";
@@ -54,23 +55,37 @@ function PlatformAdminContent() {
   const [csvErrors, setCsvErrors] = useState<string[]>([]);
   const [showMaintenance, setShowMaintenance] = useState(false);
   const [userTimeZone, setUserTimeZone] = useState(CDMX_TIMEZONE);
-  const [filters, setFilters] = useState({ query: "", phase: "", group: "", status: "" });
+  const [resultQuery, setResultQuery] = useState("");
+  const [resultPhase, setResultPhase] = useState("");
+  const [resultSegment, setResultSegment] = useState<ResultSegment>("capture");
+  const [editingResultId, setEditingResultId] = useState<string | null>(null);
   const [standings, setStandings] = useState<{ groups: Record<string, TeamStanding[]>; bestThirds: TeamStanding[]; needsReview: boolean; reviewReasons: string[] } | null>(null);
   const [assignments, setAssignments] = useState<RoundOf32Assignment[]>([]);
 
   const calendarLoaded = matches.length >= 104;
   const finishedMatches = matches.filter((match) => match.status === "finished").length;
   const unresolvedKnockouts = matches.filter((match) => Number(match.matchNumber ?? 0) >= 73 && !match.isResolved).length;
-  const filteredMatches = useMemo(() => {
-    const q = filters.query.trim().toLowerCase();
-    return matches.filter((match) => {
-      if (filters.phase && match.phase !== filters.phase) return false;
-      if (filters.group && (match.fifaGroup ?? "") !== filters.group) return false;
-      if (filters.status && match.status !== filters.status) return false;
+  const resultBuckets = useMemo(() => {
+    const q = resultQuery.trim().toLowerCase();
+    const base = matches.filter((match) => {
+      if (resultPhase && match.phase !== resultPhase) return false;
       if (!q) return true;
-      return [match.matchNumber, getMatchTitle(match), match.venue, match.city].join(" ").toLowerCase().includes(q);
+      return [match.matchNumber, getMatchTitle(match), match.venue, match.city, match.fifaGroup ? `grupo ${match.fifaGroup}` : ""].join(" ").toLowerCase().includes(q);
     });
-  }, [filters, matches]);
+    const nowMs = Date.now();
+    const kickoffMs = (match: Match) => {
+      const ms = toKickoffDate(match.kickoffAt).getTime();
+      return Number.isFinite(ms) ? ms : Number.POSITIVE_INFINITY;
+    };
+    const isClosed = (match: Match) => match.status === "finished" || match.status === "cancelled";
+    const chronological = [...base].sort((a, b) => kickoffMs(a) - kickoffMs(b));
+    return {
+      capture: chronological.filter((match) => !isClosed(match) && kickoffMs(match) <= nowMs),
+      upcoming: chronological.filter((match) => !isClosed(match) && kickoffMs(match) > nowMs),
+      finished: [...chronological].reverse().filter(isClosed),
+      all: chronological
+    };
+  }, [matches, resultQuery, resultPhase]);
 
   useEffect(() => setUserTimeZone(getUserTimeZone()), []);
 
@@ -122,29 +137,20 @@ function PlatformAdminContent() {
     }
   }
 
-  async function onResult(event: FormEvent<HTMLFormElement>, match: Match) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const confirmed = window.confirm(`Vas a guardar resultado oficial para ${getMatchTitle(match)} y recalcular rankings. ¿Continuar?`);
-    if (!confirmed) return;
+  async function onSaveResult(match: Match, payload: ResultPayload) {
+    if (match.status === "finished" && !window.confirm(`${getMatchTitle(match)} ya tiene resultado oficial. ¿Sobrescribirlo y recalcular rankings?`)) return;
     setBusy(`result-${match.id}`);
     setError("");
     setMessage("");
     try {
-      await upsertManualResult({
-        matchId: match.id,
-        status: String(form.get("status") || "finished") as Match["status"],
-        homeGoals90: optionalNumber(form.get("homeGoals90")),
-        awayGoals90: optionalNumber(form.get("awayGoals90")),
-        homeGoalsExtraTime: optionalNumber(form.get("homeGoalsExtraTime")),
-        awayGoalsExtraTime: optionalNumber(form.get("awayGoalsExtraTime")),
-        homePenaltyGoals: optionalNumber(form.get("homePenaltyGoals")),
-        awayPenaltyGoals: optionalNumber(form.get("awayPenaltyGoals")),
-        winnerTeam: String(form.get("winnerTeam") || "")
-      });
+      await upsertManualResult({ matchId: match.id, ...payload });
       await Promise.all(groups.map((group) => recalculateGroupScores(group.id).catch(() => null)));
-      pushToast({ type: "success", title: "Resultado guardado", body: `${getMatchTitle(match)}. Rankings recalculados.` });
-      setMessage("Resultado guardado, llaves actualizadas y rankings recalculados.");
+      pushToast({
+        type: "success",
+        title: payload.status === "finished" ? "Resultado guardado" : "Partido actualizado",
+        body: `${getMatchTitle(match)}. Rankings recalculados.`
+      });
+      setEditingResultId(null);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar el resultado.");
@@ -419,14 +425,43 @@ function PlatformAdminContent() {
 
       {activeTab === "results" ? (
         <section className="panel stack">
-          <div className="toolbar">
-            <div>
-              <h2>Capturar resultados</h2>
-              <p className="muted">En fase de grupos solo capturas 90 minutos. En eliminación directa puedes capturar extra, penales y ganador oficial.</p>
-            </div>
-            <MatchFilters matches={matches} filters={filters} setFilters={setFilters} />
+          <div>
+            <h2>Capturar resultados</h2>
+            <p className="muted">Los partidos que ya se jugaron aparecen primero, en orden cronológico. Captura el marcador a 90 minutos y guarda: el ganador y el estado se calculan solos. En eliminación directa la tarjeta pide tiempo extra o penales únicamente si hay empate.</p>
           </div>
-          <ResultSections matches={filteredMatches} busy={busy} onResult={onResult} />
+          <div className="tabs" aria-label="Filtrar partidos por estado de captura">
+            {RESULT_SEGMENTS.map((segment) => (
+              <button className={resultSegment === segment.id ? "tabButton active" : "tabButton"} key={segment.id} onClick={() => setResultSegment(segment.id)} type="button">
+                {segment.label} ({resultBuckets[segment.id].length})
+              </button>
+            ))}
+          </div>
+          <div className="captureFilters">
+            <div className="field searchField"><label htmlFor="matchSearch"><Search size={14} aria-hidden /> Buscar</label><input id="matchSearch" onChange={(event) => setResultQuery(event.target.value)} placeholder="Equipo, sede, grupo o #" value={resultQuery} /></div>
+            <div className="field"><label htmlFor="phaseFilter">Fase</label><select id="phaseFilter" onChange={(event) => setResultPhase(event.target.value)} value={resultPhase}><option value="">Todas</option>{unique(matches.map((match) => match.phase)).map((phase) => <option key={phase}>{phase}</option>)}</select></div>
+          </div>
+          {resultBuckets[resultSegment].length ? (
+            <div className="captureList">
+              {groupMatchesByDay(resultBuckets[resultSegment]).map((day) => (
+                <div className="stack" key={`${day.label}-${day.items[0].id}`}>
+                  <p className="captureDay">{day.label}</p>
+                  {day.items.map((match) => (
+                    <CaptureCard
+                      busy={busy}
+                      editing={editingResultId === match.id}
+                      key={match.id}
+                      match={match}
+                      onCancelEdit={() => setEditingResultId(null)}
+                      onEdit={() => setEditingResultId(match.id)}
+                      onSave={onSaveResult}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState title={RESULT_EMPTY_COPY[resultSegment].title} body={RESULT_EMPTY_COPY[resultSegment].body} />
+          )}
         </section>
       ) : null}
 
@@ -614,72 +649,215 @@ function TournamentConfigForm({ tournament, busy, onSubmit }: { tournament: Tour
   );
 }
 
-function MatchFilters({ matches, filters, setFilters }: { matches: Match[]; filters: { query: string; phase: string; group: string; status: string }; setFilters: (filters: { query: string; phase: string; group: string; status: string }) => void }) {
-  const phases = unique(matches.map((match) => match.phase));
-  const groups = unique(matches.map((match) => match.fifaGroup ?? "").filter(Boolean));
-  return (
-    <div className="filterBar">
-      <div className="field searchField"><label htmlFor="matchSearch"><Search size={14} aria-hidden /> Buscar</label><input id="matchSearch" value={filters.query} onChange={(event) => setFilters({ ...filters, query: event.target.value })} placeholder="Equipo, sede o #" /></div>
-      <div className="field"><label htmlFor="phaseFilter">Fase</label><select id="phaseFilter" value={filters.phase} onChange={(event) => setFilters({ ...filters, phase: event.target.value })}><option value="">Todas</option>{phases.map((phase) => <option key={phase}>{phase}</option>)}</select></div>
-      <div className="field"><label htmlFor="groupFilter">Grupo</label><select id="groupFilter" value={filters.group} onChange={(event) => setFilters({ ...filters, group: event.target.value })}><option value="">Todos</option>{groups.map((group) => <option key={group}>{group}</option>)}</select></div>
-      <div className="field"><label htmlFor="statusFilter">Estado</label><select id="statusFilter" value={filters.status} onChange={(event) => setFilters({ ...filters, status: event.target.value })}><option value="">Todos</option><option value="scheduled">Pendiente</option><option value="live">En vivo</option><option value="finished">Finalizado</option><option value="cancelled">Cancelado</option></select></div>
-    </div>
-  );
-}
+type ResultSegment = "capture" | "upcoming" | "finished" | "all";
 
-function ResultSections({ matches, busy, onResult }: { matches: Match[]; busy: string; onResult: (event: FormEvent<HTMLFormElement>, match: Match) => void }) {
-  const groupMatches = matches.filter(isGroupStage);
-  const knockoutMatches = matches.filter((match) => !isGroupStage(match));
-  return (
-    <div className="stack-lg">
-      <section className="stack">
-        <div>
-          <h3>Fase de grupos</h3>
-          <p className="muted">Solo marcador a 90 minutos. No hay tiempos extra ni penales.</p>
-        </div>
-        <div className="resultGrid">
-          {groupMatches.map((match) => <ResultCard key={match.id} match={match} busy={busy} onResult={onResult} />)}
-        </div>
-      </section>
-      <section className="stack">
-        <div>
-          <h3>Eliminación directa</h3>
-          <p className="muted">Captura extra, penales o ganador oficial cuando sea necesario.</p>
-        </div>
-        <div className="resultGrid">
-          {knockoutMatches.map((match) => <ResultCard key={match.id} match={match} busy={busy} onResult={onResult} />)}
-        </div>
-      </section>
-    </div>
-  );
-}
+const RESULT_SEGMENTS: Array<{ id: ResultSegment; label: string }> = [
+  { id: "capture", label: "Por capturar" },
+  { id: "upcoming", label: "Próximos" },
+  { id: "finished", label: "Finalizados" },
+  { id: "all", label: "Todos" }
+];
 
-function ResultCard({ match, busy, onResult }: { match: Match; busy: string; onResult: (event: FormEvent<HTMLFormElement>, match: Match) => void }) {
+const RESULT_EMPTY_COPY: Record<ResultSegment, { title: string; body: string }> = {
+  capture: { title: "Nada por capturar", body: "Cuando un partido llegue a su hora de inicio aparecerá aquí, listo para registrar el marcador." },
+  upcoming: { title: "Sin partidos próximos", body: "Ajusta la búsqueda o revisa la pestaña Todos." },
+  finished: { title: "Aún no hay resultados guardados", body: "Los partidos con marcador oficial aparecerán aquí." },
+  all: { title: "Sin partidos", body: "Carga el calendario en Operación o ajusta la búsqueda." }
+};
+
+type ResultPayload = {
+  status: Match["status"];
+  homeGoals90: number | null;
+  awayGoals90: number | null;
+  homeGoalsExtraTime: number | null;
+  awayGoalsExtraTime: number | null;
+  homePenaltyGoals: number | null;
+  awayPenaltyGoals: number | null;
+  winnerTeam: string;
+};
+
+function CaptureCard({ match, busy, editing, onEdit, onCancelEdit, onSave }: {
+  match: Match;
+  busy: string;
+  editing: boolean;
+  onEdit: () => void;
+  onCancelEdit: () => void;
+  onSave: (match: Match, payload: ResultPayload) => void;
+}) {
   const isKnockout = !isGroupStage(match);
+  const unresolved = isKnockout && !match.isResolved;
+  const closed = match.status === "finished" || match.status === "cancelled";
+  const kickedOff = toKickoffDate(match.kickoffAt).getTime() <= Date.now();
   return (
-    <form className="panel stack resultCard" onSubmit={(event) => onResult(event, match)}>
-      <div className="toolbar">
-        <div><span className="pill">#{match.matchNumber ?? "?"} · {match.phase}</span><h3>{getMatchTitle(match)}</h3><p className="muted">{match.venue ?? "Sede por confirmar"} · {match.status}</p></div>
-        {match.status === "finished" ? <span className="pill successPill">Resultado guardado</span> : <span className="pill">Pendiente</span>}
+    <article className="panel stack captureCard">
+      <div className="captureMeta">
+        <div className="captureMetaInfo">
+          <span className="pill">#{match.matchNumber ?? "?"} · {match.phase}</span>
+          <span className="muted">{cdmxTimeLabel(match.kickoffAt)} · {match.venue ?? "Sede por confirmar"}</span>
+        </div>
+        <MatchStatusPill kickedOff={kickedOff} status={match.status} />
       </div>
-      <div className="scoreInputs">
-        <div className="field"><label>90 min local</label><input name="homeGoals90" type="number" min="0" defaultValue={match.homeGoals90 ?? ""} required /></div>
-        <div className="field"><label>90 min visitante</label><input name="awayGoals90" type="number" min="0" defaultValue={match.awayGoals90 ?? ""} required /></div>
-        {isKnockout ? (
-          <>
-            <div className="field"><label>Extra local</label><input name="homeGoalsExtraTime" type="number" min="0" defaultValue={match.homeGoalsExtraTime ?? ""} placeholder="Si aplica" /></div>
-            <div className="field"><label>Extra visitante</label><input name="awayGoalsExtraTime" type="number" min="0" defaultValue={match.awayGoalsExtraTime ?? ""} placeholder="Si aplica" /></div>
-            <div className="field"><label>Penales local</label><input name="homePenaltyGoals" type="number" min="0" defaultValue={match.homePenaltyGoals ?? ""} placeholder="Si aplica" /></div>
-            <div className="field"><label>Penales visitante</label><input name="awayPenaltyGoals" type="number" min="0" defaultValue={match.awayPenaltyGoals ?? ""} placeholder="Si aplica" /></div>
-          </>
-        ) : null}
+      {unresolved ? (
+        <>
+          <p className="captureSummaryScore">{getDisplayTeam(match, "home")} <span className="captureDash">vs</span> {getDisplayTeam(match, "away")}</p>
+          <p className="fineprint">Equipos por definir. Resuélvelos en la pestaña Llaves antes de capturar el resultado.</p>
+        </>
+      ) : closed && !editing ? (
+        <FinishedSummary match={match} onEdit={onEdit} />
+      ) : (
+        <CaptureForm busy={busy} isEditing={editing} match={match} onCancelEdit={onCancelEdit} onSave={onSave} />
+      )}
+    </article>
+  );
+}
+
+function MatchStatusPill({ status, kickedOff }: { status: Match["status"]; kickedOff: boolean }) {
+  if (status === "finished") return <span className="pill successPill">Finalizado</span>;
+  if (status === "live") return <span className="pill">En vivo</span>;
+  if (status === "cancelled") return <span className="pill">Cancelado</span>;
+  return <span className="pill">{kickedOff ? "Por capturar" : "Programado"}</span>;
+}
+
+function FinishedSummary({ match, onEdit }: { match: Match; onEdit: () => void }) {
+  const displayHome = match.homeGoalsExtraTime ?? match.homeGoals90;
+  const displayAway = match.awayGoalsExtraTime ?? match.awayGoals90;
+  const hasScore = typeof displayHome === "number" && typeof displayAway === "number";
+  const hasPens = typeof match.homePenaltyGoals === "number" && typeof match.awayPenaltyGoals === "number";
+  const hasExtra = typeof match.homeGoalsExtraTime === "number" || typeof match.awayGoalsExtraTime === "number";
+  return (
+    <>
+      {hasScore ? (
+        <div className="captureSummaryScore">
+          <span className="captureFlag">{teamFlagEmoji(match.resolvedHomeTeam || match.homeTeam)}</span>
+          <span>{getDisplayTeam(match, "home")}</span>
+          <span>{displayHome} - {displayAway}</span>
+          <span>{getDisplayTeam(match, "away")}</span>
+          <span className="captureFlag">{teamFlagEmoji(match.resolvedAwayTeam || match.awayTeam)}</span>
+        </div>
+      ) : (
+        <p className="muted">Sin marcador registrado.</p>
+      )}
+      {hasPens ? (
+        <p className="fineprint">Penales: {match.homePenaltyGoals} - {match.awayPenaltyGoals}{match.winnerTeam ? ` · Ganó ${teamDisplayName(match.winnerTeam)}` : ""}{hasExtra ? " · Con tiempo extra" : ""}</p>
+      ) : hasExtra ? (
+        <p className="fineprint">Definido en tiempo extra.</p>
+      ) : null}
+      <div className="cluster">
+        <button className="button secondary" onClick={onEdit} type="button">Editar resultado</button>
       </div>
-      <div className={isKnockout ? "formGrid" : "formGrid compactResultGrid"}>
-        {isKnockout ? <div className="field"><label>Ganador oficial</label><select name="winnerTeam" defaultValue={match.winnerTeam ?? ""}><option value="">Calcular si no hay empate</option><option value={match.resolvedHomeTeam || match.homeTeam}>{teamDisplayName(match.resolvedHomeTeam || match.homeTeam)}</option><option value={match.resolvedAwayTeam || match.awayTeam}>{teamDisplayName(match.resolvedAwayTeam || match.awayTeam)}</option></select></div> : <input name="winnerTeam" type="hidden" value="" />}
-        <div className="field"><label>Estado</label><select name="status" defaultValue={match.status}><option value="scheduled">Pendiente</option><option value="live">En vivo</option><option value="finished">Finalizado</option><option value="cancelled">Cancelado</option></select></div>
+    </>
+  );
+}
+
+function CaptureForm({ match, busy, isEditing, onCancelEdit, onSave }: {
+  match: Match;
+  busy: string;
+  isEditing: boolean;
+  onCancelEdit: () => void;
+  onSave: (match: Match, payload: ResultPayload) => void;
+}) {
+  const isKnockout = !isGroupStage(match);
+  const homeName = getDisplayTeam(match, "home");
+  const awayName = getDisplayTeam(match, "away");
+  const homeRaw = match.resolvedHomeTeam || match.homeTeam;
+  const awayRaw = match.resolvedAwayTeam || match.awayTeam;
+  const [home90, setHome90] = useState(scoreText(match.homeGoals90));
+  const [away90, setAway90] = useState(scoreText(match.awayGoals90));
+  const [homeExtra, setHomeExtra] = useState(scoreText(match.homeGoalsExtraTime));
+  const [awayExtra, setAwayExtra] = useState(scoreText(match.awayGoalsExtraTime));
+  const [homePens, setHomePens] = useState(scoreText(match.homePenaltyGoals));
+  const [awayPens, setAwayPens] = useState(scoreText(match.awayPenaltyGoals));
+  const [winnerTeam, setWinnerTeam] = useState(match.winnerTeam ?? "");
+  const [saveStatus, setSaveStatus] = useState<Match["status"]>("finished");
+
+  const h90 = parseScore(home90);
+  const a90 = parseScore(away90);
+  const tied90 = h90 !== null && a90 !== null && h90 === a90;
+  const showDefinition = isKnockout && tied90;
+  const hx = showDefinition ? parseScore(homeExtra) : null;
+  const ax = showDefinition ? parseScore(awayExtra) : null;
+  const hp = showDefinition ? parseScore(homePens) : null;
+  const ap = showDefinition ? parseScore(awayPens) : null;
+  const stillTied = (hx ?? h90) !== null && (hx ?? h90) === (ax ?? a90);
+  const penaltiesDecided = hp !== null && ap !== null && hp !== ap;
+  const needsWinner = showDefinition && saveStatus === "finished" && stillTied && !penaltiesDecided && !winnerTeam;
+  const scoreMissing = h90 === null || a90 === null;
+  const saving = busy === `result-${match.id}`;
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (scoreMissing || needsWinner) return;
+    onSave(match, {
+      status: saveStatus,
+      homeGoals90: h90,
+      awayGoals90: a90,
+      homeGoalsExtraTime: hx,
+      awayGoalsExtraTime: ax,
+      homePenaltyGoals: hp,
+      awayPenaltyGoals: ap,
+      winnerTeam: showDefinition ? winnerTeam : ""
+    });
+  }
+
+  return (
+    <form className="stack" onSubmit={submit}>
+      <div className="captureScoreRow">
+        <div className="captureTeam">
+          <span className="captureFlag">{teamFlagEmoji(homeRaw)}</span>
+          <strong>{homeName}</strong>
+        </div>
+        <div className="captureScoreBox">
+          <input aria-label={`Goles de ${homeName} a 90 minutos`} inputMode="numeric" min={0} onChange={(event) => setHome90(event.target.value)} type="number" value={home90} />
+          <span className="captureDash">-</span>
+          <input aria-label={`Goles de ${awayName} a 90 minutos`} inputMode="numeric" min={0} onChange={(event) => setAway90(event.target.value)} type="number" value={away90} />
+        </div>
+        <div className="captureTeam away">
+          <span className="captureFlag">{teamFlagEmoji(awayRaw)}</span>
+          <strong>{awayName}</strong>
+        </div>
       </div>
-      {isKnockout ? <p className="fineprint">Eliminación directa: si el marcador queda empatado, captura penales o ganador oficial.</p> : <p className="fineprint">Grupo: la app calcula local, empate o visitante con el marcador a 90 minutos.</p>}
-      <button className="button" disabled={busy === `result-${match.id}`} type="submit">{busy === `result-${match.id}` ? "Guardando..." : "Guardar resultado oficial"}</button>
+      {showDefinition ? (
+        <div className="captureDefinition">
+          <p className="fineprint"><strong>Empate a 90 minutos.</strong> Si hubo tiempo extra captura el marcador global a 120 minutos; si hubo penales, captura la tanda completa.</p>
+          <div className="captureDefGrid">
+            <div className="field"><label htmlFor={`hx-${match.id}`}>120 min {homeName}</label><input id={`hx-${match.id}`} inputMode="numeric" min={0} onChange={(event) => setHomeExtra(event.target.value)} placeholder="Si aplica" type="number" value={homeExtra} /></div>
+            <div className="field"><label htmlFor={`ax-${match.id}`}>120 min {awayName}</label><input id={`ax-${match.id}`} inputMode="numeric" min={0} onChange={(event) => setAwayExtra(event.target.value)} placeholder="Si aplica" type="number" value={awayExtra} /></div>
+            <div className="field"><label htmlFor={`hp-${match.id}`}>Penales {homeName}</label><input id={`hp-${match.id}`} inputMode="numeric" min={0} onChange={(event) => setHomePens(event.target.value)} placeholder="Si aplica" type="number" value={homePens} /></div>
+            <div className="field"><label htmlFor={`ap-${match.id}`}>Penales {awayName}</label><input id={`ap-${match.id}`} inputMode="numeric" min={0} onChange={(event) => setAwayPens(event.target.value)} placeholder="Si aplica" type="number" value={awayPens} /></div>
+          </div>
+          {penaltiesDecided ? (
+            <p className="fineprint">Gana {(hp as number) > (ap as number) ? homeName : awayName} por penales.</p>
+          ) : stillTied ? (
+            <div className="field">
+              <label htmlFor={`winner-${match.id}`}>Ganador oficial (si no capturas penales)</label>
+              <select id={`winner-${match.id}`} onChange={(event) => setWinnerTeam(event.target.value)} value={winnerTeam}>
+                <option value="">Elegir equipo</option>
+                <option value={homeRaw}>{homeName}</option>
+                <option value={awayRaw}>{awayName}</option>
+              </select>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      <details className="captureAdvanced">
+        <summary>Más opciones</summary>
+        <div className="field">
+          <label htmlFor={`saveStatus-${match.id}`}>Estado al guardar</label>
+          <select id={`saveStatus-${match.id}`} onChange={(event) => setSaveStatus(event.target.value as Match["status"])} value={saveStatus}>
+            <option value="finished">Finalizado (resultado oficial)</option>
+            <option value="live">En vivo (marcador parcial)</option>
+            <option value="scheduled">Pendiente</option>
+            <option value="cancelled">Cancelado</option>
+          </select>
+        </div>
+      </details>
+      <div className="captureFooter">
+        {needsWinner ? <p className="fineprint">Sigue empatado: captura penales o elige al ganador oficial.</p> : <span aria-hidden />}
+        <div className="cluster">
+          {isEditing ? <button className="button secondary" onClick={onCancelEdit} type="button">Cancelar</button> : null}
+          <button className="button" disabled={saving || scoreMissing || needsWinner} type="submit">{saving ? "Guardando..." : saveStatus === "finished" ? "Guardar resultado oficial" : "Guardar cambios"}</button>
+        </div>
+      </div>
     </form>
   );
 }
@@ -717,11 +895,45 @@ function AssignmentsTable({ assignments }: { assignments: RoundOf32Assignment[] 
   );
 }
 
-function optionalNumber(value: FormDataEntryValue | null) {
-  const text = String(value ?? "");
-  if (!text) return null;
-  const next = Number(text);
-  return Number.isFinite(next) ? next : null;
+function parseScore(value: string) {
+  if (value.trim() === "") return null;
+  const next = Number(value);
+  return Number.isInteger(next) && next >= 0 ? next : null;
+}
+
+function scoreText(value: number | null | undefined) {
+  return value === null || value === undefined ? "" : String(value);
+}
+
+function toKickoffDate(value: unknown) {
+  if (value instanceof Date) return value;
+  if (value && typeof value === "object" && "toDate" in value && typeof (value as { toDate: () => Date }).toDate === "function") {
+    return (value as { toDate: () => Date }).toDate();
+  }
+  return new Date(String(value ?? ""));
+}
+
+function cdmxDayLabel(value: unknown) {
+  const date = toKickoffDate(value);
+  if (Number.isNaN(date.getTime())) return "Fecha por confirmar";
+  return new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "long", timeZone: CDMX_TIMEZONE, weekday: "long" }).format(date);
+}
+
+function cdmxTimeLabel(value: unknown) {
+  const date = toKickoffDate(value);
+  if (Number.isNaN(date.getTime())) return "Hora por confirmar";
+  return `${new Intl.DateTimeFormat("es-MX", { hour: "2-digit", minute: "2-digit", timeZone: CDMX_TIMEZONE }).format(date)} CDMX`;
+}
+
+function groupMatchesByDay(items: Match[]) {
+  const days: Array<{ label: string; items: Match[] }> = [];
+  for (const match of items) {
+    const label = cdmxDayLabel(match.kickoffAt);
+    const last = days[days.length - 1];
+    if (last && last.label === label) last.items.push(match);
+    else days.push({ label, items: [match] });
+  }
+  return days;
 }
 
 function unique(items: string[]) {

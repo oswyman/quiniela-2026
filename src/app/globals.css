@@ -465,12 +465,6 @@ p { line-height: 1.58; }
   position: relative;
 }
 
-.scoreInputs {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: 1fr 1fr;
-}
-
 .choiceGrid {
   display: grid;
   gap: 10px;
@@ -618,33 +612,160 @@ p { line-height: 1.58; }
 
 details[open] .rulesSummary { margin-bottom: 8px; }
 
-.resultGrid {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-}
-
-.resultCard h3 {
-  font-size: 1.2rem;
-  margin: 10px 0 4px;
-}
-
-.compactResultGrid {
-  grid-template-columns: 1fr;
-}
-
-.filterBar {
+/* ── Captura de resultados (superadmin) ─────────── */
+.captureFilters {
   align-items: end;
   display: grid;
   gap: 10px;
-  grid-template-columns: minmax(220px, 1.2fr) repeat(3, minmax(130px, 0.7fr));
-  width: min(100%, 860px);
+  grid-template-columns: minmax(220px, 1fr) minmax(150px, 220px);
+  width: min(100%, 620px);
 }
 
 .searchField label {
   align-items: center;
   display: inline-flex;
   gap: 6px;
+}
+
+.captureList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.captureDay {
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.captureCard {
+  gap: 14px;
+}
+
+.captureMeta {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  justify-content: space-between;
+}
+
+.captureMetaInfo {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.captureScoreRow {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+
+.captureTeam {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.captureTeam.away {
+  flex-direction: row-reverse;
+}
+
+.captureTeam strong {
+  color: var(--text-display);
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 1.18rem;
+  font-weight: 800;
+  line-height: 1.1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.captureFlag {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.captureScoreBox {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.captureScoreBox input {
+  font-size: 1.4rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  height: 56px;
+  text-align: center;
+  width: 64px;
+}
+
+.captureDash {
+  color: var(--ink-soft);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.captureSummaryScore {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  gap: 8px 12px;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.captureDefinition {
+  background: var(--bg-2);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.captureDefGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.captureAdvanced summary {
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 700;
+  width: fit-content;
+}
+
+.captureAdvanced[open] summary {
+  margin-bottom: 8px;
+}
+
+.captureFooter {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.captureFooter .fineprint {
+  margin: 0;
 }
 
 .successPill {
@@ -707,7 +828,11 @@ th { color: var(--muted); font-size: var(--text-xs); letter-spacing: 0.05em; tex
   .shell { padding: 24px 0 40px; }
   .hero { min-height: auto; padding: 54px 0 34px; }
   .heroStats { grid-template-columns: 1fr; }
-  .twoCol, .formGrid, .scoreInputs, .filterBar, .resultGrid, .metricsGrid { grid-template-columns: 1fr; }
+  .twoCol, .formGrid, .captureFilters, .metricsGrid { grid-template-columns: 1fr; }
+  .captureTeam strong { font-size: 0.95rem; }
+  .captureScoreBox input { height: 52px; width: 56px; }
+  .captureSummaryScore { font-size: 1.2rem; }
+  .captureDefGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .landingStep { grid-template-columns: 48px 1fr; gap: 14px; padding: 20px 0; }
   .landingPrinciple { grid-template-columns: 1fr; gap: 10px; }
   .predictionsToolbar { top: var(--header-height); margin: 0 -12px; padding-left: 12px; padding-right: 12px; }
