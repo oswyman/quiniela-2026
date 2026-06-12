@@ -43,6 +43,9 @@ function PredictionsContent() {
   const [userTimeZone, setUserTimeZone] = useState("America/Mexico_City");
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [activeTab, setActiveTab] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [scrollTargetId, setScrollTargetId] = useState<string | null>(null);
+  const [flashId, setFlashId] = useState<string | null>(null);
   const [, setTick] = useState(0);
 
   useEffect(() => { setUserTimeZone(getUserTimeZone()); }, []);
@@ -114,6 +117,40 @@ function PredictionsContent() {
     [visibleMatches, activeTab],
   );
 
+  // Conteos por estado dentro de la fase activa (para los chips de filtro)
+  const statusCounts = useMemo(() => {
+    const counts = { all: tabMatches.length, pending: 0, picked: 0, finished: 0 };
+    for (const m of tabMatches) {
+      if (m.isResolved !== false && !isMatchClosed(toDate(m.kickoffAt)) && !byMatch.get(m.id)) counts.pending += 1;
+      if (byMatch.get(m.id)) counts.picked += 1;
+      if (m.status === "finished") counts.finished += 1;
+    }
+    return counts;
+  }, [tabMatches, byMatch]);
+
+  const filteredTabMatches = useMemo(() => tabMatches.filter((m) => {
+    if (statusFilter === "pending") return m.isResolved !== false && !isMatchClosed(toDate(m.kickoffAt)) && !byMatch.get(m.id);
+    if (statusFilter === "picked") return Boolean(byMatch.get(m.id));
+    if (statusFilter === "finished") return m.status === "finished";
+    return true;
+  }), [tabMatches, statusFilter, byMatch]);
+
+  // Agrupación por día en la zona horaria elegida
+  const dayGroups = useMemo(() => {
+    const groups: Array<{ key: string; label: string; items: Match[] }> = [];
+    for (const m of filteredTabMatches) {
+      const label = matchDayLabel(m, timeMode, userTimeZone);
+      const last = groups[groups.length - 1];
+      if (last && last.label === label) last.items.push(m);
+      else groups.push({ key: `${label}-${m.id}`, label, items: [m] });
+    }
+    return groups;
+  }, [filteredTabMatches, timeMode, userTimeZone]);
+
+  // Progreso de la fase activa: picks hechos sobre partidos con equipos definidos
+  const phasePickable = useMemo(() => tabMatches.filter((m) => m.isResolved !== false).length, [tabMatches]);
+  const phasePicked = useMemo(() => tabMatches.filter((m) => byMatch.get(m.id)).length, [tabMatches, byMatch]);
+
   // Badges por fase: pendientes (solo partidos con equipos conocidos, abiertos, sin pick)
   const phasePending = useMemo(() => {
     const map = new Map<string, number>();
@@ -146,6 +183,35 @@ function PredictionsContent() {
     setLoading(true);
     setRetryCount((c) => c + 1);
   }, []);
+
+  const jumpToNextPending = useCallback(() => {
+    const isPending = (m: Match) => m.isResolved !== false && !isMatchClosed(toDate(m.kickoffAt)) && !byMatch.get(m.id);
+    let target = tabMatches.find(isPending);
+    if (!target) {
+      target = visibleMatches.find(isPending);
+      if (!target) return;
+      setActiveTab(target.phase || "Sin fase");
+    }
+    if (statusFilter === "picked" || statusFilter === "finished") setStatusFilter("all");
+    setScrollTargetId(target.id);
+  }, [tabMatches, visibleMatches, byMatch, statusFilter]);
+
+  // Scroll al pendiente cuando su card ya existe en el DOM (puede requerir cambio de fase)
+  useEffect(() => {
+    if (!scrollTargetId) return;
+    const el = document.getElementById(`match-${scrollTargetId}`);
+    if (!el) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+    setFlashId(scrollTargetId);
+    setScrollTargetId(null);
+  }, [scrollTargetId, dayGroups]);
+
+  useEffect(() => {
+    if (!flashId) return;
+    const timer = setTimeout(() => setFlashId(null), 1800);
+    return () => clearTimeout(timer);
+  }, [flashId]);
 
   function pushToast(item: Omit<ToastItem, "id">) {
     setToasts((prev) => [...prev, { ...item, id: createToastId() }]);
@@ -240,17 +306,6 @@ function PredictionsContent() {
         ) : null}
       </details>
 
-      {/* ── Preferencia horario ─────────────────────── */}
-      <div className="cluster" style={{ justifyContent: "flex-end" }}>
-        <div className="tabs" aria-label="Preferencia de horario">
-          {(["cdmx", "local", "venue"] as MatchTimeMode[]).map((mode) => (
-            <button className={timeMode === mode ? "tabButton active" : "tabButton"} key={mode} onClick={() => setTimeMode(mode)} type="button">
-              {matchTimeLabel(mode)}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* ── Estados vacíos ───────────────────────────── */}
       {matches.length === 0 ? (
         <EmptyState title="No hay partidos cargados" body="Un superadmin debe cargar fixtures para que puedas pronosticar." href={`/groups/${params.groupId}/admin`} action="Ir a administración" />
@@ -261,33 +316,77 @@ function PredictionsContent() {
 
       {visibleMatches.length > 0 ? (
         <>
-          {/* ── Tabs de fase ───────────────────────────── */}
-          <nav className="phaseTabs" aria-label="Seleccionar fase">
-            {phases.map((phase) => {
-              const pending = phasePending.get(phase) ?? 0;
-              return (
-                <button
-                  key={phase}
-                  className={activeTab === phase ? "phaseTab active" : "phaseTab"}
-                  onClick={() => setActiveTab(phase)}
-                  type="button"
-                >
-                  {phase}
-                  {pending > 0 ? (
-                    <span className="phaseTabBadge">{pending}</span>
-                  ) : phaseComplete.get(phase) ? (
-                    <span className="phaseTabCheck" aria-label="Fase completa">✓</span>
-                  ) : null}
-                </button>
-              );
-            })}
-          </nav>
+          {/* ── Toolbar sticky: fases, progreso y filtros ── */}
+          <div className="predictionsToolbar">
+            <nav className="phaseTabs" aria-label="Seleccionar fase">
+              {phases.map((phase) => {
+                const pending = phasePending.get(phase) ?? 0;
+                return (
+                  <button
+                    key={phase}
+                    className={activeTab === phase ? "phaseTab active" : "phaseTab"}
+                    onClick={() => setActiveTab(phase)}
+                    type="button"
+                  >
+                    {phase}
+                    {pending > 0 ? (
+                      <span className="phaseTabBadge">{pending}</span>
+                    ) : phaseComplete.get(phase) ? (
+                      <span className="phaseTabCheck" aria-label="Fase completa">✓</span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </nav>
+            <div
+              aria-label={`${phasePicked} de ${phasePickable} partidos pronosticados en ${activeTab}`}
+              aria-valuemax={phasePickable}
+              aria-valuemin={0}
+              aria-valuenow={phasePicked}
+              className="progressBar"
+              role="progressbar"
+            >
+              <div className="progressBarFill" style={{ width: phasePickable > 0 ? `${Math.round((phasePicked / phasePickable) * 100)}%` : "0%" }} />
+            </div>
+            <div className="predictionsToolbarRow">
+              <div className="statusChips" role="group" aria-label="Filtrar partidos de la fase">
+                {STATUS_FILTERS.map((filter) => (
+                  <button
+                    className={statusFilter === filter.id ? "tabButton active" : "tabButton"}
+                    key={filter.id}
+                    onClick={() => setStatusFilter(filter.id)}
+                    type="button"
+                  >
+                    {filter.label} ({statusCounts[filter.id]})
+                  </button>
+                ))}
+              </div>
+              <div className="cluster">
+                {totalPending > 0 ? (
+                  <button className="button gold buttonCompact" onClick={jumpToNextPending} type="button">Siguiente pendiente</button>
+                ) : null}
+                <label className="timeModeSelect">
+                  <Clock size={14} aria-hidden />
+                  <select aria-label="Zona horaria para mostrar los partidos" onChange={(event) => setTimeMode(event.target.value as MatchTimeMode)} value={timeMode}>
+                    {(["cdmx", "local", "venue"] as MatchTimeMode[]).map((mode) => (
+                      <option key={mode} value={mode}>{matchTimeLabel(mode)}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </div>
+          </div>
 
-          {/* ── Cards de la fase activa ─────────────────── */}
-          <div className="predictionsGrid">
-            {tabMatches.length === 0 ? (
-              <EmptyState title="Sin partidos en esta fase" body="Los partidos de esta fase aún no se publican. Vuelve cuando avance el torneo." />
-            ) : tabMatches.map((match) => {
+          {/* ── Cards de la fase activa, agrupadas por día ── */}
+          {filteredTabMatches.length === 0 ? (
+            tabMatches.length === 0
+              ? <EmptyState title="Sin partidos en esta fase" body="Los partidos de esta fase aún no se publican. Vuelve cuando avance el torneo." />
+              : <EmptyState title="Nada con este filtro en esta fase" body="Cambia el filtro a Todos para ver la fase completa, o revisa otra fase." />
+          ) : dayGroups.map((day) => (
+            <section className="stack" key={day.key}>
+              <h3 className="matchDayHeader">{day.label}</h3>
+              <div className="predictionsGrid">
+            {day.items.map((match) => {
               const prediction = byMatch.get(match.id);
               const kickoffDate = toDate(match.kickoffAt);
               const closed = isMatchClosed(kickoffDate);
@@ -310,6 +409,7 @@ function PredictionsContent() {
                 inPlay ? "matchCard--live" : "",
                 hasResult && isCorrect === true ? "matchCard--correct" : "",
                 hasResult && isCorrect === false ? "matchCard--wrong" : "",
+                flashId === match.id ? "matchCard--flash" : "",
               ].filter(Boolean).join(" ");
 
               return (
@@ -401,7 +501,9 @@ function PredictionsContent() {
                 </article>
               );
             })}
-          </div>
+              </div>
+            </section>
+          ))}
         </>
       ) : null}
     </main>
@@ -413,6 +515,23 @@ function isVisibleForParticipants(_match: Match) {
   // Las tarjetas TBD (teamsKnown=false) muestran botones deshabilitados
   // hasta que el admin confirme el bracket.
   return true;
+}
+
+type StatusFilter = "all" | "pending" | "picked" | "finished";
+
+const STATUS_FILTERS: Array<{ id: StatusFilter; label: string }> = [
+  { id: "all", label: "Todos" },
+  { id: "pending", label: "Pendientes" },
+  { id: "picked", label: "Pronosticados" },
+  { id: "finished", label: "Finalizados" },
+];
+
+// Etiqueta de día en la zona horaria que el usuario eligió para ver los partidos
+function matchDayLabel(match: Match, mode: MatchTimeMode, userTimeZone: string) {
+  const date = toDate(match.kickoffAt);
+  if (Number.isNaN(date.getTime())) return "Fecha por confirmar";
+  const timeZone = mode === "cdmx" ? CDMX_TIMEZONE : mode === "local" ? userTimeZone : match.sourceTimezone || match.timezone || CDMX_TIMEZONE;
+  return new Intl.DateTimeFormat("es-MX", { weekday: "long", day: "numeric", month: "long", timeZone }).format(date);
 }
 
 // Orden canónico de fases para las pestañas

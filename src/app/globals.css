@@ -463,6 +463,12 @@ p { line-height: 1.58; }
 
 .matchCard {
   position: relative;
+  /* Que el scroll programado no esconda la card bajo header + toolbar sticky */
+  scroll-margin-top: calc(var(--header-height) + 150px);
+}
+
+.matchCard--flash {
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .choiceGrid {
@@ -1360,6 +1366,57 @@ details[open] .rulesSummary::after { transform: rotate(180deg); }
   flex-wrap: wrap;
   gap: 10px;
   justify-content: space-between;
+}
+
+/* Chips de filtro por estado dentro de la fase */
+.statusChips {
+  display: flex;
+  gap: 4px;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.statusChips::-webkit-scrollbar { display: none; }
+.statusChips .tabButton {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* Selector compacto de zona horaria */
+.timeModeSelect {
+  align-items: center;
+  color: var(--ink-soft);
+  display: inline-flex;
+  gap: 6px;
+}
+.timeModeSelect select {
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  min-height: 44px;
+  padding: 8px 10px;
+}
+.timeModeSelect select:focus {
+  border-color: var(--grass-500);
+  box-shadow: 0 0 0 4px var(--focus-ring);
+  outline: none;
+}
+
+/* Encabezado de día dentro de la lista de partidos */
+.matchDayHeader {
+  color: var(--ink-soft);
+  font-family: var(--font-sans), sans-serif;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.buttonCompact {
+  min-height: 44px;
+  padding: 8px 16px;
 }
 
 /* ── Phase tabs (nueva navegación por fase) ─────── */
