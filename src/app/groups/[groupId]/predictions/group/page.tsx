@@ -12,6 +12,7 @@ import { useAuthUser } from "@/components/useAuthUser";
 import { toDate } from "@/lib/format";
 import { getGroup, listMatches, listMembers, listPredictions } from "@/lib/firebase/firestore";
 import { getDisplayTeam } from "@/lib/matchDisplay";
+import { isMatchInPlay } from "@/lib/matchTime";
 import { teamDisplayName } from "@/lib/teamNames";
 import { inferPickType, isMatchClosed } from "@/lib/scoring";
 import { teamFlagEmoji } from "@/lib/teamFlags";
@@ -187,7 +188,9 @@ function GroupPredictionsContent() {
                       <td className="cell-nowrap">
                         {result
                           ? <span style={{ color: "var(--accent-text)", fontWeight: 500 }}>{result}</span>
-                          : <span className="muted">-</span>}
+                          : isMatchInPlay(match)
+                            ? <span className="muted">En juego</span>
+                            : <span className="muted">-</span>}
                       </td>
                       {members.map((m) => {
                         const pred = byUid?.get(m.uid);
@@ -232,7 +235,11 @@ function GroupPredictionsContent() {
                 <div key={match.id} className="panel stack" style={{ gap: 10 }}>
                   <div className="cluster">
                     <span className="pill" style={{ fontSize: "0.72rem" }}>{match.phase}</span>
-                    {closed && !result && <span className="pill pill--closed" style={{ fontSize: "0.72rem" }}>Cerrado</span>}
+                    {isMatchInPlay(match)
+                      ? <span className="liveBadge" style={{ fontSize: "0.72rem" }}><span className="liveDot" aria-hidden />Partido en juego</span>
+                      : closed && !result
+                        ? <span className="pill pill--closed" style={{ fontSize: "0.72rem" }}>Cerrado</span>
+                        : null}
                   </div>
                   <p style={{ fontWeight: 700, fontSize: "0.95rem", margin: 0 }}>
                     {teamFlagEmoji(home)} {home} <span className="muted" style={{ fontWeight: 400 }}>vs</span> {teamFlagEmoji(away)} {away}

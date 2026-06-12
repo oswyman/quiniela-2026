@@ -16,7 +16,7 @@ import { getGroup, listMatches, listMembers, listPredictions, listPrizes, listSc
 import { getMatchTitle } from "@/lib/matchDisplay";
 import { teamDisplayName } from "@/lib/teamNames";
 import { formatMatchTime, matchTimeLabel, type MatchTimeMode } from "@/lib/matchTime";
-import { predictionClosesAt } from "@/lib/scoring";
+import { isMatchClosed, predictionClosesAt } from "@/lib/scoring";
 import { getUserTimeZone } from "@/lib/timezone";
 import type { Group, Match, Member, Prediction, Score } from "@/types";
 
@@ -132,7 +132,7 @@ function GroupContent() {
           <MetricCard label="Mis aciertos" value={myScore?.totalCorrect ?? myScore?.totalPoints ?? 0} detail="Actualizado al recalcular ranking" />
         </div>
 
-        <MembersPanel members={members} myMember={myMember} currency={group.currency} contributionAmount={group.contributionAmount} />
+        <MembersPanel members={members} myMember={myMember} currency={group.currency} contributionAmount={group.contributionAmount} matches={matches} predictions={predictions} />
 
         <section className="twoCol">
           <RulesPanel group={group} />
@@ -266,9 +266,11 @@ type MembersPanelProps = {
   myMember: Member | null;
   currency: string;
   contributionAmount: number;
+  matches: Match[];
+  predictions: Prediction[];
 };
 
-function MembersPanel({ members, myMember, currency, contributionAmount }: MembersPanelProps) {
+function MembersPanel({ members, myMember, currency, contributionAmount, matches, predictions }: MembersPanelProps) {
   const isAdmin = myMember?.role === "group_admin";
   const active = members.filter((m) => m.status === "active");
   // Admins first, then participants, alphabetically within each group
@@ -276,6 +278,15 @@ function MembersPanel({ members, myMember, currency, contributionAmount }: Membe
     ...active.filter((m) => m.role === "group_admin").sort((a, b) => a.displayName.localeCompare(b.displayName, "es")),
     ...active.filter((m) => m.role !== "group_admin").sort((a, b) => a.displayName.localeCompare(b.displayName, "es")),
   ];
+
+  // Partidos pronosticados por persona y partidos aún abiertos para pronosticar
+  const predictedByUid = new Map<string, Set<string>>();
+  for (const prediction of predictions) {
+    const set = predictedByUid.get(prediction.uid) ?? new Set<string>();
+    set.add(prediction.matchId);
+    predictedByUid.set(prediction.uid, set);
+  }
+  const openMatches = matches.filter((match) => match.status === "scheduled" && match.isResolved !== false && !isMatchClosed(toDate(match.kickoffAt)));
 
   if (sorted.length === 0) return null;
 
@@ -298,21 +309,32 @@ function MembersPanel({ members, myMember, currency, contributionAmount }: Membe
             }}
           >
             <MemberAvatar name={member.displayName} isMe={member.uid === myMember?.uid} />
-            <span style={{ flex: 1, fontWeight: member.uid === myMember?.uid ? 800 : 600, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {member.displayName}
-              {member.uid === myMember?.uid ? <span className="muted" style={{ fontWeight: 400, marginLeft: 6 }}>(tú)</span> : null}
-            </span>
+            {(() => {
+              const predictedIds = predictedByUid.get(member.uid);
+              const predicted = predictedIds?.size ?? 0;
+              const remaining = openMatches.filter((match) => !predictedIds?.has(match.id)).length;
+              return (
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontWeight: member.uid === myMember?.uid ? 800 : 600, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {member.displayName}
+                    {member.uid === myMember?.uid ? <span className="muted" style={{ fontWeight: 400, marginLeft: 6 }}>(tú)</span> : null}
+                  </p>
+                  <p className="muted" style={{ fontSize: "0.78rem", margin: 0 }}>
+                    {predicted === 0 ? "Sin pronósticos" : `${predicted} pronosticado${predicted === 1 ? "" : "s"}`}
+                    {" · "}
+                    {remaining > 0 ? `falta${remaining === 1 ? "" : "n"} ${remaining}` : "al día"}
+                  </p>
+                </div>
+              );
+            })()}
             <div style={{ alignItems: "center", display: "flex", flexShrink: 0, gap: 6 }}>
               {member.role === "group_admin" && (
                 <span className="pill pill--admin" style={{ fontSize: "0.72rem" }}>Admin</span>
               )}
-              {isAdmin && member.paymentStatus !== "not_applicable" && (
-                <span
-                  className={`pill ${member.paymentStatus === "paid" ? "pill--active" : "pill--deadline"}`}
-                  style={{ fontSize: "0.72rem" }}
-                >
-                  {member.paymentStatus === "paid" ? `Pagó ${formatMoney(contributionAmount, currency)}` : "Pendiente"}
-                </span>
+              {isAdmin && member.paymentStatus === "paid" ? (
+                <span className="pill pill--active" style={{ fontSize: "0.72rem" }}>Pagó {formatMoney(contributionAmount, currency)}</span>
+              ) : (
+                <span className="pill pill--active" style={{ fontSize: "0.72rem" }}>Registrado</span>
               )}
             </div>
           </li>

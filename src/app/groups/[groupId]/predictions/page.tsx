@@ -14,7 +14,7 @@ import { useAuthUser } from "@/components/useAuthUser";
 import { toDate } from "@/lib/format";
 import { getGroup, listMatches, listPredictions, savePrediction } from "@/lib/firebase/firestore";
 import { getDisplayTeam } from "@/lib/matchDisplay";
-import { formatMatchTime, matchTimeLabel, type MatchTimeMode } from "@/lib/matchTime";
+import { formatMatchTime, isMatchInPlay, matchTimeLabel, type MatchTimeMode } from "@/lib/matchTime";
 import { inferPickType, isMatchClosed, predictionClosesAt, type GroupPick, type PredictionPickType } from "@/lib/scoring";
 import { teamFlagEmoji } from "@/lib/teamFlags";
 import { teamDisplayName } from "@/lib/teamNames";
@@ -297,6 +297,7 @@ function PredictionsContent() {
               const awayTeam = getDisplayTeam(match, "away");
               const teamsKnown = match.isResolved !== false;
               const isLive = match.status === "live";
+              const inPlay = isMatchInPlay(match);
               const hasResult = match.status === "finished";
               const isCorrect = prediction?.isCorrect;
               const options = getPickOptions(match, pickType, homeTeam, awayTeam);
@@ -304,9 +305,9 @@ function PredictionsContent() {
               // Card state classes
               const cardClass = [
                 "panel stack matchCard",
-                closed && !isLive ? "matchCard--closed" : "",
+                closed && !inPlay ? "matchCard--closed" : "",
                 !teamsKnown ? "matchCard--tbd" : "",
-                isLive ? "matchCard--live" : "",
+                inPlay ? "matchCard--live" : "",
                 hasResult && isCorrect === true ? "matchCard--correct" : "",
                 hasResult && isCorrect === false ? "matchCard--wrong" : "",
               ].filter(Boolean).join(" ");
@@ -319,8 +320,8 @@ function PredictionsContent() {
                 >
                   {/* ── Cabecera: estado y tipo ─────────── */}
                   <div className="cluster">
-                    {isLive ? (
-                      <span className="liveBadge"><span className="liveDot" aria-hidden />EN VIVO</span>
+                    {inPlay ? (
+                      <span className="liveBadge"><span className="liveDot" aria-hidden />{isLive ? "EN VIVO" : "Partido en juego"}</span>
                     ) : closed ? (
                       <span className="closedBadge"><Lock size={12} aria-hidden /> Cerrado</span>
                     ) : !teamsKnown ? (
@@ -381,7 +382,7 @@ function PredictionsContent() {
                         <span className="pickResultLabel">{labelPick(prediction, homeTeam, awayTeam)}</span>
                         {prediction.isCorrect === true && <span className="pickCorrectTag">✓ +1 acierto</span>}
                         {prediction.isCorrect === false && <span className="pickWrongTag">✗ sin acierto</span>}
-                        {prediction.isCorrect === null && <span className="muted" style={{ fontSize: "0.8rem" }}>Resultado pendiente</span>}
+                        {prediction.isCorrect === null && <span className="muted" style={{ fontSize: "0.8rem" }}>{inPlay ? "Partido en juego" : "Resultado pendiente"}</span>}
                       </div>
                     ) : (
                       <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>No registraste una elección antes del cierre.</p>
