@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generateResultsCsv } from "@/lib/resultsExport";
+import { generateGroupPredictionsCsv, generateResultsCsv } from "@/lib/resultsExport";
 import type { Group, Match } from "@/types";
 
 describe("generateResultsCsv", () => {
@@ -32,5 +32,47 @@ describe("generateResultsCsv", () => {
     expect(csv).toContain("partido,,,1,Fase de grupos,A,México,Canadá");
     expect(csv).toContain("pronostico,Padel,Oswy,1,Fase de grupos,A,México,Canadá");
     expect(csv).toContain("HOME,si,1,1000,paid");
+  });
+});
+
+describe("generateGroupPredictionsCsv", () => {
+  const group = { id: "g1", name: "Padel", currency: "MXN", contributionAmount: 500, predictionVisibility: "BEFORE_CLOSE" } as Group;
+
+  it("exports the 90-minute score for group stage matches even if winnerTeam is set (legacy data)", () => {
+    const matches = [{
+      id: "m1",
+      matchNumber: 1,
+      phase: "Fase de grupos",
+      fifaGroup: "A",
+      homeTeam: "Mexico",
+      awayTeam: "Canada",
+      kickoffAt: new Date("2026-06-11T19:00:00Z"),
+      status: "finished",
+      homeGoals90: 2,
+      awayGoals90: 1,
+      winnerTeam: "Mexico"
+    } as Match];
+
+    const csv = generateGroupPredictionsCsv(matches, [], [], group);
+    expect(csv).toContain("2-1");
+    expect(csv).not.toContain("Avanza");
+  });
+
+  it("exports the advancing team for knockout matches", () => {
+    const matches = [{
+      id: "m73",
+      matchNumber: 73,
+      phase: "Ronda de 32",
+      homeTeam: "Mexico",
+      awayTeam: "Canada",
+      kickoffAt: new Date("2026-06-29T19:00:00Z"),
+      status: "finished",
+      homeGoals90: 1,
+      awayGoals90: 1,
+      winnerTeam: "Mexico"
+    } as Match];
+
+    const csv = generateGroupPredictionsCsv(matches, [], [], group);
+    expect(csv).toContain("Avanza: Mexico");
   });
 });

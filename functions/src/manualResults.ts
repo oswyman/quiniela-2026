@@ -327,7 +327,9 @@ export const upsertManualResult = onCall<ManualResultInput>(async (request) => {
     awayPenaltyGoals,
     finalHomeGoals: nullableNumber(input.finalHomeGoals) ?? finalHomeGoals,
     finalAwayGoals: nullableNumber(input.finalAwayGoals) ?? finalAwayGoals,
-    winnerTeam: isGroupStage ? inferWinnerTeam(before, { homeGoals90, awayGoals90 }) : input.winnerTeam || inferWinnerTeam(before, { ...input, finalHomeGoals: nullableNumber(input.finalHomeGoals) ?? finalHomeGoals, finalAwayGoals: nullableNumber(input.finalAwayGoals) ?? finalAwayGoals }),
+    // winnerTeam solo aplica a eliminación directa ("equipo que avanza");
+    // en fase de grupos el resultado canónico son los goles a 90 min.
+    winnerTeam: isGroupStage ? null : input.winnerTeam || inferWinnerTeam(before, { ...input, finalHomeGoals: nullableNumber(input.finalHomeGoals) ?? finalHomeGoals, finalAwayGoals: nullableNumber(input.finalAwayGoals) ?? finalAwayGoals }),
     provider: "manual",
     resultSource: "manual",
     resultUpdatedBy: request.auth.uid,

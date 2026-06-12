@@ -106,7 +106,7 @@ function GroupPredictionsContent() {
     if (match.status !== "finished") return "";
     const home = getDisplayTeam(match, "home");
     const away = getDisplayTeam(match, "away");
-    if (match.winnerTeam) {
+    if (match.winnerTeam && inferPickType(match) === "ADVANCING_TEAM") {
       return `Avanza: ${teamDisplayName(match.winnerTeam)}`;
     }
     if (typeof match.homeGoals90 === "number" && typeof match.awayGoals90 === "number") {

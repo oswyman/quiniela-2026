@@ -10,6 +10,7 @@ import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
 import { getGroup, listMatches, listPredictions } from "@/lib/firebase/firestore";
 import { getMatchTitle } from "@/lib/matchDisplay";
+import { inferPickType } from "@/lib/scoring";
 import { teamDisplayName } from "@/lib/teamNames";
 import { teamFlagEmoji } from "@/lib/teamFlags";
 import { toDate } from "@/lib/format";
@@ -290,7 +291,7 @@ function ResultsContent() {
 }
 
 function ResultCell({ match, live }: { match: Match; live?: boolean }) {
-  if (!live && match.winnerTeam) {
+  if (!live && match.winnerTeam && inferPickType(match) === "ADVANCING_TEAM") {
     return <span>{teamFlagEmoji(match.winnerTeam)} {teamDisplayName(match.winnerTeam)} avanza</span>;
   }
   if (match.homeGoals90 !== undefined && match.homeGoals90 !== null) {

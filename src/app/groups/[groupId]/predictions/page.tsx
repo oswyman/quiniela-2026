@@ -448,7 +448,7 @@ function PredictionsContent() {
                   {(hasResult || isLive) && (match.homeGoals90 !== null && match.homeGoals90 !== undefined) ? (
                     <div className={`matchResultBadge${isLive ? " matchResultBadge--live" : isCorrect === true ? " matchResultBadge--correct" : isCorrect === false ? " matchResultBadge--wrong" : ""}`}>
                       <span className="matchResultLabel">{isLive ? "Marcador" : "Resultado final"}</span>
-                      {match.winnerTeam
+                      {pickType === "ADVANCING_TEAM" && match.winnerTeam
                         ? <span className="matchResultScore">{teamFlagEmoji(match.winnerTeam)} {teamDisplayName(match.winnerTeam)} <span className="matchResultLabel">avanza</span></span>
                         : <span className="matchResultScore">{match.homeGoals90} <span className="matchResultSep">-</span> {match.awayGoals90 ?? "?"}</span>
                       }

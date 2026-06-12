@@ -16,7 +16,7 @@ import { getGroup, listMatches, listMembers, listPredictions, listPrizes, listSc
 import { getMatchTitle } from "@/lib/matchDisplay";
 import { teamDisplayName } from "@/lib/teamNames";
 import { formatMatchTime, matchTimeLabel, type MatchTimeMode } from "@/lib/matchTime";
-import { isMatchClosed, predictionClosesAt } from "@/lib/scoring";
+import { inferPickType, isMatchClosed, predictionClosesAt } from "@/lib/scoring";
 import { getUserTimeZone } from "@/lib/timezone";
 import type { Group, Match, Member, Prediction, Score } from "@/types";
 
@@ -169,19 +169,20 @@ function GroupContent() {
                   {finished.map((match) => {
                     const home = getMatchTitle(match).split(" vs ")[0];
                     const away = getMatchTitle(match).split(" vs ")[1];
+                    const showAdvance = Boolean(match.winnerTeam) && inferPickType(match) === "ADVANCING_TEAM";
                     return (
                       <div className="resultCard" key={match.id}>
                         <span className="pill" style={{ fontSize: "0.7rem", marginBottom: 4 }}>{match.phase}</span>
                         <div className="resultCardTeams">
                           <span className="resultCardTeam">{home}</span>
-                          {match.winnerTeam
+                          {showAdvance
                             ? <span className="resultCardScore">Avanza</span>
                             : <span className="resultCardScore">{match.homeGoals90 ?? "?"} - {match.awayGoals90 ?? "?"}</span>
                           }
                           <span className="resultCardTeam">{away}</span>
                         </div>
-                        {match.winnerTeam && (
-                          <p className="muted" style={{ margin: "4px 0 0", fontSize: "0.75rem", textAlign: "center" }}>{teamDisplayName(match.winnerTeam)}</p>
+                        {showAdvance && (
+                          <p className="muted" style={{ margin: "4px 0 0", fontSize: "0.75rem", textAlign: "center" }}>{teamDisplayName(match.winnerTeam as string)}</p>
                         )}
                       </div>
                     );

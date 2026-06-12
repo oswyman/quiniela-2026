@@ -1,7 +1,7 @@
 import { formatDate } from "./format";
 import { getDisplayTeam } from "./matchDisplay";
 import { rankScores } from "./prizes";
-import { isMatchClosed } from "./scoring";
+import { inferPickType, isMatchClosed } from "./scoring";
 import { toDate } from "./format";
 import type { Group, Match, Member, Prediction, Prize, Score } from "@/types";
 
@@ -102,7 +102,7 @@ export function generateGroupPredictionsCsv(
     const closed = isMatchClosed(toDate(match.kickoffAt));
 
     const resultado =
-      match.winnerTeam
+      match.winnerTeam && inferPickType(match) === "ADVANCING_TEAM"
         ? `Avanza: ${match.winnerTeam}`
         : typeof match.homeGoals90 === "number" && typeof match.awayGoals90 === "number"
         ? `${home} ${match.homeGoals90}-${match.awayGoals90} ${away}`
