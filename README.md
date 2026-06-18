@@ -94,7 +94,7 @@ Funciones principales:
 
 - `createAdminInvite`: `platform_admin` crea invitaciones email-bound para administradores de grupo.
 - `createParticipantInvite` / `createInvite`: `group_admin` invita participantes por correo.
-- `acceptInvite`: valida codigo, email autenticado, expiracion y deadline de registro.
+- `acceptInvite`: valida codigo, email autenticado, expiracion, cupo de la invitacion y membresia duplicada.
 - `createGroup`: crea grupo + miembro admin de forma consistente.
 - `updateGroup`: edita reglas del grupo antes del inicio del Mundial.
 - `deleteGroup`: cancela grupo antes del inicio del Mundial.
@@ -124,7 +124,7 @@ Las variables de proveedor de resultados con secretos no deben exponerse al clie
 3. El administrador crea su grupo y configura moneda, aportacion, responsable del dinero y visibilidad de pronosticos.
 4. El administrador invita participantes por correo desde `/groups/[groupId]/admin`.
 5. Los participantes aceptan la invitacion y solo pueden entrar si el email autenticado coincide.
-6. El registro del grupo cierra 90 minutos antes del primer partido del Mundial.
+6. Un participante puede unirse al grupo durante el torneo.
 7. Cada pronostico cierra por partido cuando `now >= match.kickoffAt`.
 8. El ranking muestra aciertos, empates reales y premios estimados.
 
@@ -149,7 +149,7 @@ Campos configurables:
 4. Comparte la liga `/join/[inviteCode]` por correo o canal externo.
 5. El participante crea cuenta o inicia sesion con exactamente ese correo.
 
-No se aceptan registros libres al grupo. Despues del deadline de registro, Functions rechaza crear o aceptar invitaciones y registra auditoria.
+No se aceptan registros libres al grupo. Las invitaciones pueden aceptarse durante el torneo; los partidos ya cerrados no se pueden pronosticar.
 
 ## Como capturar pronosticos
 

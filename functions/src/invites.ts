@@ -2,7 +2,6 @@ import { randomBytes } from "crypto";
 import { getFirestore, FieldValue, Timestamp } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { writeAuditLog } from "./audit";
-import { isAfterTimestamp, resolveRegistrationDeadline } from "./tournament";
 
 function code() {
   // Criptográficamente seguro: 16^10 ≈ 1 billón de combinaciones
@@ -48,6 +47,8 @@ export const createParticipantInvite = onCall<InviteInput>(async (request) => {
   const groupSnap = await getFirestore().doc(`groups/${groupId}`).get();
   const group = groupSnap.data();
   if (!group) throw new HttpsError("not-found", "Grupo no encontrado.");
+  // Joining a group stays open during the tournament. Competitive fairness is
+  // enforced per match in submitPrediction, not by a global registration cutoff.
 
   return createInviteRecord({
     actorUid: request.auth.uid,
@@ -72,6 +73,8 @@ export const createOpenInvite = onCall<{ groupId: string }>(async (request) => {
   const groupSnap = await getFirestore().doc(`groups/${groupId}`).get();
   const group = groupSnap.data();
   if (!group) throw new HttpsError("not-found", "Grupo no encontrado.");
+  // Open links can be generated after kickoff; closed matches remain protected
+  // by the per-match prediction deadline.
 
   const db = getFirestore();
   const inviteCode = code();
@@ -181,6 +184,8 @@ export const acceptInvite = onCall(async (request) => {
   if (inviteData.groupId) {
     const groupSnap = await db.doc(`groups/${inviteData.groupId}`).get();
     if (!groupSnap.exists) throw new HttpsError("not-found", "Grupo no encontrado.");
+    // Intentionally no registrationDeadlineAt / tournament-start check here:
+    // users may join late, but cannot predict matches that already closed.
   }
 
   const userRef = db.doc(`users/${request.auth.uid}`);

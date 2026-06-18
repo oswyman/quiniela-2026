@@ -487,13 +487,13 @@ function PlatformAdminContent() {
         <section className="panel tableWrap">
           <h2>Grupos comerciales</h2>
           <table>
-            <thead><tr><th>Grupo</th><th className="cell-nowrap">Estado</th><th className="cell-nowrap">Cierre registro</th><th className="cell-nowrap">Aportación</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>Grupo</th><th className="cell-nowrap">Estado</th><th className="cell-nowrap">Ingreso</th><th className="cell-nowrap">Aportación</th><th>Acciones</th></tr></thead>
             <tbody>
               {groups.map((group) => (
                 <tr key={group.id}>
                   <td>{group.name}</td>
                   <td className="cell-nowrap">{group.status}</td>
-                  <td className="cell-nowrap">{formatDate(group.registrationDeadlineAt)}</td>
+                  <td className="cell-nowrap">Abierto durante torneo</td>
                   <td className="cell-nowrap">{group.currency} {group.contributionAmount}</td>
                   <td>
                     <div className="cluster">
@@ -641,7 +641,7 @@ function TournamentConfigForm({ tournament, busy, onSubmit }: { tournament: Tour
       <h2>Configuración del torneo</h2>
       <form className="formGrid" onSubmit={onSubmit}>
         <div className="field"><label htmlFor="firstKickoffAt">Primer kickoff</label><input id="firstKickoffAt" name="firstKickoffAt" type="datetime-local" defaultValue={toDateTimeLocal(tournament?.firstKickoffAt)} required /></div>
-        <div className="field"><label htmlFor="registrationCutoffMinutes">Cierre de registro (min)</label><input id="registrationCutoffMinutes" name="registrationCutoffMinutes" type="number" min="1" defaultValue={tournament?.registrationCutoffMinutes ?? 90} required /></div>
+        <div className="field"><label htmlFor="registrationCutoffMinutes">Corte legacy (min)</label><input id="registrationCutoffMinutes" name="registrationCutoffMinutes" type="number" min="1" defaultValue={tournament?.registrationCutoffMinutes ?? 90} required /></div>
         <div className="field"><label htmlFor="resultsMode">Modo resultados</label><select id="resultsMode" name="resultsMode" defaultValue={tournament?.resultsMode ?? "manual"}><option value="manual">Manual oficial</option><option value="api-football">API-Football opcional</option><option value="mock">Mock pruebas</option><option value="sportmonks">Sportmonks legado</option></select></div>
         <button className="button" disabled={busy === "tournament"} type="submit">Guardar</button>
       </form>

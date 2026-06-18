@@ -9,7 +9,7 @@ import { PageTitle } from "@/components/PageTitle";
 import { StatusMessage } from "@/components/StatusMessage";
 import { useAuthUser } from "@/components/useAuthUser";
 import { createOpenInvite, deleteGroup, getGroup, getMyMember, getProviderStatus, getUserProfile, listMembers, listOpenInvites, recalculateGroupScores, revokeOpenInvite, syncFixturesFromProvider, syncLiveResultsFromProvider, updateGroup, updateMemberRole, updatePaymentStatus } from "@/lib/firebase/firestore";
-import { formatDate, formatMoney } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 import { isPlatformAdmin } from "@/lib/permissions";
 import type { Group, Invite, Member, ProviderStatus, UserProfile } from "@/types";
 
@@ -221,7 +221,7 @@ function GroupAdminContent() {
         <MetricCard label="Participantes" value={members.length} detail="Miembros registrados en el grupo" />
         <MetricCard label="Pagos manuales" value={`${paidMembers}/${members.length}`} detail="Sin procesar pagos en la plataforma" />
         <MetricCard label="Bolsa estimada" value={formatMoney(pool, group.currency)} detail="Solo registro administrativo" />
-        <MetricCard label="Cierre registro" value={formatDate(group.registrationDeadlineAt)} detail="90 min antes del primer partido" />
+        <MetricCard label="Ingreso al grupo" value="Abierto" detail="Los links funcionan durante el torneo" />
         <MetricCard label="Proveedor" value={providerStatus?.provider ?? "manual"} detail={providerStatus?.message ?? "Sin sync registrada"} />
       </div>
       <div className="toolbar panel">
@@ -231,7 +231,7 @@ function GroupAdminContent() {
       </div>
       <section className="panel stack">
         <h2>Links de invitación</h2>
-        <p className="muted">Genera un link compartible. Cualquiera con el link puede unirse al grupo hasta el cierre del registro.</p>
+        <p className="muted">Genera un link compartible. Cualquiera con el link puede unirse durante el torneo; solo podrá pronosticar partidos que sigan abiertos.</p>
         <button className="button" disabled={generatingLink} onClick={onGenerateLink} type="button">
           {generatingLink ? "Generando..." : "Generar nuevo link"}
         </button>
