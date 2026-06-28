@@ -1,6 +1,7 @@
 import { getFirestore, FieldValue, Timestamp } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { writeAuditLog } from "./audit";
+import { buildKnockoutBracketPayload, FULL_KNOCKOUT_BRACKET } from "./knockoutBracket";
 import { resolveKnockoutMatchesInFirestore } from "./knockout";
 import { getRoundOf32Readiness } from "./roundOf32";
 import { buildRoundOf32Assignments, calculateStandings } from "./standings";
@@ -136,6 +137,83 @@ export const resolveKnockoutMatches = onCall(async (request) => {
     after: result
   });
   return result;
+});
+
+export const publishFullKnockoutBracket = onCall(async (request) => {
+  if (!request.auth || !(await isPlatformAdmin(request.auth.uid))) throw new HttpsError("permission-denied", "Solo platform_admin.");
+  const db = getFirestore();
+  const existingSnap = await db.collection("matches")
+    .where("matchNumber", ">=", 73)
+    .where("matchNumber", "<=", 104)
+    .get();
+  const existingByNumber = new Map<number, FirebaseFirestore.QueryDocumentSnapshot>();
+  for (const doc of existingSnap.docs) {
+    const matchNumber = nullableNumber(doc.data().matchNumber);
+    if (matchNumber !== null) existingByNumber.set(matchNumber, doc);
+  }
+
+  const batch = db.batch();
+  let created = 0;
+  let updated = 0;
+  let published = 0;
+  let sourced = 0;
+
+  for (const bracketMatch of FULL_KNOCKOUT_BRACKET) {
+    const existingDoc = existingByNumber.get(bracketMatch.matchNumber);
+    const existing = existingDoc?.data();
+    const ref = existingDoc?.ref ?? db.doc(`matches/manual-2026-${bracketMatch.matchNumber}`);
+    const base = buildKnockoutBracketPayload(bracketMatch);
+    const isSourced = base.homeSourceMatchNumber !== null || base.awaySourceMatchNumber !== null;
+    const shouldPreserveResolution = isSourced && existing?.isResolved === true;
+    const shouldPreserveResultStatus = ["finished", "live", "cancelled"].includes(String(existing?.status ?? ""));
+    const patch = {
+      ...base,
+      providerMatchId: ref.id,
+      kickoffAt: Timestamp.fromDate(base.kickoffAt),
+      status: shouldPreserveResultStatus ? existing?.status : base.status,
+      resolvedHomeTeam: shouldPreserveResolution ? existing?.resolvedHomeTeam ?? null : base.resolvedHomeTeam,
+      resolvedAwayTeam: shouldPreserveResolution ? existing?.resolvedAwayTeam ?? null : base.resolvedAwayTeam,
+      isResolved: shouldPreserveResolution ? true : base.isResolved,
+      isPublishedToParticipants: shouldPreserveResolution ? existing?.isPublishedToParticipants === true : base.isPublishedToParticipants,
+      publishedAt: !isSourced
+        ? existing?.publishedAt ?? FieldValue.serverTimestamp()
+        : existing?.publishedAt ?? null,
+      publishedBy: !isSourced
+        ? existing?.publishedBy ?? request.auth.uid
+        : existing?.publishedBy ?? null,
+      updatedAt: FieldValue.serverTimestamp(),
+      lastSyncedAt: FieldValue.serverTimestamp()
+    };
+    batch.set(ref, patch, { merge: true });
+    if (existingDoc) updated += 1;
+    else created += 1;
+    if (isSourced) sourced += 1;
+    else published += 1;
+  }
+
+  batch.set(db.doc("systemConfig/providerStatus"), {
+    provider: "manual",
+    status: "healthy",
+    message: "Llave de eliminación directa publicada",
+    updatedAt: FieldValue.serverTimestamp()
+  }, { merge: true });
+  await batch.commit();
+  const knockout = await resolveKnockoutMatchesInFirestore(db);
+  await writeAuditLog({
+    actorUid: request.auth.uid,
+    action: "publishFullKnockoutBracket",
+    entityType: "match",
+    entityId: "knockout",
+    after: {
+      created,
+      updated,
+      published,
+      sourced,
+      knockoutResolved: knockout.updated,
+      matchNumbers: FULL_KNOCKOUT_BRACKET.map((match) => match.matchNumber)
+    }
+  });
+  return { created, updated, total: FULL_KNOCKOUT_BRACKET.length, published, sourced, knockoutResolved: knockout.updated };
 });
 
 export const upsertManualMatch = onCall<ManualMatchInput>(async (request) => {

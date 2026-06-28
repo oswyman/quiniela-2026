@@ -30,7 +30,7 @@ Siempre ejecutar `npm run build` y `npm test` antes de reportar una tarea como c
 | `src/app/globals.css` | Sistema de diseño completo (tokens CSS + componentes). Ver `DESIGN.md` |
 | `src/components/` | Header, GroupNav, EmptyState, Toast, StatusMessage, AuthGate, ThemeToggle, skeletons |
 | `src/lib/` | Lógica cliente: `scoring.ts`, `prizes.ts`, `deadlines.ts`, `calendar.ts`, `fixtureCsv.ts`, `matchTime.ts`, `firebase/` |
-| `functions/src/` | Cloud Functions: `groups.ts`, `invites.ts`, `predictions.ts`, `manualResults.ts`, `scoring.ts`, `prizes.ts`, `standings.ts`, `roundOf32.ts`, `knockout.ts`, `knockoutResolution.ts`, `resultsSync.ts`, `audit.ts` |
+| `functions/src/` | Cloud Functions: `groups.ts`, `invites.ts`, `predictions.ts`, `manualResults.ts`, `scoring.ts`, `prizes.ts`, `standings.ts`, `roundOf32.ts`, `knockout.ts`, `knockoutBracket.ts`, `knockoutResolution.ts`, `resultsSync.ts`, `audit.ts` |
 | `tests/` | Vitest de lógica pura (scoring, prizes, deadlines, csv, calendar, standings) |
 | `docs/` | `go-live-plan.md`, `testing-checklist.md`, template CSV de fixtures |
 | `firestore.rules` | Reglas de seguridad. Nunca modificar sin revisar todas las queries del cliente |
@@ -56,7 +56,9 @@ El cliente **nunca escribe** `scores`, `prizes`, `matches`, `auditLogs` — siem
 `functions/src/standings.ts` → `THIRD_PLACE_LOOKUP`: tabla con las 4 combinaciones posibles del Torneo 2026. Mapea grupo avanzante → slot (matchNumbers 74,77,79,80,81,82,85,87). Si la combinación no está en la tabla → `needsReview: true` en todos los slots de terceros. Tests en `tests/roundOf32.test.ts`.
 
 ### Publicación de llaves
-`functions/src/roundOf32.ts` calcula si la Ronda de 32 está lista: deben estar finalizados los 72 partidos de grupos, existir 16 asignaciones y no haber revisión pendiente. `confirmRoundOf32Resolution` requiere confirmación de `platform_admin`; no publicar automáticamente esta ronda. Después de confirmar Ronda de 32, `functions/src/knockoutResolution.ts` propaga ganadores/perdedores de 89 a 104 y marca cruces resueltos como `isPublishedToParticipants: true` para que puedan pronosticarse.
+`functions/src/knockoutBracket.ts` contiene la carga operativa de eliminación directa: partidos 73-104 con hora local, zona horaria y sede. `publishFullKnockoutBracket` es una acción explícita de `platform_admin`: publica 73-88 para pronósticos y deja 89-104 con seeds `Match N Winner/Loser`. Al capturar resultados, `functions/src/knockoutResolution.ts` propaga ganadores/perdedores y marca cruces resueltos como `isPublishedToParticipants: true` para que puedan pronosticarse.
+
+`functions/src/roundOf32.ts` y `confirmRoundOf32Resolution` siguen disponibles como respaldo si se necesita recalcular la Ronda de 32 desde standings. No usar ese flujo para sobrescribir una llave ya confirmada sin revisión manual.
 
 ### Incidente predictionVisibility
 NO reintroducir la regla Firestore que filtra `predictions` por `predictionVisibility` — rompió producción (revert commit 1609999). Causa: las queries de colección sin filtro `where` son denegadas por reglas con condiciones por-documento. El filtrado de picks ajenos va en el cliente.

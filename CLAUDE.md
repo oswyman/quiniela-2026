@@ -28,7 +28,7 @@ npm run emulator:dev     # Next.js apuntando a emuladores (.env.local.emulator)
 | `src/app/globals.css` | TODO el sistema de diseño (tokens + componentes). Ver DESIGN.md |
 | `src/components/` | Header, GroupNav, EmptyState, Toast, StatusMessage, AuthGate, ThemeToggle, skeletons, etc. |
 | `src/lib/` | Lógica de cliente: `scoring.ts` (cierres, picks), `prizes.ts` (ranking), `calendar.ts` (export iCal), `fixtureCsv.ts`, `matchTime.ts`, `firebase/` |
-| `functions/src/` | Cloud Functions: groups, invites, predictions, scoring, prizes, standings, roundOf32, knockout, knockoutResolution, manualResults, resultsSync, audit |
+| `functions/src/` | Cloud Functions: groups, invites, predictions, scoring, prizes, standings, roundOf32, knockout, knockoutBracket, knockoutResolution, manualResults, resultsSync, audit |
 | `tests/` | Vitest de lógica pura (scoring, prizes, deadlines, csv, calendar, standings) |
 | `docs/` | go-live-plan.md, testing-checklist.md, backup-setup.md, template CSV de fixtures |
 | `audit-la-cancha-*.md` | Auditorías pre-producción (la última: 2026-06-09, GO CONDICIONAL 73/100) |
@@ -52,7 +52,9 @@ NO reintroducir la regla de Firestore que filtraba lectura de `predictions` por 
 El orden de columnas de la tabla FIFA está por **grupo ganador** (A→M79, B→M85, D→M81, E→M74, G→M82, I→M77, K→M87, L→M80).
 
 ### Publicación de llaves
-`functions/src/roundOf32.ts` calcula la compuerta de confirmación: 72 partidos de grupos finalizados, 16 cruces propuestos y cero revisión pendiente. `confirmRoundOf32Resolution` sigue siendo una acción explícita de `platform_admin`; no publicar Ronda de 32 sin intervención. Después de confirmarla, `functions/src/knockoutResolution.ts` resuelve automáticamente cruces 89-104 al capturar resultados y publica cada cruce resuelto con `isPublishedToParticipants: true`.
+`functions/src/knockoutBracket.ts` contiene la carga operativa 73-104 con hora local, zona horaria y sede. `publishFullKnockoutBracket` es una acción explícita de `platform_admin`: deja 73-88 publicados para pronósticos y 89-104 programados con seeds `Match N Winner/Loser`. Al capturar resultados, `functions/src/knockoutResolution.ts` resuelve automáticamente los cruces siguientes y publica cada cruce resuelto con `isPublishedToParticipants: true`.
+
+`functions/src/roundOf32.ts` y `confirmRoundOf32Resolution` quedan como respaldo para recalcular Ronda de 32 desde standings. No usar ese flujo para reemplazar una llave ya cargada sin revisión manual.
 
 ### Diseño
 - Leer `PRODUCT.md` (estrategia/marca) y `DESIGN.md` (sistema visual, tokens, do's & don'ts) antes de tocar UI.

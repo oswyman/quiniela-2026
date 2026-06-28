@@ -230,12 +230,17 @@ export async function bulkUpsertManualMatches(input: {
 }
 
 export async function upsertManualResult(input: Partial<Match> & { matchId: string }) {
-  const callable = httpsCallable<typeof input, { ok: boolean; knockoutResolved: number; roundOf32: RoundOf32Readiness }>(functions, "upsertManualResult");
+  const callable = httpsCallable<typeof input, { ok: boolean; knockoutResolved: number; roundOf32?: RoundOf32Readiness }>(functions, "upsertManualResult");
   return callable(input);
 }
 
 export async function resolveKnockoutMatches() {
   const callable = httpsCallable<Record<string, never>, { updated: number }>(functions, "resolveKnockoutMatches");
+  return callable({});
+}
+
+export async function publishFullKnockoutBracket() {
+  const callable = httpsCallable<Record<string, never>, { created: number; updated: number; total: number; published: number; sourced: number; knockoutResolved: number }>(functions, "publishFullKnockoutBracket");
   return callable({});
 }
 

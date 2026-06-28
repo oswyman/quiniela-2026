@@ -101,6 +101,7 @@ Funciones principales:
 - `submitPrediction`: valida kickoff con hora de servidor, guarda pronostico y registra auditoria.
 - `upsertManualMatch`: `platform_admin` carga o edita fixtures manuales.
 - `upsertManualResult`: `platform_admin` captura resultados manuales.
+- `publishFullKnockoutBracket`: `platform_admin` publica partidos 73-104 con horarios, sedes y dependencias automaticas. Los partidos 73-88 quedan abiertos para pronosticos; 89-104 se publican cuando sus equipos se resuelven.
 - `recalculateGroupScores` / `updateGroupRanking`: recalcula aciertos, ranking y premios.
 - `syncFixturesFromProvider` / `syncLiveResultsFromProvider`: sync opcional de proveedor.
 - `scheduledFixturesSync` / `scheduledLiveResultsSync`: programadas, utiles solo si el proveedor no es `manual` ni `disabled`.
@@ -178,10 +179,11 @@ En `/admin`, un `platform_admin` puede:
 - Crear o editar partidos.
 - Capturar marcador a 90 minutos.
 - Capturar marcador tras tiempos extra y penales cuando aplique.
+- Publicar la llave completa 73-104 con horarios y sedes ya cargados. Esta accion deja 73-88 disponibles para pronosticos y mantiene 89-104 como cruces automaticos hasta que haya ganadores o perdedores definidos.
 - Generar propuesta de ronda de 32 cuando los 72 partidos de grupos esten finalizados.
 - Confirmar ronda de 32 despues de revisar clasificados, horarios y sedes. Esta publicacion requiere intervencion del superadmin.
 - Capturar ganador.
-- Resolver llaves eliminatorias de octavos en adelante con los ganadores/perdedores de partidos previos. Despues de confirmar ronda de 32, los cruces 89-104 se publican automaticamente cuando ambos equipos quedan definidos.
+- Resolver llaves eliminatorias de octavos en adelante con los ganadores/perdedores de partidos previos. Los cruces 89-104 se publican automaticamente cuando ambos equipos quedan definidos.
 - Descargar un calendario `.ics` de los 104 partidos para importarlo en Google Calendar.
 - Recalcular rankings por grupo.
 
@@ -206,7 +208,7 @@ Reglas de horarios:
 - `localDate`, `localTime` y `timezone` son obligatorios.
 - La app convierte esa hora local a `kickoffAt` UTC en Cloud Functions.
 - La UI muestra hora CDMX, hora local del usuario y hora sede cuando existe `sourceTimezone`.
-- La eliminatoria directa guarda placeholders como `Match 101 Winner`. Ronda de 32 requiere confirmacion manual; de 89 a 104 se actualizan y publican al capturar resultados previos.
+- La eliminatoria directa guarda placeholders como `Match 101 Winner` y `Match 101 Loser`. La carga operativa actual publica 73-88 con equipos reales y programa 89-104 con dependencias automaticas.
 - La fuente recomendada es el calendario oficial FIFA: https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/match-schedule-fixtures-results-teams-stadiums
 
 Despues de actualizar resultados, ejecuta `recalculateGroupScores`.

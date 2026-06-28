@@ -15,7 +15,7 @@
 | App Check key en Vercel | ⬜ Por verificar | ⬜ Pendiente |
 | Alertas de error | ⬜ | ⬜ Pendiente |
 | Checklist manual | ⬜ | ⬜ Pendiente |
-| Flujo de llaves 73-104 | ⬜ Manual parcial | ✅ Código actualizado: Ronda de 32 queda lista para confirmación manual; 89-104 se publican automáticamente al resolverse |
+| Flujo de llaves 73-104 | ⬜ Manual parcial | ✅ Código actualizado: `publishFullKnockoutBracket` publica 73-88 para pronósticos y deja 89-104 automáticos con horarios y sedes |
 | 🆕 Bug de enmascaramiento de errores | — | 🆕 Detectado en el incidente: en `predictions/page.tsx` el guard `!group` (L183) corre antes que `loadError` (L205) → errores de permisos se muestran como "Grupo no encontrado" |
 
 **Bloqueo operativo:** el deploy local de functions falla porque la máquina está en swap pesado (6.5/8 GB; firebase CLI hace OOM/timeout). Se resuelve liberando RAM o reiniciando.
@@ -47,7 +47,7 @@
 | # | Acción | Cómo | Tiempo |
 |---|---|---|---|
 | C1 | Ejecutar `docs/testing-checklist.md` completo | iOS Safari + Android Chrome reales, con fecha y resultado por ítem; incluir: pagos (A3 ampliado), invites, pronóstico al límite, offline/PWA | 3-4 h |
-| C1.1 | QA de llaves eliminatorias | Completar flujo 5: Ronda de 32 requiere confirmación manual; 89-104 se publican al capturar resultados previos | 45 min |
+| C1.1 | QA de llaves eliminatorias | Completar flujo 5: publicar llave completa 73-104, confirmar que 73-88 aceptan pronósticos y que 89-104 se publican al capturar resultados previos | 45 min |
 | C2 | Decisión GO/NO-GO | Si C1 pasa sin bloqueantes → GO | — |
 
 ### 🔵 Fase D — Post-launch (Horizonte 2 del audit)

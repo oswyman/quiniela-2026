@@ -59,9 +59,10 @@ Marcar cada ítem con ✅ (pasa), ❌ (falla — registrar bug) o ⚠️ (pasa c
 - [ ] 5.2 Una vez publicado (isPublishedToParticipants = true), el partido aparece con los equipos correctos
 - [ ] 5.3 Participante puede elegir uno de los dos equipos del partido
 - [ ] 5.4 Intentar enviar un equipo que no sea de los dos válidos devuelve error
-- [ ] 5.5 Al terminar los 72 partidos de grupos, `/admin` muestra la Ronda de 32 lista para confirmación, pero no la publica sin click del superadmin
-- [ ] 5.6 Después de confirmar Ronda de 32, capturar resultados de eliminación directa publica automáticamente los siguientes cruces cuando ambos equipos quedan definidos
-- [ ] 5.7 Si la propuesta de Ronda de 32 requiere revisión manual, el botón de confirmación queda bloqueado y muestra el motivo
+- [ ] 5.5 En `/admin`, el superadmin puede usar "Publicar llave completa" y se crean/actualizan los partidos 73-104 con horario y sede
+- [ ] 5.6 Después de publicar la llave completa, los partidos 73-88 aparecen disponibles para pronósticos y 89-104 no aparecen hasta tener ambos equipos definidos
+- [ ] 5.7 Capturar resultados de eliminación directa publica automáticamente los siguientes cruces cuando ambos equipos quedan definidos
+- [ ] 5.8 Si se usa el respaldo de propuesta por standings, la confirmación queda bloqueada cuando requiere revisión manual y muestra el motivo
 
 ---
 
@@ -110,7 +111,8 @@ Marcar cada ítem con ✅ (pasa), ❌ (falla — registrar bug) o ⚠️ (pasa c
 - [ ] 10.2 Un usuario regular que intenta acceder a `/admin` ve pantalla de acceso denegado (no un error 500)
 - [ ] 10.3 Admin puede cargar resultado de un partido manualmente
 - [ ] 10.4 Admin puede importar fixtures desde CSV sin errores para el formato estándar
-- [ ] 10.5 La auditoría de acciones muestra las últimas operaciones correctamente
+- [ ] 10.5 Admin puede publicar la llave completa 73-104 sin duplicar partidos ya existentes
+- [ ] 10.6 La auditoría de acciones muestra las últimas operaciones correctamente
 
 ---
 

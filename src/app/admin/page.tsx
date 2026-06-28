@@ -12,7 +12,7 @@ import { Toast, createToastId, type ToastItem } from "@/components/Toast";
 import { useAuthUser } from "@/components/useAuthUser";
 import { generateWorldCupIcs } from "@/lib/calendar";
 import { db } from "@/lib/firebase/client";
-import { bulkUpsertManualMatches, confirmRoundOf32Resolution, createAdminInvite, deleteGroup, getProviderStatus, getTournamentConfig, getUserProfile, listAllGroups, listAllUsers, listMatches, listMembers, listPredictions, listPrizes, listScores, migrateLegacyScorePredictions, previewRoundOf32Resolution, recalculateGroupScores, resolveKnockoutMatches, updateTournamentConfig, upsertManualResult } from "@/lib/firebase/firestore";
+import { bulkUpsertManualMatches, confirmRoundOf32Resolution, createAdminInvite, deleteGroup, getProviderStatus, getTournamentConfig, getUserProfile, listAllGroups, listAllUsers, listMatches, listMembers, listPredictions, listPrizes, listScores, migrateLegacyScorePredictions, previewRoundOf32Resolution, publishFullKnockoutBracket, recalculateGroupScores, resolveKnockoutMatches, updateTournamentConfig, upsertManualResult } from "@/lib/firebase/firestore";
 import { parseFixtureCsv, type FixtureCsvRow } from "@/lib/fixtureCsv";
 import { formatDate } from "@/lib/format";
 import { getDisplayTeam, getMatchTitle } from "@/lib/matchDisplay";
@@ -146,14 +146,15 @@ function PlatformAdminContent() {
     try {
       const result = await upsertManualResult({ matchId: match.id, ...payload });
       await Promise.all(groups.map((group) => recalculateGroupScores(group.id).catch(() => null)));
-      setRoundOf32Readiness(result.data.roundOf32);
-      if (result.data.roundOf32.isReadyForConfirmation) {
+      const nextRoundOf32 = result.data.roundOf32 ?? null;
+      setRoundOf32Readiness(nextRoundOf32);
+      if (nextRoundOf32?.isReadyForConfirmation) {
         const preview = await previewRoundOf32Resolution();
         setStandings(preview.data.standings);
         setAssignments(preview.data.assignments);
         setRoundOf32Readiness(preview.data.readiness);
       }
-      const bracketCopy = result.data.roundOf32.isReadyForConfirmation
+      const bracketCopy = nextRoundOf32?.isReadyForConfirmation
         ? " Ronda de 32 lista para confirmar en Llaves."
         : result.data.knockoutResolved > 0
           ? ` ${result.data.knockoutResolved} cruce${result.data.knockoutResolved === 1 ? "" : "s"} publicado${result.data.knockoutResolved === 1 ? "" : "s"}.`
@@ -247,6 +248,27 @@ function PlatformAdminContent() {
       await onPreviewBracket();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo confirmar la ronda de 32.");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function onPublishFullKnockoutBracket() {
+    if (!window.confirm("Esto cargará partidos 73-104 con horarios, sedes y cruces automáticos. Los partidos 73-88 quedarán abiertos para pronósticos y 89-104 se publicarán conforme avancen equipos. ¿Continuar?")) return;
+    setBusy("publishFullBracket");
+    setError("");
+    setMessage("");
+    try {
+      const result = await publishFullKnockoutBracket();
+      pushToast({
+        type: "success",
+        title: "Llave publicada",
+        body: `${result.data.published} partidos abiertos y ${result.data.sourced} cruces automáticos programados.`
+      });
+      setMessage(`Llave cargada: ${result.data.total} partidos. Nuevos: ${result.data.created}. Actualizados: ${result.data.updated}.`);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo publicar la llave completa.");
     } finally {
       setBusy("");
     }
@@ -487,6 +509,7 @@ function PlatformAdminContent() {
               <p className="muted">La app propone top 2 por grupo y ocho mejores terceros. Si hay empates no resolubles por puntos, diferencia y goles, pedirá revisión del reglamento oficial.</p>
             </div>
             <div className="cluster">
+              <button className="button secondary" disabled={busy === "publishFullBracket"} onClick={onPublishFullKnockoutBracket} type="button">Publicar llave completa</button>
               <button className="button secondary" disabled={busy === "previewBracket"} onClick={onPreviewBracket} type="button">Generar propuesta</button>
               <button className="button" disabled={!assignments.length || busy === "confirmRound32" || !roundOf32Readiness?.isReadyForConfirmation} onClick={onConfirmRoundOf32} type="button">Confirmar ronda de 32</button>
               <button className="button secondary" disabled={busy === "resolveKnockout"} onClick={onResolveKnockout} type="button">Resolver 89-104</button>
