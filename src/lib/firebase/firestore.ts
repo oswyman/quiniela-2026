@@ -13,7 +13,7 @@ import {
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "./client";
-import type { Group, Invite, Match, Member, Prediction, PredictionPickType, ProviderStatus, RoundOf32Assignment, Score, TeamStanding, TournamentConfig, UserProfile } from "@/types";
+import type { Group, Invite, Match, Member, Prediction, PredictionPickType, ProviderStatus, RoundOf32Assignment, RoundOf32Readiness, Score, TeamStanding, TournamentConfig, UserProfile } from "@/types";
 
 export async function getUserProfile(uid: string) {
   const snap = await getDoc(doc(db, "users", uid));
@@ -230,7 +230,7 @@ export async function bulkUpsertManualMatches(input: {
 }
 
 export async function upsertManualResult(input: Partial<Match> & { matchId: string }) {
-  const callable = httpsCallable<typeof input, { ok: boolean }>(functions, "upsertManualResult");
+  const callable = httpsCallable<typeof input, { ok: boolean; knockoutResolved: number; roundOf32: RoundOf32Readiness }>(functions, "upsertManualResult");
   return callable(input);
 }
 
@@ -245,7 +245,7 @@ export async function calculateGroupStandings() {
 }
 
 export async function previewRoundOf32Resolution() {
-  const callable = httpsCallable<Record<string, never>, { standings: { groups: Record<string, TeamStanding[]>; bestThirds: TeamStanding[]; needsReview: boolean; reviewReasons: string[] }; assignments: RoundOf32Assignment[] }>(functions, "previewRoundOf32Resolution");
+  const callable = httpsCallable<Record<string, never>, { standings: { groups: Record<string, TeamStanding[]>; bestThirds: TeamStanding[]; needsReview: boolean; reviewReasons: string[] }; assignments: RoundOf32Assignment[]; readiness: RoundOf32Readiness }>(functions, "previewRoundOf32Resolution");
   return callable({});
 }
 

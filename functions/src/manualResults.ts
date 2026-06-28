@@ -2,6 +2,7 @@ import { getFirestore, FieldValue, Timestamp } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { writeAuditLog } from "./audit";
 import { resolveKnockoutMatchesInFirestore } from "./knockout";
+import { getRoundOf32Readiness } from "./roundOf32";
 import { buildRoundOf32Assignments, calculateStandings } from "./standings";
 import { zonedLocalToUtc } from "./timezone";
 
@@ -71,9 +72,11 @@ export const previewRoundOf32Resolution = onCall(async (request) => {
   const snap = await db.collection("matches").get();
   const matches = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as FirebaseFirestore.DocumentData & { id: string }));
   const standings = calculateStandings(matches as never);
+  const assignments = buildRoundOf32Assignments(matches as never, standings);
   return {
     standings,
-    assignments: buildRoundOf32Assignments(matches as never, standings)
+    assignments,
+    readiness: getRoundOf32Readiness(matches, standings, assignments)
   };
 });
 
@@ -84,6 +87,10 @@ export const confirmRoundOf32Resolution = onCall(async (request) => {
   const matches = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as FirebaseFirestore.DocumentData & { id: string }));
   const standings = calculateStandings(matches as never);
   const assignments = buildRoundOf32Assignments(matches as never, standings);
+  const readiness = getRoundOf32Readiness(matches, standings, assignments);
+  if (readiness.pendingGroupMatches.length || readiness.groupMatchesTotal < 72) {
+    throw new HttpsError("failed-precondition", "Termina de capturar la fase de grupos antes de confirmar la ronda de 32.", { readiness });
+  }
   const unresolved = assignments.filter((item) => item.needsReview || !item.homeTeam || !item.awayTeam);
   if (unresolved.length) {
     throw new HttpsError("failed-precondition", "La propuesta requiere revisión manual antes de confirmarse.", { unresolved, reviewReasons: standings.reviewReasons });
@@ -341,15 +348,20 @@ export const upsertManualResult = onCall<ManualResultInput>(async (request) => {
 
   await ref.set(patch, { merge: true });
   const resolved = await resolveKnockoutMatchesInFirestore(db);
+  const matchesSnap = await db.collection("matches").get();
+  const matches = matchesSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as FirebaseFirestore.DocumentData & { id: string }));
+  const standings = calculateStandings(matches as never);
+  const assignments = buildRoundOf32Assignments(matches as never, standings);
+  const roundOf32 = getRoundOf32Readiness(matches, standings, assignments);
   await writeAuditLog({
     actorUid: request.auth.uid,
     action: "upsertManualResult",
     entityType: "match",
     entityId: input.matchId,
     before,
-    after: { ...patch, knockoutResolved: resolved.updated }
+    after: { ...patch, knockoutResolved: resolved.updated, roundOf32 }
   });
-  return { ok: true, knockoutResolved: resolved.updated };
+  return { ok: true, knockoutResolved: resolved.updated, roundOf32 };
 });
 
 function nullableNumber(value: unknown) {

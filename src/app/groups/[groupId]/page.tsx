@@ -287,7 +287,7 @@ function MembersPanel({ members, myMember, currency, contributionAmount, matches
     set.add(prediction.matchId);
     predictedByUid.set(prediction.uid, set);
   }
-  const openMatches = matches.filter((match) => match.status === "scheduled" && match.isResolved !== false && !isMatchClosed(toDate(match.kickoffAt)));
+  const openMatches = matches.filter((match) => match.status === "scheduled" && isMatchPickable(match) && !isMatchClosed(toDate(match.kickoffAt)));
 
   if (sorted.length === 0) return null;
 
@@ -343,6 +343,11 @@ function MembersPanel({ members, myMember, currency, contributionAmount, matches
       </ul>
     </section>
   );
+}
+
+function isMatchPickable(match: Match) {
+  if (inferPickType(match) === "GROUP_OUTCOME") return true;
+  return Boolean(match.isResolved && match.isPublishedToParticipants);
 }
 
 function MemberAvatar({ name, isMe }: { name: string; isMe: boolean }) {

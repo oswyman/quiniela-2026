@@ -59,6 +59,9 @@ Marcar cada ítem con ✅ (pasa), ❌ (falla — registrar bug) o ⚠️ (pasa c
 - [ ] 5.2 Una vez publicado (isPublishedToParticipants = true), el partido aparece con los equipos correctos
 - [ ] 5.3 Participante puede elegir uno de los dos equipos del partido
 - [ ] 5.4 Intentar enviar un equipo que no sea de los dos válidos devuelve error
+- [ ] 5.5 Al terminar los 72 partidos de grupos, `/admin` muestra la Ronda de 32 lista para confirmación, pero no la publica sin click del superadmin
+- [ ] 5.6 Después de confirmar Ronda de 32, capturar resultados de eliminación directa publica automáticamente los siguientes cruces cuando ambos equipos quedan definidos
+- [ ] 5.7 Si la propuesta de Ronda de 32 requiere revisión manual, el botón de confirmación queda bloqueado y muestra el motivo
 
 ---
 

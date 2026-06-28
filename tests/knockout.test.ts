@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { previewKnockoutResolution } from "@/lib/knockout";
+import { resolveKnockoutUpdates } from "../functions/src/knockoutResolution";
 import type { Match } from "@/types";
 
 describe("knockout resolution", () => {
@@ -63,6 +64,55 @@ describe("knockout resolution", () => {
     expect(previewKnockoutResolution(matches)).toEqual([
       { matchNumber: 103, resolvedHomeTeam: "Canada", resolvedAwayTeam: "Brazil" },
       { matchNumber: 104, resolvedHomeTeam: "Mexico", resolvedAwayTeam: "Argentina" }
+    ]);
+  });
+
+  it("publishes sourced knockout matches when both teams are resolved", () => {
+    const updates = resolveKnockoutUpdates([
+      {
+        id: "manual-2026-89",
+        matchNumber: 89,
+        homeTeam: "Mexico",
+        awayTeam: "Canada",
+        resolvedHomeTeam: "Mexico",
+        resolvedAwayTeam: "Canada",
+        finalHomeGoals: 2,
+        finalAwayGoals: 1,
+        winnerTeam: "Mexico"
+      },
+      {
+        id: "manual-2026-90",
+        matchNumber: 90,
+        homeTeam: "Brazil",
+        awayTeam: "Argentina",
+        resolvedHomeTeam: "Brazil",
+        resolvedAwayTeam: "Argentina",
+        finalHomeGoals: 0,
+        finalAwayGoals: 1,
+        winnerTeam: "Argentina"
+      },
+      {
+        id: "manual-2026-97",
+        matchNumber: 97,
+        homeTeam: "Match 89 Winner",
+        awayTeam: "Match 90 Winner",
+        homeSourceMatchNumber: 89,
+        awaySourceMatchNumber: 90,
+        homeSourceOutcome: "winner",
+        awaySourceOutcome: "winner",
+        isResolved: false,
+        isPublishedToParticipants: false
+      }
+    ]);
+
+    expect(updates).toEqual([
+      {
+        id: "manual-2026-97",
+        resolvedHomeTeam: "Mexico",
+        resolvedAwayTeam: "Argentina",
+        isResolved: true,
+        isPublishedToParticipants: true
+      }
     ]);
   });
 });

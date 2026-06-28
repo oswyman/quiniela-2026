@@ -45,6 +45,18 @@ export type RoundOf32Assignment = {
 
 const GROUP_SEED_RE = /^Group\s+([A-L](?:\/[A-L])*)\s+(Winners|Runners Up|3rd Place)$/i;
 
+// Tabla oficial FIFA: qué grupo de tercero va a cada slot de Ronda de 32.
+// Clave: grupos cuyos terceros clasifican, ordenados y separados por coma.
+// Valor: matchNumber → grupo del tercero que ocupa ese slot.
+// Columnas ordenadas por grupo ganador: A→79, B→85, D→81, E→74, G→82, I→77, K→87, L→80.
+// Fuente: wikipedia.org/wiki/2026_FIFA_World_Cup_knockout_stage (verificado contra resultados reales).
+const THIRD_PLACE_LOOKUP: Record<string, Record<number, string>> = {
+  "B,D,E,F,I,J,K,L": { 79: "E", 85: "J", 81: "B", 74: "D", 82: "I", 77: "F", 87: "L", 80: "K" },
+  "B,D,E,F,G,I,K,L": { 79: "E", 85: "G", 81: "B", 74: "D", 82: "I", 77: "F", 87: "L", 80: "K" },
+  "B,D,E,F,G,I,J,L": { 79: "E", 85: "G", 81: "B", 74: "D", 82: "J", 77: "F", 87: "L", 80: "I" },
+  "A,B,D,E,F,G,I,L": { 79: "E", 85: "G", 81: "B", 74: "D", 82: "A", 77: "F", 87: "L", 80: "I" },
+};
+
 export function calculateStandings(matches: MatchLike[]): StandingsResult {
   const byGroup = new Map<string, Map<string, Omit<TeamStanding, "position" | "goalDifference" | "needsReview">>>();
   const reviewReasons: string[] = [];
@@ -112,36 +124,52 @@ export function calculateStandings(matches: MatchLike[]): StandingsResult {
 }
 
 export function buildRoundOf32Assignments(matches: MatchLike[], standings: StandingsResult): RoundOf32Assignment[] {
+  const { thirdByMatch, unknownCombination } = resolveThirdPlaceByMatch(standings);
+
   return matches
     .filter((match) => typeof match.matchNumber === "number" && match.matchNumber >= 73 && match.matchNumber <= 88)
     .sort((a, b) => Number(a.matchNumber) - Number(b.matchNumber))
     .map((match) => {
+      const matchNumber = Number(match.matchNumber);
       const homeSeedLabel = match.homeTeam;
       const awaySeedLabel = match.awayTeam;
-      const homeTeam = resolveGroupSeed(homeSeedLabel, standings);
-      const awayTeam = resolveGroupSeed(awaySeedLabel, standings);
+      const homeTeam = resolveGroupSeed(homeSeedLabel, standings, thirdByMatch, matchNumber);
+      const awayTeam = resolveGroupSeed(awaySeedLabel, standings, thirdByMatch, matchNumber);
       return {
         matchId: match.id,
-        matchNumber: Number(match.matchNumber),
+        matchNumber,
         homeTeam,
         awayTeam,
         homeSeedLabel,
         awaySeedLabel,
-        needsReview: standings.needsReview || !homeTeam || !awayTeam
+        needsReview: standings.needsReview || unknownCombination || !homeTeam || !awayTeam
       };
     });
 }
 
-function resolveGroupSeed(seed: string, standings: StandingsResult) {
+function resolveThirdPlaceByMatch(standings: StandingsResult): { thirdByMatch: Map<number, string>; unknownCombination: boolean } {
+  const key = standings.bestThirds.map((t) => t.group).sort().join(",");
+  const slotToGroup = THIRD_PLACE_LOOKUP[key];
+  if (!slotToGroup) {
+    return { thirdByMatch: new Map(), unknownCombination: standings.bestThirds.length === 8 };
+  }
+  const byGroup = new Map(standings.bestThirds.map((t) => [t.group, t.team]));
+  const thirdByMatch = new Map<number, string>();
+  for (const [matchNum, group] of Object.entries(slotToGroup)) {
+    const team = byGroup.get(group);
+    if (team) thirdByMatch.set(Number(matchNum), team);
+  }
+  return { thirdByMatch, unknownCombination: false };
+}
+
+function resolveGroupSeed(seed: string, standings: StandingsResult, thirdByMatch: Map<number, string>, matchNumber: number): string | null {
   const match = seed.trim().match(GROUP_SEED_RE);
   if (!match) return null;
   const groups = match[1].split("/").map((item) => item.toUpperCase());
   const label = match[2].toLowerCase();
   if (label === "winners") return standings.groups[groups[0]]?.[0]?.team ?? null;
   if (label === "runners up") return standings.groups[groups[0]]?.[1]?.team ?? null;
-
-  const eligible = standings.bestThirds.find((row) => groups.includes(row.group));
-  return eligible?.team ?? null;
+  return thirdByMatch.get(matchNumber) ?? null;
 }
 
 function compareStanding(a: Pick<TeamStanding, "points" | "goalDifference" | "goalsFor" | "team">, b: Pick<TeamStanding, "points" | "goalDifference" | "goalsFor" | "team">) {

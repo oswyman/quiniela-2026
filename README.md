@@ -10,7 +10,7 @@ La plataforma no procesa pagos, no custodia dinero, no implementa wallet y no in
 
 - Next.js App Router, React y TypeScript.
 - CSS Modules y CSS global simple. Se eligio CSS nativo para reducir dependencias, controlar identidad visual y mantener el despliegue MVP ligero.
-- Firebase Auth para acceso email/password.
+- Firebase Auth para acceso con Google Sign-In y email/password.
 - Cloud Firestore para grupos, miembros, invitaciones, partidos, pronosticos, scores, premios y auditoria.
 - Firebase Security Rules para permisos del cliente.
 - Firebase Cloud Functions con Admin SDK para invitaciones, grupos, pronosticos, resultados manuales, auditoria, recalculo, ranking, premios y sync opcional.
@@ -67,7 +67,7 @@ No guardes secretos reales en el repo. `API_FOOTBALL_KEY`, Sportmonks y cualquie
 ## Configuracion de Firebase
 
 1. Crea un proyecto en Firebase.
-2. Activa Firebase Auth con proveedor Email/Password.
+2. Activa Firebase Auth con proveedores Email/Password y Google.
 3. Crea Cloud Firestore.
 4. Registra una Web App y copia los valores `NEXT_PUBLIC_FIREBASE_*`.
 5. Instala Firebase CLI si no lo tienes.
@@ -124,7 +124,7 @@ Las variables de proveedor de resultados con secretos no deben exponerse al clie
 3. El administrador crea su grupo y configura moneda, aportacion, responsable del dinero y visibilidad de pronosticos.
 4. El administrador invita participantes por correo desde `/groups/[groupId]/admin`.
 5. Los participantes aceptan la invitacion y solo pueden entrar si el email autenticado coincide.
-6. Un participante puede unirse al grupo durante el torneo.
+6. Un participante puede unirse al grupo en cualquier momento del torneo, sin deadline de registro.
 7. Cada pronostico cierra por partido cuando `now >= match.kickoffAt`.
 8. El ranking muestra aciertos, empates reales y premios estimados.
 
@@ -178,9 +178,10 @@ En `/admin`, un `platform_admin` puede:
 - Crear o editar partidos.
 - Capturar marcador a 90 minutos.
 - Capturar marcador tras tiempos extra y penales cuando aplique.
-- Confirmar ronda de 32 despues de revisar clasificados, horarios y sedes.
+- Generar propuesta de ronda de 32 cuando los 72 partidos de grupos esten finalizados.
+- Confirmar ronda de 32 despues de revisar clasificados, horarios y sedes. Esta publicacion requiere intervencion del superadmin.
 - Capturar ganador.
-- Resolver llaves eliminatorias de octavos en adelante con los ganadores/perdedores de partidos previos.
+- Resolver llaves eliminatorias de octavos en adelante con los ganadores/perdedores de partidos previos. Despues de confirmar ronda de 32, los cruces 89-104 se publican automaticamente cuando ambos equipos quedan definidos.
 - Descargar un calendario `.ics` de los 104 partidos para importarlo en Google Calendar.
 - Recalcular rankings por grupo.
 
@@ -205,7 +206,7 @@ Reglas de horarios:
 - `localDate`, `localTime` y `timezone` son obligatorios.
 - La app convierte esa hora local a `kickoffAt` UTC en Cloud Functions.
 - La UI muestra hora CDMX, hora local del usuario y hora sede cuando existe `sourceTimezone`.
-- La eliminatoria directa guarda placeholders como `Match 101 Winner` hasta que el superadmin capture resultados y ejecute la resolucion de llaves.
+- La eliminatoria directa guarda placeholders como `Match 101 Winner`. Ronda de 32 requiere confirmacion manual; de 89 a 104 se actualizan y publican al capturar resultados previos.
 - La fuente recomendada es el calendario oficial FIFA: https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/match-schedule-fixtures-results-teams-stadiums
 
 Despues de actualizar resultados, ejecuta `recalculateGroupScores`.

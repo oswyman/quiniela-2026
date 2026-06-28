@@ -28,7 +28,7 @@ npm run emulator:dev     # Next.js apuntando a emuladores (.env.local.emulator)
 | `src/app/globals.css` | TODO el sistema de diseño (tokens + componentes). Ver DESIGN.md |
 | `src/components/` | Header, GroupNav, EmptyState, Toast, StatusMessage, AuthGate, ThemeToggle, skeletons, etc. |
 | `src/lib/` | Lógica de cliente: `scoring.ts` (cierres, picks), `prizes.ts` (ranking), `calendar.ts` (export iCal), `fixtureCsv.ts`, `matchTime.ts`, `firebase/` |
-| `functions/src/` | Cloud Functions: groups, invites, predictions, scoring, prizes, standings, knockout, manualResults, resultsSync, audit |
+| `functions/src/` | Cloud Functions: groups, invites, predictions, scoring, prizes, standings, roundOf32, knockout, knockoutResolution, manualResults, resultsSync, audit |
 | `tests/` | Vitest de lógica pura (scoring, prizes, deadlines, csv, calendar, standings) |
 | `docs/` | go-live-plan.md, testing-checklist.md, backup-setup.md, template CSV de fixtures |
 | `audit-la-cancha-*.md` | Auditorías pre-producción (la última: 2026-06-09, GO CONDICIONAL 73/100) |
@@ -45,6 +45,14 @@ npm run emulator:dev     # Next.js apuntando a emuladores (.env.local.emulator)
 
 ### Incidente predictionVisibility (2026-06-09)
 NO reintroducir la regla de Firestore que filtraba lectura de `predictions` por `predictionVisibility` — rompió producción porque las queries existentes no la satisfacen (revert en commit 1609999). El filtrado de picks ajenos se hace en cliente (`predictions/page.tsx` filtra por uid). Si se quiere visibilidad real a nivel DB, hay que rediseñar las queries primero.
+
+### Tabla de tercios en Ronda de 32 (`functions/src/standings.ts`)
+`buildRoundOf32Assignments` usa `THIRD_PLACE_LOOKUP` — una tabla con las 4 combinaciones posibles para el Torneo 2026 que mapea qué grupo de tercero va a qué slot (matchNumbers 74,77,79,80,81,82,85,87). Si el torneo produce una combinación fuera de esas 4, todos los slots de terceros devuelven `needsReview: true`. Tests cubriendo las 4 combinaciones en `tests/roundOf32.test.ts`.
+
+El orden de columnas de la tabla FIFA está por **grupo ganador** (A→M79, B→M85, D→M81, E→M74, G→M82, I→M77, K→M87, L→M80).
+
+### Publicación de llaves
+`functions/src/roundOf32.ts` calcula la compuerta de confirmación: 72 partidos de grupos finalizados, 16 cruces propuestos y cero revisión pendiente. `confirmRoundOf32Resolution` sigue siendo una acción explícita de `platform_admin`; no publicar Ronda de 32 sin intervención. Después de confirmarla, `functions/src/knockoutResolution.ts` resuelve automáticamente cruces 89-104 al capturar resultados y publica cada cruce resuelto con `isPublishedToParticipants: true`.
 
 ### Diseño
 - Leer `PRODUCT.md` (estrategia/marca) y `DESIGN.md` (sistema visual, tokens, do's & don'ts) antes de tocar UI.

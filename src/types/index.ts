@@ -217,3 +217,12 @@ export type RoundOf32Assignment = {
   awaySeedLabel: string;
   needsReview: boolean;
 };
+
+export type RoundOf32Readiness = {
+  groupMatchesTotal: number;
+  groupMatchesFinished: number;
+  pendingGroupMatches: number[];
+  isReadyForConfirmation: boolean;
+  requiresManualReview: boolean;
+  reviewReasons: string[];
+};

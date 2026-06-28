@@ -20,7 +20,7 @@ import { teamFlagEmoji } from "@/lib/teamFlags";
 import { teamDisplayName } from "@/lib/teamNames";
 import { generateResultsCsv } from "@/lib/resultsExport";
 import { formatInTimeZone, getUserTimeZone, CDMX_TIMEZONE } from "@/lib/timezone";
-import type { AuditLog, Group, Match, ProviderStatus, RoundOf32Assignment, TeamStanding, TournamentConfig, UserProfile } from "@/types";
+import type { AuditLog, Group, Match, ProviderStatus, RoundOf32Assignment, RoundOf32Readiness, TeamStanding, TournamentConfig, UserProfile } from "@/types";
 
 type AdminTab = "operation" | "results" | "bracket" | "groups" | "users" | "audit";
 
@@ -61,6 +61,7 @@ function PlatformAdminContent() {
   const [editingResultId, setEditingResultId] = useState<string | null>(null);
   const [standings, setStandings] = useState<{ groups: Record<string, TeamStanding[]>; bestThirds: TeamStanding[]; needsReview: boolean; reviewReasons: string[] } | null>(null);
   const [assignments, setAssignments] = useState<RoundOf32Assignment[]>([]);
+  const [roundOf32Readiness, setRoundOf32Readiness] = useState<RoundOf32Readiness | null>(null);
 
   const calendarLoaded = matches.length >= 104;
   const finishedMatches = matches.filter((match) => match.status === "finished").length;
@@ -143,12 +144,24 @@ function PlatformAdminContent() {
     setError("");
     setMessage("");
     try {
-      await upsertManualResult({ matchId: match.id, ...payload });
+      const result = await upsertManualResult({ matchId: match.id, ...payload });
       await Promise.all(groups.map((group) => recalculateGroupScores(group.id).catch(() => null)));
+      setRoundOf32Readiness(result.data.roundOf32);
+      if (result.data.roundOf32.isReadyForConfirmation) {
+        const preview = await previewRoundOf32Resolution();
+        setStandings(preview.data.standings);
+        setAssignments(preview.data.assignments);
+        setRoundOf32Readiness(preview.data.readiness);
+      }
+      const bracketCopy = result.data.roundOf32.isReadyForConfirmation
+        ? " Ronda de 32 lista para confirmar en Llaves."
+        : result.data.knockoutResolved > 0
+          ? ` ${result.data.knockoutResolved} cruce${result.data.knockoutResolved === 1 ? "" : "s"} publicado${result.data.knockoutResolved === 1 ? "" : "s"}.`
+          : "";
       pushToast({
         type: "success",
         title: payload.status === "finished" ? "Resultado guardado" : "Partido actualizado",
-        body: `${getMatchTitle(match)}. Rankings recalculados.`
+        body: `${getMatchTitle(match)}. Rankings recalculados.${bracketCopy}`
       });
       setEditingResultId(null);
       await load();
@@ -212,7 +225,8 @@ function PlatformAdminContent() {
       const result = await previewRoundOf32Resolution();
       setStandings(result.data.standings);
       setAssignments(result.data.assignments);
-      setMessage(result.data.standings.needsReview ? "Propuesta generada con criterios que requieren revisión del reglamento oficial." : "Propuesta de ronda de 32 generada.");
+      setRoundOf32Readiness(result.data.readiness);
+      setMessage(result.data.readiness.isReadyForConfirmation ? "Propuesta de ronda de 32 lista para confirmación." : "Propuesta generada. Revisa pendientes antes de confirmar.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo generar la propuesta de llaves.");
     } finally {
@@ -474,10 +488,11 @@ function PlatformAdminContent() {
             </div>
             <div className="cluster">
               <button className="button secondary" disabled={busy === "previewBracket"} onClick={onPreviewBracket} type="button">Generar propuesta</button>
-              <button className="button" disabled={!assignments.length || busy === "confirmRound32" || Boolean(standings?.needsReview)} onClick={onConfirmRoundOf32} type="button">Confirmar ronda de 32</button>
+              <button className="button" disabled={!assignments.length || busy === "confirmRound32" || !roundOf32Readiness?.isReadyForConfirmation} onClick={onConfirmRoundOf32} type="button">Confirmar ronda de 32</button>
               <button className="button secondary" disabled={busy === "resolveKnockout"} onClick={onResolveKnockout} type="button">Resolver 89-104</button>
             </div>
           </div>
+          {roundOf32Readiness ? <RoundOf32ReadinessPanel readiness={roundOf32Readiness} /> : null}
           {standings ? <StandingsPanel standings={standings} /> : <EmptyState title="Sin propuesta generada" body="Genera una propuesta cuando terminen los partidos de fase de grupos." />}
           {assignments.length ? <AssignmentsTable assignments={assignments} /> : null}
         </section>
@@ -862,6 +877,25 @@ function CaptureForm({ match, busy, isEditing, onCancelEdit, onSave }: {
   );
 }
 
+function RoundOf32ReadinessPanel({ readiness }: { readiness: RoundOf32Readiness }) {
+  if (readiness.isReadyForConfirmation) {
+    return <StatusMessage type="success">La fase de grupos está completa. Revisa la propuesta y confirma la Ronda de 32 para abrir pronósticos.</StatusMessage>;
+  }
+  if (readiness.requiresManualReview) {
+    return (
+      <StatusMessage type="error">
+        La propuesta requiere revisión manual: {readiness.reviewReasons.slice(0, 3).join(" · ") || "hay cruces sin resolver."}
+      </StatusMessage>
+    );
+  }
+  const pending = readiness.pendingGroupMatches.slice(0, 12).join(", ");
+  return (
+    <StatusMessage>
+      Faltan resultados de fase de grupos: {readiness.groupMatchesFinished}/{Math.max(72, readiness.groupMatchesTotal)} capturados{pending ? `. Pendientes: ${pending}${readiness.pendingGroupMatches.length > 12 ? "..." : ""}` : "."}
+    </StatusMessage>
+  );
+}
+
 function StandingsPanel({ standings }: { standings: { groups: Record<string, TeamStanding[]>; bestThirds: TeamStanding[]; needsReview: boolean; reviewReasons: string[] } }) {
   return (
     <div className="stack">
@@ -883,14 +917,34 @@ function StandingsPanel({ standings }: { standings: { groups: Record<string, Tea
 }
 
 function AssignmentsTable({ assignments }: { assignments: RoundOf32Assignment[] }) {
+  const hasPending = assignments.some((item) => !item.homeTeam || !item.awayTeam);
+  const hasReview = assignments.some((item) => item.needsReview);
   return (
-    <div className="tableWrap">
-      <table>
-        <thead><tr><th>Partido</th><th>Seed local</th><th>Equipo local</th><th>Seed visitante</th><th>Equipo visitante</th><th>Estado</th></tr></thead>
-        <tbody>
-          {assignments.map((item) => <tr key={item.matchId}><td>#{item.matchNumber}</td><td>{item.homeSeedLabel}</td><td>{item.homeTeam ?? "Pendiente"}</td><td>{item.awaySeedLabel}</td><td>{item.awayTeam ?? "Pendiente"}</td><td>{item.needsReview ? "Revisión" : "Listo"}</td></tr>)}
-        </tbody>
-      </table>
+    <div className="stack">
+      <div className="tableWrap">
+        <table>
+          <thead><tr><th>Partido</th><th>Seed local</th><th>Equipo local</th><th>Seed visitante</th><th>Equipo visitante</th><th>Estado</th></tr></thead>
+          <tbody>
+            {assignments.map((item) => (
+              <tr key={item.matchId}>
+                <td>#{item.matchNumber}</td>
+                <td>{item.homeSeedLabel}</td>
+                <td>{item.homeTeam ?? "Pendiente"}</td>
+                <td>{item.awaySeedLabel}</td>
+                <td>{item.awayTeam ?? "Pendiente"}</td>
+                <td>
+                  {item.needsReview
+                    ? <span className="pill" style={{ color: "var(--warn)", borderColor: "var(--warn-border)" }}>Requiere revisión manual</span>
+                    : <span className="pill successPill">Confirmado</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {(hasPending || hasReview) ? (
+        <p className="muted">Los cruces con &ldquo;Pendiente&rdquo; se resuelven cargando el resultado del partido anterior en la pestaña Resultados, que actualiza los equipos clasificados automáticamente.</p>
+      ) : null}
     </div>
   );
 }

@@ -106,7 +106,7 @@ function PredictionsContent() {
     const firstPending = phases.find((p) =>
       visibleMatches
         .filter((m) => (m.phase || "Sin fase") === p)
-        .some((m) => m.isResolved !== false && !isMatchClosed(toDate(m.kickoffAt)) && !byMatch.get(m.id))
+        .some((m) => isMatchPickable(m) && !isMatchClosed(toDate(m.kickoffAt)) && !byMatch.get(m.id))
     );
     setActiveTab(firstPending ?? phases[0]);
   }, [phases]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -121,7 +121,7 @@ function PredictionsContent() {
   const statusCounts = useMemo(() => {
     const counts = { all: tabMatches.length, pending: 0, picked: 0, finished: 0 };
     for (const m of tabMatches) {
-      if (m.isResolved !== false && !isMatchClosed(toDate(m.kickoffAt)) && !byMatch.get(m.id)) counts.pending += 1;
+      if (isMatchPickable(m) && !isMatchClosed(toDate(m.kickoffAt)) && !byMatch.get(m.id)) counts.pending += 1;
       if (byMatch.get(m.id)) counts.picked += 1;
       if (m.status === "finished") counts.finished += 1;
     }
@@ -129,7 +129,7 @@ function PredictionsContent() {
   }, [tabMatches, byMatch]);
 
   const filteredTabMatches = useMemo(() => tabMatches.filter((m) => {
-    if (statusFilter === "pending") return m.isResolved !== false && !isMatchClosed(toDate(m.kickoffAt)) && !byMatch.get(m.id);
+    if (statusFilter === "pending") return isMatchPickable(m) && !isMatchClosed(toDate(m.kickoffAt)) && !byMatch.get(m.id);
     if (statusFilter === "picked") return Boolean(byMatch.get(m.id));
     if (statusFilter === "finished") return m.status === "finished";
     return true;
@@ -148,7 +148,7 @@ function PredictionsContent() {
   }, [filteredTabMatches, timeMode, userTimeZone]);
 
   // Progreso de la fase activa: picks hechos sobre partidos con equipos definidos
-  const phasePickable = useMemo(() => tabMatches.filter((m) => m.isResolved !== false).length, [tabMatches]);
+  const phasePickable = useMemo(() => tabMatches.filter(isMatchPickable).length, [tabMatches]);
   const phasePicked = useMemo(() => tabMatches.filter((m) => byMatch.get(m.id)).length, [tabMatches, byMatch]);
 
   // Badges por fase: pendientes (solo partidos con equipos conocidos, abiertos, sin pick)
@@ -156,7 +156,7 @@ function PredictionsContent() {
     const map = new Map<string, number>();
     for (const m of visibleMatches) {
       const p = m.phase || "Sin fase";
-      const canPick = m.isResolved !== false && !isMatchClosed(toDate(m.kickoffAt)) && !byMatch.get(m.id);
+      const canPick = isMatchPickable(m) && !isMatchClosed(toDate(m.kickoffAt)) && !byMatch.get(m.id);
       if (canPick) map.set(p, (map.get(p) ?? 0) + 1);
     }
     return map;
@@ -185,7 +185,7 @@ function PredictionsContent() {
   }, []);
 
   const jumpToNextPending = useCallback(() => {
-    const isPending = (m: Match) => m.isResolved !== false && !isMatchClosed(toDate(m.kickoffAt)) && !byMatch.get(m.id);
+    const isPending = (m: Match) => isMatchPickable(m) && !isMatchClosed(toDate(m.kickoffAt)) && !byMatch.get(m.id);
     let target = tabMatches.find(isPending);
     if (!target) {
       target = visibleMatches.find(isPending);
@@ -378,6 +378,15 @@ function PredictionsContent() {
           </div>
 
           {/* ── Cards de la fase activa, agrupadas por día ── */}
+          {tabMatches.length > 0 && phasePickable === 0 ? (
+            <div className="panel stack">
+              <div className="cluster">
+                <Clock size={18} aria-hidden />
+                <span className="pill">Bracket en proceso</span>
+              </div>
+              <p className="muted">El admin está confirmando los cruces de esta fase. Podrás pronosticar en cuanto se publiquen los emparejamientos.</p>
+            </div>
+          ) : null}
           {filteredTabMatches.length === 0 ? (
             tabMatches.length === 0
               ? <EmptyState title="Sin partidos en esta fase" body="Los partidos de esta fase aún no se publican. Vuelve cuando avance el torneo." />
@@ -394,7 +403,7 @@ function PredictionsContent() {
               const pickType = inferPickType(match);
               const homeTeam = getDisplayTeam(match, "home");
               const awayTeam = getDisplayTeam(match, "away");
-              const teamsKnown = match.isResolved !== false;
+              const teamsKnown = isMatchPickable(match);
               const isLive = match.status === "live";
               const inPlay = isMatchInPlay(match);
               const hasResult = match.status === "finished";
@@ -515,6 +524,11 @@ function isVisibleForParticipants(_match: Match) {
   // Las tarjetas TBD (teamsKnown=false) muestran botones deshabilitados
   // hasta que el admin confirme el bracket.
   return true;
+}
+
+function isMatchPickable(match: Match) {
+  if (inferPickType(match) === "GROUP_OUTCOME") return true;
+  return Boolean(match.isResolved && match.isPublishedToParticipants);
 }
 
 type StatusFilter = "all" | "pending" | "picked" | "finished";
