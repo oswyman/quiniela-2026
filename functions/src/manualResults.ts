@@ -262,6 +262,12 @@ export const upsertManualMatch = onCall<ManualMatchInput>(async (request) => {
     resolvedHomeTeam: input.homeSeedLabel ? null : input.homeTeam.trim(),
     resolvedAwayTeam: input.awaySeedLabel ? null : input.awayTeam.trim(),
     isResolved: !input.homeSeedLabel && !input.awaySeedLabel,
+    // Un cruce con equipos reales queda publicado y pronosticable de inmediato;
+    // sin esto la tarjeta se queda en "Equipos por definir" aunque isResolved sea true.
+    isPublishedToParticipants: !input.homeSeedLabel && !input.awaySeedLabel,
+    publishedAt: !input.homeSeedLabel && !input.awaySeedLabel
+      ? before?.publishedAt ?? FieldValue.serverTimestamp()
+      : null,
     status: input.status ?? "scheduled",
     rawProviderStatus: "manual",
     updatedAt: FieldValue.serverTimestamp(),
@@ -335,6 +341,9 @@ export const bulkUpsertManualMatches = onCall<BulkManualMatchInput>(async (reque
         resolvedHomeTeam: item.homeSeedLabel ? null : item.homeTeam.trim(),
         resolvedAwayTeam: item.awaySeedLabel ? null : item.awayTeam.trim(),
         isResolved: !item.homeSeedLabel && !item.awaySeedLabel,
+        // Igual que en upsertManualMatch: equipos reales => publicado y pronosticable.
+        isPublishedToParticipants: !item.homeSeedLabel && !item.awaySeedLabel,
+        publishedAt: !item.homeSeedLabel && !item.awaySeedLabel ? FieldValue.serverTimestamp() : null,
         status: item.status ?? "scheduled",
         rawProviderStatus: "manual bulk",
         updatedAt: FieldValue.serverTimestamp(),

@@ -167,4 +167,37 @@ describe("knockout resolution", () => {
       }
     ]);
   });
+
+  it("publishes a manually loaded knockout match that is resolved but unpublished", () => {
+    const updates = resolveKnockoutUpdates([
+      {
+        id: "manual-2026-97",
+        matchNumber: 97,
+        homeTeam: "France",
+        awayTeam: "Morocco",
+        resolvedHomeTeam: "France",
+        resolvedAwayTeam: "Morocco",
+        isResolved: true,
+        isPublishedToParticipants: false
+      },
+      {
+        id: "manual-2026-40",
+        matchNumber: 40,
+        homeTeam: "Mexico",
+        awayTeam: "Canada",
+        isResolved: true,
+        isPublishedToParticipants: false
+      }
+    ]);
+
+    expect(updates).toEqual([
+      {
+        id: "manual-2026-97",
+        resolvedHomeTeam: "France",
+        resolvedAwayTeam: "Morocco",
+        isResolved: true,
+        isPublishedToParticipants: true
+      }
+    ]);
+  });
 });

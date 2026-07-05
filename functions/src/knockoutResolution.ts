@@ -39,7 +39,23 @@ export function resolveKnockoutUpdates(matches: KnockoutMatchLike[]): KnockoutUp
   for (const match of matches) {
     const hasHomeSource = typeof match.homeSourceMatchNumber === "number" && !!match.homeSourceOutcome;
     const hasAwaySource = typeof match.awaySourceMatchNumber === "number" && !!match.awaySourceOutcome;
-    if (!hasHomeSource && !hasAwaySource) continue;
+    if (!hasHomeSource && !hasAwaySource) {
+      // Reparación: un cruce de eliminatoria cargado a mano con equipos reales
+      // (isResolved true, sin fuentes) debe quedar publicado y pronosticable.
+      if (
+        typeof match.matchNumber === "number" && match.matchNumber >= 73 &&
+        match.isResolved && !match.isPublishedToParticipants
+      ) {
+        updates.push({
+          id: match.id,
+          resolvedHomeTeam: match.resolvedHomeTeam || match.homeTeam || null,
+          resolvedAwayTeam: match.resolvedAwayTeam || match.awayTeam || null,
+          isResolved: true,
+          isPublishedToParticipants: true
+        });
+      }
+      continue;
+    }
 
     const resolvedHomeTeam = hasHomeSource
       ? resolveTeam(byNumber.get(match.homeSourceMatchNumber as number), match.homeSourceOutcome as SourceOutcome)
