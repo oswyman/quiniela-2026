@@ -16,6 +16,7 @@ export type KnockoutMatchLike = {
   homeGoals90?: number | null;
   awayGoals90?: number | null;
   winnerTeam?: string | null;
+  status?: string;
   isPublishedToParticipants?: boolean;
   isResolved?: boolean;
 };
@@ -63,7 +64,9 @@ export function resolveKnockoutUpdates(matches: KnockoutMatchLike[]): KnockoutUp
 }
 
 function resolveTeam(source: KnockoutMatchLike | undefined, outcome: SourceOutcome) {
-  if (!source) return null;
+  // Solo un partido finalizado define al clasificado: un marcador parcial
+  // (status "live") no debe publicar la siguiente llave prematuramente.
+  if (!source || source.status !== "finished") return null;
   const home = source.resolvedHomeTeam || source.homeTeam;
   const away = source.resolvedAwayTeam || source.awayTeam;
   const winner = getWinnerSide(source);

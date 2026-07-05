@@ -52,7 +52,7 @@ NO reintroducir la regla de Firestore que filtraba lectura de `predictions` por 
 El orden de columnas de la tabla FIFA está por **grupo ganador** (A→M79, B→M85, D→M81, E→M74, G→M82, I→M77, K→M87, L→M80).
 
 ### Publicación de llaves
-`functions/src/knockoutBracket.ts` contiene la carga operativa 73-104 con hora local, zona horaria y sede. `publishFullKnockoutBracket` es una acción explícita de `platform_admin`: deja 73-88 publicados para pronósticos y 89-104 programados con seeds `Match N Winner/Loser`. Al capturar resultados, `functions/src/knockoutResolution.ts` resuelve automáticamente los cruces siguientes y publica cada cruce resuelto con `isPublishedToParticipants: true`.
+`functions/src/knockoutBracket.ts` contiene la carga operativa 73-104 con hora local, zona horaria y sede. `publishFullKnockoutBracket` es una acción explícita de `platform_admin`: deja 73-88 publicados para pronósticos y 89-104 programados con seeds `Match N Winner/Loser`. Al capturar resultados, `functions/src/knockoutResolution.ts` resuelve automáticamente los cruces siguientes y publica cada cruce resuelto con `isPublishedToParticipants: true` (queda pronosticable de inmediato). Solo un partido fuente con `status: "finished"` define al clasificado: un marcador parcial "live" no publica la siguiente llave. Si un cruce ya publicado cambia de equipos por corrección de resultado, se registra `knockoutReseedDetected` en auditoría — revisar los picks existentes de ese cruce.
 
 `functions/src/roundOf32.ts` y `confirmRoundOf32Resolution` quedan como respaldo para recalcular Ronda de 32 desde standings. No usar ese flujo para reemplazar una llave ya cargada sin revisión manual.
 

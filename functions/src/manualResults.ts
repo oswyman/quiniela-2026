@@ -115,7 +115,7 @@ export const confirmRoundOf32Resolution = onCall(async (request) => {
     }, { merge: true });
   }
   await batch.commit();
-  const knockout = await resolveKnockoutMatchesInFirestore(db);
+  const knockout = await resolveKnockoutMatchesInFirestore(db, request.auth.uid);
   await writeAuditLog({
     actorUid: request.auth.uid,
     action: "confirmRoundOf32Resolution",
@@ -128,7 +128,7 @@ export const confirmRoundOf32Resolution = onCall(async (request) => {
 
 export const resolveKnockoutMatches = onCall(async (request) => {
   if (!request.auth || !(await isPlatformAdmin(request.auth.uid))) throw new HttpsError("permission-denied", "Solo platform_admin.");
-  const result = await resolveKnockoutMatchesInFirestore(getFirestore());
+  const result = await resolveKnockoutMatchesInFirestore(getFirestore(), request.auth.uid);
   await writeAuditLog({
     actorUid: request.auth.uid,
     action: "resolveKnockoutMatches",
@@ -198,7 +198,7 @@ export const publishFullKnockoutBracket = onCall(async (request) => {
     updatedAt: FieldValue.serverTimestamp()
   }, { merge: true });
   await batch.commit();
-  const knockout = await resolveKnockoutMatchesInFirestore(db);
+  const knockout = await resolveKnockoutMatchesInFirestore(db, request.auth.uid);
   await writeAuditLog({
     actorUid: request.auth.uid,
     action: "publishFullKnockoutBracket",
@@ -425,7 +425,7 @@ export const upsertManualResult = onCall<ManualResultInput>(async (request) => {
   };
 
   await ref.set(patch, { merge: true });
-  const resolved = await resolveKnockoutMatchesInFirestore(db);
+  const resolved = await resolveKnockoutMatchesInFirestore(db, request.auth.uid);
   const matchesSnap = await db.collection("matches").get();
   const matches = matchesSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as FirebaseFirestore.DocumentData & { id: string }));
   const standings = calculateStandings(matches as never);

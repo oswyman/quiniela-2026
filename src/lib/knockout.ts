@@ -30,6 +30,9 @@ function resolveSourceTeam(source: Match | undefined, outcome: "winner" | "loser
 }
 
 function getWinnerSide(match: Match): "home" | "away" | null {
+  // Solo un partido finalizado define al clasificado (mismo criterio que
+  // functions/src/knockoutResolution.ts).
+  if (match.status !== "finished") return null;
   if (match.winnerTeam) {
     if (same(match.winnerTeam, match.resolvedHomeTeam || match.homeTeam)) return "home";
     if (same(match.winnerTeam, match.resolvedAwayTeam || match.awayTeam)) return "away";

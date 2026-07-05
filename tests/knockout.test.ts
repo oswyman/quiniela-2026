@@ -78,7 +78,8 @@ describe("knockout resolution", () => {
         resolvedAwayTeam: "Canada",
         finalHomeGoals: 2,
         finalAwayGoals: 1,
-        winnerTeam: "Mexico"
+        winnerTeam: "Mexico",
+        status: "finished"
       },
       {
         id: "manual-2026-90",
@@ -89,7 +90,8 @@ describe("knockout resolution", () => {
         resolvedAwayTeam: "Argentina",
         finalHomeGoals: 0,
         finalAwayGoals: 1,
-        winnerTeam: "Argentina"
+        winnerTeam: "Argentina",
+        status: "finished"
       },
       {
         id: "manual-2026-97",
@@ -112,6 +114,56 @@ describe("knockout resolution", () => {
         resolvedAwayTeam: "Argentina",
         isResolved: true,
         isPublishedToParticipants: true
+      }
+    ]);
+  });
+
+  it("does not publish the next round from a live partial score", () => {
+    const updates = resolveKnockoutUpdates([
+      {
+        id: "manual-2026-89",
+        matchNumber: 89,
+        homeTeam: "Mexico",
+        awayTeam: "Canada",
+        resolvedHomeTeam: "Mexico",
+        resolvedAwayTeam: "Canada",
+        homeGoals90: 1,
+        awayGoals90: 0,
+        status: "live"
+      },
+      {
+        id: "manual-2026-90",
+        matchNumber: 90,
+        homeTeam: "Brazil",
+        awayTeam: "Argentina",
+        resolvedHomeTeam: "Brazil",
+        resolvedAwayTeam: "Argentina",
+        finalHomeGoals: 0,
+        finalAwayGoals: 1,
+        winnerTeam: "Argentina",
+        status: "finished"
+      },
+      {
+        id: "manual-2026-97",
+        matchNumber: 97,
+        homeTeam: "Match 89 Winner",
+        awayTeam: "Match 90 Winner",
+        homeSourceMatchNumber: 89,
+        awaySourceMatchNumber: 90,
+        homeSourceOutcome: "winner",
+        awaySourceOutcome: "winner",
+        isResolved: false,
+        isPublishedToParticipants: false
+      }
+    ]);
+
+    expect(updates).toEqual([
+      {
+        id: "manual-2026-97",
+        resolvedHomeTeam: null,
+        resolvedAwayTeam: "Argentina",
+        isResolved: false,
+        isPublishedToParticipants: false
       }
     ]);
   });
